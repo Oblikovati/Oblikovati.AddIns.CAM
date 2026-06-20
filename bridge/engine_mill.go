@@ -46,6 +46,16 @@ func (e *Engine) RunAdaptiveJobOnHost(bodyIndex int) (*JobResult, error) {
 	return e.finishMillJob(job, boundary, "adaptively cleared")
 }
 
+// RunRestJobOnHost clears the wall stock a previous larger tool left on the body's outline:
+// extract the silhouette, build a rest job, post it, and overlay the toolpath.
+func (e *Engine) RunRestJobOnHost(bodyIndex int) (*JobResult, error) {
+	job, boundary, err := e.buildRestJob(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	return e.finishMillJob(job, boundary, "rest-cleared")
+}
+
 // finishMillJob posts a milling job, overlays its boundary contour, and builds the summary.
 func (e *Engine) finishMillJob(job *Job, boundary geom2d.Polygon, verb string) (*JobResult, error) {
 	gcodeText, err := e.GenerateGCode(job)
@@ -117,6 +127,30 @@ func (e *Engine) buildAdaptiveJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 		Climb:    true,
 		StepDown: cut.StepDown,
 		Boundary: boundary,
+	}}
+	return job, boundary, nil
+}
+
+// restPrevToolFactor is how much larger the assumed previous roughing tool is than the current
+// rest tool when the engine seeds a rest job (the user can change it in the operation editor).
+const restPrevToolFactor = 2.0
+
+// buildRestJob assembles a rest-machining job over the body's silhouette region, assuming a
+// previous tool restPrevToolFactor× the current one cleared the interior.
+func (e *Engine) buildRestJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
+	boundary, stock, err := e.contourAndStock(bodyIndex)
+	if err != nil {
+		return nil, nil, err
+	}
+	cut := e.cutting()
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&RestOp{
+		OpBase:           e.millEnvelope("Rest", stock),
+		PrevToolDiameter: cut.ToolDiameter * restPrevToolFactor,
+		StepOver:         cut.StepOver,
+		Climb:            true,
+		StepDown:         cut.StepDown,
+		Boundary:         boundary,
 	}}
 	return job, boundary, nil
 }

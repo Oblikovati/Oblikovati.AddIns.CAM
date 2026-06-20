@@ -108,6 +108,9 @@ type opDoc struct {
 	Sampling float64 `json:"sampling,omitempty"`
 	Zigzag   bool    `json:"zigzag,omitempty"`
 
+	// Rest
+	PrevToolDiameter float64 `json:"prevToolDiameter,omitempty"`
+
 	Dressups []dressupDoc `json:"dressups,omitempty"`
 }
 
@@ -237,6 +240,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("adaptive", o.OpBase)
 		d.StepOver, d.Climb, d.StepDown = o.StepOver, o.Climb, o.StepDown
 		return d, nil
+	case *RestOp:
+		d := baseDoc("rest", o.OpBase)
+		d.PrevToolDiameter, d.StepOver, d.Climb, d.StepDown = o.PrevToolDiameter, o.StepOver, o.Climb, o.StepDown
+		return d, nil
 	case *MillFaceOp:
 		d := baseDoc("millface", o.OpBase)
 		d.StepOver, d.StepDown = o.StepOver, o.StepDown
@@ -273,6 +280,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "adaptive":
 		return &AdaptiveOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
+	case "rest":
+		return &RestOp{OpBase: opBaseFrom(d), PrevToolDiameter: d.PrevToolDiameter, StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "millface":
 		return &MillFaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown}, nil
 	case "engrave":
