@@ -3,6 +3,7 @@
 package bridge
 
 import (
+	"math"
 	"testing"
 
 	"oblikovati.org/cam/bridge/gcode"
@@ -23,8 +24,8 @@ func TestChamferOpExecute(t *testing.T) {
 	if !hasCutMove(path) {
 		t.Error("chamfer produced no cutting moves")
 	}
-	// a 90° tool bevels to a depth equal to the width: the chamfer plunges to z = -1.5.
-	if z, ok := firstPlungeZ(path); !ok || z != -1.5 {
+	// a 90° tool bevels to a depth equal to the width: the chamfer plunges to z ≈ -1.5.
+	if z, ok := firstPlungeZ(path); !ok || math.Abs(z-(-1.5)) > 1e-9 {
 		t.Errorf("chamfer cut depth = %g (ok=%v), want -1.5 (= width at 45° flank)", z, ok)
 	}
 	if operationKind(op) != "Chamfer" {
