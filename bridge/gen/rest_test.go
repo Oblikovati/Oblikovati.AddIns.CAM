@@ -4,6 +4,8 @@ package gen
 
 import (
 	"testing"
+
+	"oblikovati.org/cam/bridge/geom2d"
 )
 
 // TestRestClearsOnlyWallBand checks rest machining cuts only the band the previous tool missed:
@@ -29,6 +31,34 @@ func TestRestClearsOnlyWallBand(t *testing.T) {
 	}
 	if restRingCount == 0 {
 		t.Error("rest produced no wall-band rings")
+	}
+}
+
+// TestRestClearsIslandBand checks an island adds its own wall band: a previous larger tool also
+// could not reach the island walls, so rest machining must lay down extra rings hugging the
+// island that the island-free pass does not, and put cutting moves just outside the island wall.
+func TestRestClearsIslandBand(t *testing.T) {
+	boundary := square(40)
+	island := geom2d.Polygon{{X: 15, Y: 15}, {X: 25, Y: 15}, {X: 25, Y: 25}, {X: 15, Y: 25}}
+
+	plain, err := GenerateRest(boundary, []float64{0}, testFeeds, RestParams{ToolRadius: 1, PrevRadius: 3, StepOver: 0.5, Climb: true})
+	if err != nil {
+		t.Fatalf("plain rest: %v", err)
+	}
+	withIsland, err := GenerateRest(boundary, []float64{0}, testFeeds, RestParams{ToolRadius: 1, PrevRadius: 3, StepOver: 0.5, Climb: true,
+		Islands: []geom2d.Polygon{island}})
+	if err != nil {
+		t.Fatalf("island rest: %v", err)
+	}
+
+	// the island contributes its own band rings → strictly more plunges than the wall-only pass.
+	if countPlunges(withIsland) <= countPlunges(plain) {
+		t.Errorf("an island should add wall-band rings: island=%d plain=%d", countPlunges(withIsland), countPlunges(plain))
+	}
+	// a point one tool radius out from the island wall lies in the island band and must be cut.
+	band := geom2d.Polygon{{X: 13, Y: 13}, {X: 27, Y: 13}, {X: 27, Y: 27}, {X: 13, Y: 27}}
+	if cutsInside(withIsland, band) == 0 {
+		t.Error("rest machining should cut the band hugging the island wall")
 	}
 }
 

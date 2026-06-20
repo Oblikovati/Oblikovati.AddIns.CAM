@@ -17,11 +17,12 @@ import (
 // millimetres) is populated by the engine; Execute is pure given the boundary, tool, and depths.
 type RestOp struct {
 	OpBase
-	PrevToolDiameter float64        // diameter of the previous (larger) tool, mm
-	StepOver         float64        // ring step as a fraction of the tool diameter (0..1); 0 → 0.5
-	Climb            bool           // climb vs conventional milling
-	StepDown         float64        // max Z step per pass (mm); <=0 → single pass
-	Boundary         geom2d.Polygon // driving region (mm), populated by the engine
+	PrevToolDiameter float64          // diameter of the previous (larger) tool, mm
+	StepOver         float64          // ring step as a fraction of the tool diameter (0..1); 0 → 0.5
+	Climb            bool             // climb vs conventional milling
+	StepDown         float64          // max Z step per pass (mm); <=0 → single pass
+	Boundary         geom2d.Polygon   // driving region (mm), populated by the engine
+	Islands          []geom2d.Polygon // standing regions; their walls leave their own band to clear
 }
 
 // Features reports the property groups a rest-machining op uses.
@@ -46,6 +47,7 @@ func (op *RestOp) Execute(job *Job) (gcode.Path, error) {
 		PrevRadius: op.PrevToolDiameter / 2,
 		StepOver:   op.StepOver,
 		Climb:      op.Climb,
+		Islands:    op.Islands,
 	})
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("rest operation %q: %w", op.OpLabel, err)
