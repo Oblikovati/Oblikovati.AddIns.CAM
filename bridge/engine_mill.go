@@ -56,6 +56,16 @@ func (e *Engine) RunRestJobOnHost(bodyIndex int) (*JobResult, error) {
 	return e.finishMillJob(job, boundary, "rest-cleared")
 }
 
+// RunTrochoidalJobOnHost mills the body's outline with overlapping trochoidal loops: extract the
+// silhouette, build a trochoidal job, post it, and overlay the toolpath.
+func (e *Engine) RunTrochoidalJobOnHost(bodyIndex int) (*JobResult, error) {
+	job, boundary, err := e.buildTrochoidalJob(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	return e.finishMillJob(job, boundary, "trochoidally milled")
+}
+
 // finishMillJob posts a milling job, overlays its boundary contour, and builds the summary.
 func (e *Engine) finishMillJob(job *Job, boundary geom2d.Polygon, verb string) (*JobResult, error) {
 	gcodeText, err := e.GenerateGCode(job)
@@ -151,6 +161,32 @@ func (e *Engine) buildRestJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 		Climb:            true,
 		StepDown:         cut.StepDown,
 		Boundary:         boundary,
+	}}
+	return job, boundary, nil
+}
+
+// trochoidalLoopFactor and trochoidalAdvanceFactor seed the trochoidal loop radius and advance
+// from the tool diameter when the engine builds the job.
+const (
+	trochoidalLoopFactor    = 1.5 // loop radius = 1.5× the tool diameter
+	trochoidalAdvanceFactor = 1.0 // centre advance = 1× the tool diameter
+)
+
+// buildTrochoidalJob assembles a trochoidal contour-milling job over the body's silhouette.
+func (e *Engine) buildTrochoidalJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
+	boundary, stock, err := e.contourAndStock(bodyIndex)
+	if err != nil {
+		return nil, nil, err
+	}
+	cut := e.cutting()
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&TrochoidalOp{
+		OpBase:     e.millEnvelope("Trochoidal", stock),
+		LoopRadius: cut.ToolDiameter * trochoidalLoopFactor,
+		Advance:    cut.ToolDiameter * trochoidalAdvanceFactor,
+		Side:       "outside",
+		StepDown:   cut.StepDown,
+		Boundary:   boundary,
 	}}
 	return job, boundary, nil
 }

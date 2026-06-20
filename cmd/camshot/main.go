@@ -63,6 +63,7 @@ func shots() []shot {
 		{"pocket", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: part()}},
 		{"adaptive", &bridge.AdaptiveOp{OpBase: millEnv("Adaptive"), Climb: true, Boundary: part()}},
 		{"rest", &bridge.RestOp{OpBase: millEnv("Rest"), PrevToolDiameter: 16, StepOver: 0.5, Climb: true, Boundary: part()}},
+		{"trochoidal", &bridge.TrochoidalOp{OpBase: millEnv("Trochoidal"), LoopRadius: 3, Advance: 2.5, Side: gen.SideOutside, Boundary: part()}},
 		{"millface", &bridge.MillFaceOp{OpBase: millEnv("Face"), StepOver: 0.6, Boundary: part()}},
 		{"engrave", &bridge.EngraveOp{OpBase: millEnv("Engrave"), Climb: true, Boundary: part()}},
 		{"chamfer", &bridge.ChamferOp{OpBase: millEnv("Chamfer"), Width: 1.5, ToolAngle: 90, Side: gen.SideOutside, Climb: true, Boundary: part()}},
@@ -151,6 +152,8 @@ func boundaryOf(op bridge.Operation) geom2d.Polygon {
 	case *bridge.AdaptiveOp:
 		return o.Boundary
 	case *bridge.RestOp:
+		return o.Boundary
+	case *bridge.TrochoidalOp:
 		return o.Boundary
 	case *bridge.MillFaceOp:
 		return o.Boundary
