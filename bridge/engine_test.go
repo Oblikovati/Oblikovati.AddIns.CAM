@@ -285,6 +285,24 @@ func TestEngineRunBoreProbeJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunToolProbeJob runs the tool-length probing flow and checks it emits one G38.2 probe
+// and a G10 L1 tool-length set.
+func TestEngineRunToolProbeJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunToolLengthProbeJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunToolLengthProbeJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "tool length") {
+		t.Errorf("summary = %q, want it to mention the tool length", res.Summary)
+	}
+	if probes := strings.Count(res.GCode, "G38.2"); probes != 1 {
+		t.Errorf("tool-length probing should emit one G38.2, got %d", probes)
+	}
+	if !strings.Contains(res.GCode, "G10") || !strings.Contains(res.GCode, "L1") {
+		t.Errorf("tool-length probing should set a G10 L1 offset:\n%s", res.GCode)
+	}
+}
+
 // TestEngineRunBossProbeJob runs the boss-centre probing flow and checks it emits four inward
 // G38.2 touch moves (and sets no work offset — the centre comes from averaging).
 func TestEngineRunBossProbeJob(t *testing.T) {

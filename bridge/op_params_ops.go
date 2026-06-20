@@ -195,6 +195,38 @@ func (op *ProbeOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Tool-length probe ---
+
+// Parameters lists the editable tool-length probe parameters.
+func (op *ToolLengthProbeOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("setterX", "Setter X (mm)", op.SetterX),
+		numberParam("setterY", "Setter Y (mm)", op.SetterY),
+		numberParam("setterTop", "Setter top Z (mm)", op.SetterTop),
+		numberParam("toolNumber", "Tool number", float64(op.ToolNumber)),
+		numberParam("probeFeed", "Probe feed (mm/min)", op.ProbeFeed),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one tool-length probe parameter edit.
+func (op *ToolLengthProbeOp) SetParameter(id, value string) bool {
+	switch id {
+	case "setterX":
+		op.SetterX = panelNum(value, op.SetterX)
+	case "setterY":
+		op.SetterY = panelNum(value, op.SetterY)
+	case "setterTop":
+		op.SetterTop = panelNum(value, op.SetterTop)
+	case "toolNumber":
+		op.ToolNumber = int(panelNum(value, float64(op.ToolNumber)))
+	case "probeFeed":
+		op.ProbeFeed = panelNum(value, op.ProbeFeed)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Drilling ---
 
 // Parameters lists the editable drilling parameters.

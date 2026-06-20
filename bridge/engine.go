@@ -102,6 +102,7 @@ const (
 	GenerateProbeCommandID       = "CAM.GenerateProbe"       // workpiece touch probing
 	GenerateBoreProbeCommandID   = "CAM.GenerateBoreProbe"   // bore-centre probing
 	GenerateBossProbeCommandID   = "CAM.GenerateBossProbe"   // boss-centre probing
+	GenerateToolProbeCommandID   = "CAM.GenerateToolProbe"   // tool-length probing
 	GenerateHelixCommandID       = "CAM.GenerateHelix"       // helical bore
 	GenerateThreadMillCommandID  = "CAM.GenerateThreadMill"  // thread milling
 	GenerateCounterboreCommandID = "CAM.GenerateCounterbore" // counterbore / spot-face
@@ -152,6 +153,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateProbeCommandID, "Generate Probe Job", "Probe the stock top and two edges to find the work origin (G38.2), and post it to G-code."},
 	{GenerateBoreProbeCommandID, "Generate Bore Probe Job", "Probe each hole's wall in four directions to find its centre (G38.2), and post it to G-code."},
 	{GenerateBossProbeCommandID, "Generate Boss Probe Job", "Probe the part outline's walls inward from four sides to find the footprint centre, and post it to G-code."},
+	{GenerateToolProbeCommandID, "Generate Tool Probe Job", "Measure the tool against the tool-setter and set its length offset (G10 L1), and post it to G-code."},
 	{GenerateHelixCommandID, "Generate Helix Job", "Bore the part's holes with a helix (for holes wider than the tool)."},
 	{GenerateThreadMillCommandID, "Generate Thread Job", "Thread-mill the part's holes by helical interpolation."},
 	{GenerateCounterboreCommandID, "Generate Counterbore Job", "Spot-face a flat-bottom recess at each hole top for a screw head."},
@@ -276,6 +278,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunBoreProbeJobOnHost(body) })
 	case GenerateBossProbeCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunBossProbeJobOnHost(body) })
+	case GenerateToolProbeCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunToolLengthProbeJobOnHost(body) })
 	case GenerateHelixCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunHelixJobOnHost(body) })
 	case GenerateThreadMillCommandID:

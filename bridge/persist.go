@@ -127,6 +127,12 @@ type opDoc struct {
 	ProbeFeed  float64 `json:"probeFeed,omitempty"`
 	WorkOffset int     `json:"workOffset,omitempty"`
 
+	// Tool-length probe
+	SetterX    float64 `json:"setterX,omitempty"`
+	SetterY    float64 `json:"setterY,omitempty"`
+	SetterTop  float64 `json:"setterTop,omitempty"`
+	ToolNumber int     `json:"toolNumber,omitempty"`
+
 	// Counterbore
 	Diameter float64 `json:"diameter,omitempty"`
 	Depth    float64 `json:"depth,omitempty"`
@@ -292,6 +298,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("probe", o.OpBase)
 		d.ProbeFeed, d.WorkOffset = o.ProbeFeed, o.WorkOffset
 		return d, nil
+	case *ToolLengthProbeOp:
+		d := baseDoc("toolprobe", o.OpBase)
+		d.SetterX, d.SetterY, d.SetterTop, d.ToolNumber, d.ProbeFeed = o.SetterX, o.SetterY, o.SetterTop, o.ToolNumber, o.ProbeFeed
+		return d, nil
 	case *HelixOp:
 		d := baseDoc("helix", o.OpBase)
 		d.HoleRadius, d.Pitch, d.Direction = o.HoleRadius, o.Pitch, o.Direction
@@ -348,6 +358,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &SlotOp{OpBase: opBaseFrom(d), Width: d.Width, StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "probe":
 		return &ProbeOp{OpBase: opBaseFrom(d), ProbeFeed: d.ProbeFeed, WorkOffset: d.WorkOffset}, nil
+	case "toolprobe":
+		return &ToolLengthProbeOp{OpBase: opBaseFrom(d), SetterX: d.SetterX, SetterY: d.SetterY, SetterTop: d.SetterTop, ToolNumber: d.ToolNumber, ProbeFeed: d.ProbeFeed}, nil
 	case "helix":
 		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
 	case "threadmill":

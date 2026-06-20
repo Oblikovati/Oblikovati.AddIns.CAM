@@ -30,7 +30,12 @@ func (op *ChamferOp) Clone() Operation  { cp := *op; cp.OpBase = op.cloned(" cop
 func (op *SlotOp) Clone() Operation     { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *VCarveOp) Clone() Operation   { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *ProbeOp) Clone() Operation    { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
-func (op *HelixOp) Clone() Operation    { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
+func (op *ToolLengthProbeOp) Clone() Operation {
+	cp := *op
+	cp.OpBase = op.cloned(" copy")
+	return &cp
+}
+func (op *HelixOp) Clone() Operation { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *ThreadMillOp) Clone() Operation {
 	cp := *op
 	cp.OpBase = op.cloned(" copy")
