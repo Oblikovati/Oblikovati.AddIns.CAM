@@ -83,6 +83,7 @@ type opDoc struct {
 	RetractHeight   float64 `json:"retractHeight,omitempty"`
 	StartDepth      float64 `json:"startDepth,omitempty"`
 	FinalDepth      float64 `json:"finalDepth,omitempty"`
+	Coolant         string  `json:"coolant,omitempty"`
 
 	// Drilling
 	DwellTime   float64 `json:"dwellTime,omitempty"`
@@ -168,7 +169,7 @@ func baseDoc(kind string, b OpBase) opDoc {
 	return opDoc{
 		Kind: kind, Label: b.OpLabel, Active: b.IsActive, ToolController: b.ToolController,
 		ClearanceHeight: b.ClearanceHeight, SafeHeight: b.SafeHeight, RetractHeight: b.RetractHeight,
-		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth, Dressups: dressupDocs(b.Dressups),
+		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth, Coolant: b.Coolant, Dressups: dressupDocs(b.Dressups),
 	}
 }
 
@@ -177,7 +178,7 @@ func opBaseFrom(d opDoc) OpBase {
 	return OpBase{
 		OpLabel: d.Label, IsActive: d.Active, ToolController: d.ToolController,
 		ClearanceHeight: d.ClearanceHeight, SafeHeight: d.SafeHeight, RetractHeight: d.RetractHeight,
-		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth, Dressups: dressupsFrom(d.Dressups),
+		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth, Coolant: d.Coolant, Dressups: dressupsFrom(d.Dressups),
 	}
 }
 

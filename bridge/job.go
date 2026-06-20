@@ -50,9 +50,18 @@ func (j *Job) GenerateAll() ([]OperationResult, error) {
 			Label:      op.Label(),
 			Path:       path,
 			Controller: tc,
+			Coolant:    coolantOf(op),
 		})
 	}
 	return results, nil
+}
+
+// coolantOf reads an operation's coolant mode (operations all carry one via OpBase).
+func coolantOf(op Operation) string {
+	if c, ok := op.(interface{ CoolantMode() string }); ok {
+		return c.CoolantMode()
+	}
+	return CoolantNone
 }
 
 // OperationResult is one operation's generated toolpath plus the controller it ran under
@@ -62,4 +71,5 @@ type OperationResult struct {
 	Label      string
 	Path       gcode.Path
 	Controller ToolController
+	Coolant    string // "none" | "flood" | "mist"
 }

@@ -30,6 +30,8 @@ type Engine struct {
 	postName      string // active post processor ("linuxcnc" | "grbl")
 	plungFeed     float64
 	lastJob       *Job   // most recently generated job (for the operations browser + Save)
+	lastGCode     string // most recently posted G-code (for export to a file)
+	editingOp     int    // index of the operation shown in the operation editor
 	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
 	cut           cutSettings
 	library       ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
@@ -91,13 +93,25 @@ const (
 	PreviewProfileCommandID    = "CAM.PreviewProfile"    // transient toolpath preview (not committed)
 	ClearPreviewCommandID      = "CAM.ClearPreview"      // remove the transient toolpath preview
 	ShowOperationsCommandID    = "CAM.ShowOperations"    // open the operations browser
+	EditOperationCommandID     = "CAM.EditOperation"     // open the operation editor
+	RegenerateCommandID        = "CAM.RegenerateJob"     // re-run + re-post the edited job
+	ToggleOpCommandID          = "CAM.ToggleOperation"   // enable/disable the selected operation
+	MoveOpUpCommandID          = "CAM.MoveOperationUp"   // move the selected operation earlier
+	MoveOpDownCommandID        = "CAM.MoveOperationDown" // move the selected operation later
+	DeleteOpCommandID          = "CAM.DeleteOperation"   // remove the selected operation
+	AddTabsCommandID           = "CAM.AddTabs"           // add holding tabs to the selected operation
+	AddDogboneCommandID        = "CAM.AddDogbone"        // add dogbone relief to the selected operation
+	ClearDressupsCommandID     = "CAM.ClearDressups"     // remove the selected operation's dressups
 	ShowToolsCommandID         = "CAM.ShowTools"         // open the tool-library browser
 	AddEndmillCommandID        = "CAM.AddEndmill"        // add an end mill to the library
 	AddDrillCommandID          = "CAM.AddDrill"          // add a drill to the library
 	AddBallnoseCommandID       = "CAM.AddBallnose"       // add a ball-nose to the library
 	RemoveToolCommandID        = "CAM.RemoveTool"        // remove the last library tool
+	ExportToolsCommandID       = "CAM.ExportTools"       // export the tool library to a file
+	ImportToolsCommandID       = "CAM.ImportTools"       // import a tool library from a file
 	SaveJobCommandID           = "CAM.SaveJob"           // persist the job into the document
 	LoadJobCommandID           = "CAM.LoadJob"           // load the job from the document
+	SaveGCodeCommandID         = "CAM.SaveGCode"         // export the posted program to a file
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -114,13 +128,25 @@ var camCommands = []struct{ id, name, tip string }{
 	{PreviewProfileCommandID, "Preview Profile", "Show the profile toolpath as a live overlay without committing or posting it."},
 	{ClearPreviewCommandID, "Clear Preview", "Remove the live toolpath preview overlay."},
 	{ShowOperationsCommandID, "Show Operations", "Open the CAM operations browser for the last generated job."},
+	{EditOperationCommandID, "Edit Operation", "Open the operation editor to change a generated operation's parameters."},
+	{RegenerateCommandID, "Regenerate Job", "Re-run and re-post the job after editing its operations."},
+	{ToggleOpCommandID, "Enable/Disable Operation", "Toggle whether the selected operation runs."},
+	{MoveOpUpCommandID, "Move Operation Up", "Run the selected operation earlier in the program."},
+	{MoveOpDownCommandID, "Move Operation Down", "Run the selected operation later in the program."},
+	{DeleteOpCommandID, "Delete Operation", "Remove the selected operation from the job."},
+	{AddTabsCommandID, "Add Holding Tabs", "Add holding tabs to the selected operation."},
+	{AddDogboneCommandID, "Add Dogbone", "Add dogbone corner relief to the selected operation."},
+	{ClearDressupsCommandID, "Clear Dressups", "Remove the selected operation's dressups."},
 	{ShowToolsCommandID, "Show Tool Library", "Open the CAM tool-library browser."},
 	{AddEndmillCommandID, "Add End Mill", "Add an end mill to the tool library."},
 	{AddDrillCommandID, "Add Drill", "Add a drill to the tool library."},
 	{AddBallnoseCommandID, "Add Ball-nose", "Add a ball-nose cutter to the tool library."},
 	{RemoveToolCommandID, "Remove Tool", "Remove the last tool added to the library."},
+	{ExportToolsCommandID, "Export Tool Library", "Save the tool library to a JSON file."},
+	{ImportToolsCommandID, "Import Tool Library", "Load a tool library from a JSON file."},
 	{SaveJobCommandID, "Save CAM Job", "Persist the CAM job into the active document."},
 	{LoadJobCommandID, "Load CAM Job", "Load the CAM job stored in the active document."},
+	{SaveGCodeCommandID, "Save G-code", "Export the last posted program to a .nc file."},
 }
 
 // RegisterCommands registers the CAM commands so each is invokable like a ribbon click. The
@@ -171,9 +197,16 @@ func (e *Engine) Notify(ev []byte) {
 			ControlId string `json:"controlId"`
 			Value     string `json:"value"`
 		}
-		if json.Unmarshal(ev, &p) == nil && p.WindowId == CAMPanelID {
-			e.applyPanelEdit(p.ControlId, p.Value)
+		if json.Unmarshal(ev, &p) == nil {
+			switch p.WindowId {
+			case CAMPanelID:
+				e.applyPanelEdit(p.ControlId, p.Value)
+			case OpEditorID:
+				e.handleOpEditorEdit(p.ControlId, p.Value)
+			}
 		}
+	case wire.EventFileDialogChosen:
+		e.handleFileChosen(ev)
 	}
 }
 
@@ -199,6 +232,24 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunWaterlineJobOnHost(0) })
 	case GenerateAllCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunAllJobsOnHost(0) })
+	case EditOperationCommandID:
+		e.launchRun(e.showOperationEditorAction)
+	case RegenerateCommandID:
+		e.launchRun(e.regenerateAction)
+	case ToggleOpCommandID:
+		e.launchRun(e.toggleOpAction)
+	case MoveOpUpCommandID:
+		e.launchRun(e.moveOpUpAction)
+	case MoveOpDownCommandID:
+		e.launchRun(e.moveOpDownAction)
+	case DeleteOpCommandID:
+		e.launchRun(e.deleteOpAction)
+	case AddTabsCommandID:
+		e.launchRun(e.addTabsAction)
+	case AddDogboneCommandID:
+		e.launchRun(e.addDogboneAction)
+	case ClearDressupsCommandID:
+		e.launchRun(e.clearDressupsAction)
 	case ShowToolsCommandID:
 		e.launchRun(e.showToolLibraryAction)
 	case AddEndmillCommandID:
@@ -209,6 +260,10 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.addToolAction("ballend") })
 	case RemoveToolCommandID:
 		e.launchRun(e.removeToolAction)
+	case ExportToolsCommandID:
+		e.launchRun(e.exportToolsAction)
+	case ImportToolsCommandID:
+		e.launchRun(e.importToolsAction)
 	case PreviewProfileCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.PreviewProfileOnHost(0) })
 	case ClearPreviewCommandID:
@@ -219,6 +274,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.saveJobAction)
 	case LoadJobCommandID:
 		e.launchRun(e.loadJobAction)
+	case SaveGCodeCommandID:
+		e.launchRun(e.saveGCodeAction)
 	}
 }
 
@@ -295,7 +352,11 @@ func (e *Engine) GenerateGCode(job *Job) (string, error) {
 	job.PostProcessor = e.postName
 	e.lastJob = job
 	e.mu.Unlock()
-	return post.Export(job.PostProcessor, PostObjects(results), "--no-show-editor")
+	gcodeText, err := post.Export(job.PostProcessor, PostObjects(results), "--no-show-editor")
+	if err == nil {
+		e.rememberGCode(gcodeText)
+	}
+	return gcodeText, err
 }
 
 // countLines counts the newline-terminated lines in the G-code.

@@ -33,6 +33,7 @@ func (f FeatureFlag) Has(x FeatureFlag) bool { return f&x != 0 }
 type Operation interface {
 	Label() string            // display label, also emitted as a path comment
 	Active() bool             // inactive ops are skipped by Job.GenerateAll
+	SetActive(bool)           // enable/disable the operation
 	ToolControllerIndex() int // index into Job.Tools
 	Features() FeatureFlag    // the property groups this op uses
 	Execute(job *Job) (gcode.Path, error)
@@ -54,15 +55,51 @@ type OpBase struct {
 	RetractHeight   float64 // canned-cycle R plane (mm)
 	StartDepth      float64 // top of cut (mm)
 	FinalDepth      float64 // bottom of cut (mm)
+	Coolant         string  // "none" | "flood" | "mist"
 
 	Dressups []Dressup // toolpath post-processes applied after framing (tabs, dogbone, …)
 }
+
+// CoolantMode returns the operation's coolant mode, defaulting an unset value to "none".
+func (b *OpBase) CoolantMode() string {
+	if b.Coolant == "" {
+		return CoolantNone
+	}
+	return b.Coolant
+}
+
+// Coolant modes emitted around an operation (flood = M8, mist = M7, off = M9).
+const (
+	CoolantNone  = "none"
+	CoolantFlood = "flood"
+	CoolantMist  = "mist"
+)
 
 // Label implements Operation.
 func (b *OpBase) Label() string { return b.OpLabel }
 
 // Active implements Operation.
 func (b *OpBase) Active() bool { return b.IsActive }
+
+// SetActive implements Operation.
+func (b *OpBase) SetActive(v bool) { b.IsActive = v }
+
+// AppendDressup adds a toolpath dressup to the operation's chain.
+func (b *OpBase) AppendDressup(d Dressup) { b.Dressups = append(b.Dressups, d) }
+
+// ClearDressups removes all dressups from the operation.
+func (b *OpBase) ClearDressups() { b.Dressups = nil }
+
+// DressupCount reports how many dressups the operation carries.
+func (b *OpBase) DressupCount() int { return len(b.Dressups) }
+
+// dressupHolder is the subset of an operation used to manage its dressup chain (every operation
+// satisfies it via OpBase).
+type dressupHolder interface {
+	AppendDressup(Dressup)
+	ClearDressups()
+	DressupCount() int
+}
 
 // ToolControllerIndex implements Operation.
 func (b *OpBase) ToolControllerIndex() int { return b.ToolController }

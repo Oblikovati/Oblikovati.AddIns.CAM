@@ -7,10 +7,12 @@ package bridge
 // fraction of the tool diameter (0..1). They are edited from the CAM panel and snapshotted into
 // each job at generation time.
 type cutSettings struct {
-	ToolDiameter float64 // end-mill / ball-nose diameter (mm)
-	StepDown     float64 // max Z per pass (mm)
-	StepOver     float64 // fraction of the tool diameter between passes (0..1)
-	CutDepth     float64 // depth below the stock top to cut to (mm); <= 0 means through the stock
+	ToolDiameter   float64 // end-mill / ball-nose diameter (mm)
+	StepDown       float64 // max Z per pass (mm)
+	StepOver       float64 // fraction of the tool diameter between passes (0..1)
+	CutDepth       float64 // depth below the stock top to cut to (mm); <= 0 means through the stock
+	StockXYMargin  float64 // extra material around the part in X/Y (mm)
+	StockTopMargin float64 // extra material on top of the part (mm)
 }
 
 // defaultCutSettings are the milestone defaults, matched to the original hardcoded values so
@@ -25,6 +27,12 @@ func (e *Engine) cutting() cutSettings {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.cut
+}
+
+// stockFor builds the job stock from a body's range box (cm), grown by the configured stock
+// margins.
+func (e *Engine) stockFor(min, max []float64) Stock {
+	return e.cutting().grow(StockFromRangeBox(min, max))
 }
 
 // stepOverDistance converts the step-over fraction to an absolute distance (mm) for the tool.
@@ -56,4 +64,16 @@ func (c cutSettings) finalDepth(topZ, bottomZ float64) float64 {
 		return topZ - c.CutDepth
 	}
 	return bottomZ
+}
+
+// grow expands a tight part-extent stock by the configured margins: extra material all around
+// in X/Y and extra on top (the part still sits on the stock bottom). Zero margins leave a tight
+// billet.
+func (c cutSettings) grow(s Stock) Stock {
+	s.Min.X -= c.StockXYMargin
+	s.Min.Y -= c.StockXYMargin
+	s.Max.X += c.StockXYMargin
+	s.Max.Y += c.StockXYMargin
+	s.Max.Z += c.StockTopMargin
+	return s
 }
