@@ -67,6 +67,7 @@ func (e *Engine) editorSpec(job *Job, idx int) wire.DockableWindowSpec {
 		client.PanelButton("tabs", "Add Holding Tabs", AddTabsCommandID),
 		client.PanelButton("dogbone", "Add Dogbone", AddDogboneCommandID),
 		client.PanelButton("ramp", "Add Ramp Entry", AddRampCommandID),
+		client.PanelButton("leadinout", "Add Lead In/Out", AddLeadInOutCommandID),
 		client.PanelButton("cleardr", "Clear Dressups", ClearDressupsCommandID),
 		client.PanelSeparator(),
 		client.PanelButton("regen", "Regenerate + Post", RegenerateCommandID),

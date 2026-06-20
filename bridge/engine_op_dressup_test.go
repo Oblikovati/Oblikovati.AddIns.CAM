@@ -99,3 +99,30 @@ func TestAddRampDressup(t *testing.T) {
 		t.Errorf("ramp dressup did not round-trip: %+v", back.Operations[0])
 	}
 }
+
+// TestAddLeadInOutDressup adds a lead-in/out dressup and checks it round-trips through persistence.
+func TestAddLeadInOutDressup(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.lastJob = twoOpJob()
+	e.editingOp = 0
+	if _, err := e.addLeadInOutAction(); err != nil {
+		t.Fatalf("addLeadInOutAction: %v", err)
+	}
+	prof := e.lastJob.Operations[0].(*ProfileOp)
+	if len(prof.Dressups) != 1 {
+		t.Fatalf("want 1 dressup, got %d", len(prof.Dressups))
+	}
+	if _, ok := prof.Dressups[0].(LeadInOutDressup); !ok {
+		t.Errorf("dressup should be a lead-in/out, got %T", prof.Dressups[0])
+	}
+	j := NewJob()
+	j.Operations = []Operation{prof}
+	payload, _ := MarshalJob(j)
+	back, err := UnmarshalJob(payload)
+	if err != nil {
+		t.Fatalf("UnmarshalJob: %v", err)
+	}
+	if l, ok := back.Operations[0].(*ProfileOp).Dressups[0].(LeadInOutDressup); !ok || l.Params.Radius != defaultLeadRadius {
+		t.Errorf("lead-in/out dressup did not round-trip: %+v", back.Operations[0])
+	}
+}

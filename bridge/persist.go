@@ -193,6 +193,8 @@ func dressupDocs(ds []Dressup) []dressupDoc {
 			out = append(out, dressupDoc{Kind: "dogbone", Style: x.Params.Style, Length: x.Params.Length, MinAngle: x.Params.MinAngle, Side: x.Params.Side})
 		case RampDressup:
 			out = append(out, dressupDoc{Kind: "ramp", Length: x.Params.Length, MinAngle: x.Params.Angle})
+		case LeadInOutDressup:
+			out = append(out, dressupDoc{Kind: "leadinout", Length: x.Params.Radius, Side: x.Params.Side})
 		}
 	}
 	return out
@@ -209,6 +211,8 @@ func dressupsFrom(docs []dressupDoc) []Dressup {
 			out = append(out, NewDogboneDressup(d.Style, d.Length, d.MinAngle, d.Side))
 		case "ramp":
 			out = append(out, NewRampDressup(d.Length, d.MinAngle))
+		case "leadinout":
+			out = append(out, NewLeadInOutDressup(d.Length, d.Side))
 		}
 	}
 	return out
