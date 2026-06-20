@@ -266,6 +266,7 @@ func (op *MillFaceOp) Parameters() []OpParam {
 	return append([]OpParam{
 		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
+		boolParam("spiral", "Spiral pattern", op.Spiral),
 	}, depthParams(op.OpBase)...)
 }
 
@@ -276,6 +277,8 @@ func (op *MillFaceOp) SetParameter(id, value string) bool {
 		op.StepOver = panelNum(value, op.StepOver)
 	case "stepDown":
 		op.StepDown = panelNum(value, op.StepDown)
+	case "spiral":
+		op.Spiral = parseBool(value)
 	default:
 		return setDepthParam(&op.OpBase, id, value)
 	}
