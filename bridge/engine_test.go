@@ -252,6 +252,20 @@ func TestEngineRunTrochoidalJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunSlotJob runs the slot flow and checks it cuts the centred channel.
+func TestEngineRunSlotJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunSlotJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunSlotJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "slotted") {
+		t.Errorf("summary = %q, want it to mention slotted", res.Summary)
+	}
+	if !strings.Contains(res.GCode, "G1") {
+		t.Error("slot should emit cutting passes")
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}
