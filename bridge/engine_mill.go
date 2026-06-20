@@ -46,13 +46,15 @@ func (e *Engine) finishMillJob(job *Job, boundary geom2d.Polygon, verb string) (
 	_ = e.clearToolpathPreview() // the committed overlay replaces any transient preview
 	lines := countLines(gcodeText)
 	e.mu.Lock()
-	source := e.sectionSource
+	source, estimate := e.sectionSource, e.lastEstimate
 	e.mu.Unlock()
+	summary := fmt.Sprintf("CAM: %s the outline from the %s (%d boundary pts), %d G-code lines (%s).", verb, source, len(boundary), lines, e.postName)
 	return &JobResult{
-		GCode:      gcodeText,
-		GCodeLines: lines,
-		OverlayID:  overlayID,
-		Summary:    fmt.Sprintf("CAM: %s the outline from the %s (%d boundary pts), %d G-code lines (%s).", verb, source, len(boundary), lines, e.postName),
+		GCode:            gcodeText,
+		GCodeLines:       lines,
+		OverlayID:        overlayID,
+		EstimatedMinutes: estimate,
+		Summary:          withEstimate(summary, estimate),
 	}, nil
 }
 

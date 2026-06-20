@@ -29,11 +29,12 @@ type Engine struct {
 	running       bool   // a job is in flight (coalesces overlapping command triggers)
 	postName      string // active post processor ("linuxcnc" | "grbl")
 	plungFeed     float64
-	lastJob       *Job   // most recently generated job (for the operations browser + Save)
-	lastGCode     string // most recently posted G-code (for export to a file)
-	targetBody    int    // index of the body the generate commands machine
-	editingOp     int    // index of the operation shown in the operation editor
-	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
+	lastJob       *Job    // most recently generated job (for the operations browser + Save)
+	lastGCode     string  // most recently posted G-code (for export to a file)
+	lastEstimate  float64 // estimated cycle time (minutes) of the last posted job
+	targetBody    int     // index of the body the generate commands machine
+	editingOp     int     // index of the operation shown in the operation editor
+	sectionSource string  // how the last contour plane was chosen ("selected face" | "mid-height")
 	cut           cutSettings
 	library       ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
 	surfacer      Surfacer
@@ -320,11 +321,17 @@ func (e *Engine) reportStatus(msg string) { _, _ = e.api.Status().SetText(msg) }
 
 // JobResult summarizes one generated job.
 type JobResult struct {
-	GCode      string
-	HoleCount  int // drilling only
-	GCodeLines int
-	OverlayID  string
-	Summary    string // human status line
+	GCode            string
+	HoleCount        int // drilling only
+	GCodeLines       int
+	OverlayID        string
+	EstimatedMinutes float64 // estimated cycle time
+	Summary          string  // human status line
+}
+
+// withEstimate appends a "~N.N min" cycle-time note to a summary.
+func withEstimate(summary string, minutes float64) string {
+	return fmt.Sprintf("%s ~%.1f min.", summary, minutes)
 }
 
 // RunDrillingJobOnHost is the end-to-end add-in flow for one body: read its topology and
@@ -341,12 +348,16 @@ func (e *Engine) RunDrillingJobOnHost(bodyIndex int) (*JobResult, error) {
 	}
 	overlayID, _ := e.pushToolpathOverlay(holes) // best-effort viewport preview
 	lines := countLines(gcodeText)
+	e.mu.Lock()
+	estimate := e.lastEstimate
+	e.mu.Unlock()
 	return &JobResult{
-		GCode:      gcodeText,
-		HoleCount:  len(holes),
-		GCodeLines: lines,
-		OverlayID:  overlayID,
-		Summary:    fmt.Sprintf("CAM: drilled %d hole(s), %d G-code lines (%s).", len(holes), lines, e.postName),
+		GCode:            gcodeText,
+		HoleCount:        len(holes),
+		GCodeLines:       lines,
+		OverlayID:        overlayID,
+		EstimatedMinutes: estimate,
+		Summary:          withEstimate(fmt.Sprintf("CAM: drilled %d hole(s), %d G-code lines (%s).", len(holes), lines, e.postName), estimate),
 	}, nil
 }
 
@@ -360,6 +371,7 @@ func (e *Engine) GenerateGCode(job *Job) (string, error) {
 	e.mu.Lock()
 	job.PostProcessor = e.postName
 	e.lastJob = job
+	e.lastEstimate = EstimateMinutes(results)
 	e.mu.Unlock()
 	gcodeText, err := post.Export(job.PostProcessor, PostObjects(results), "--no-show-editor")
 	if err == nil {
