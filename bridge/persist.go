@@ -124,7 +124,8 @@ type opDoc struct {
 	Advance    float64 `json:"advance,omitempty"`
 
 	// Probe
-	ProbeFeed float64 `json:"probeFeed,omitempty"`
+	ProbeFeed  float64 `json:"probeFeed,omitempty"`
+	WorkOffset int     `json:"workOffset,omitempty"`
 
 	// Counterbore
 	Diameter float64 `json:"diameter,omitempty"`
@@ -289,7 +290,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 		return d, nil
 	case *ProbeOp:
 		d := baseDoc("probe", o.OpBase)
-		d.ProbeFeed = o.ProbeFeed
+		d.ProbeFeed, d.WorkOffset = o.ProbeFeed, o.WorkOffset
 		return d, nil
 	case *HelixOp:
 		d := baseDoc("helix", o.OpBase)
@@ -346,7 +347,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "slot":
 		return &SlotOp{OpBase: opBaseFrom(d), Width: d.Width, StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "probe":
-		return &ProbeOp{OpBase: opBaseFrom(d), ProbeFeed: d.ProbeFeed}, nil
+		return &ProbeOp{OpBase: opBaseFrom(d), ProbeFeed: d.ProbeFeed, WorkOffset: d.WorkOffset}, nil
 	case "helix":
 		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
 	case "threadmill":

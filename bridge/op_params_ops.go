@@ -178,6 +178,7 @@ func (op *TrochoidalOp) SetParameter(id, value string) bool {
 func (op *ProbeOp) Parameters() []OpParam {
 	return append([]OpParam{
 		numberParam("probeFeed", "Probe feed (mm/min)", op.ProbeFeed),
+		numberParam("workOffset", "Work offset (1=G54…6=G59)", float64(op.WorkOffset)),
 	}, depthParams(op.OpBase)...)
 }
 
@@ -186,6 +187,8 @@ func (op *ProbeOp) SetParameter(id, value string) bool {
 	switch id {
 	case "probeFeed":
 		op.ProbeFeed = panelNum(value, op.ProbeFeed)
+	case "workOffset":
+		op.WorkOffset = int(panelNum(value, float64(op.WorkOffset)))
 	default:
 		return setDepthParam(&op.OpBase, id, value)
 	}

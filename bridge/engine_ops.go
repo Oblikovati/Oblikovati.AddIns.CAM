@@ -157,17 +157,20 @@ func cornerProbePoints(stock Stock) []gen.ProbePoint {
 	midZ := (stock.Min.Z + stock.Max.Z) / 2
 	inX, inY := stock.Min.X+probeApproachGap*2, stock.Min.Y+probeApproachGap*2
 	return []gen.ProbePoint{
-		{ // top surface: drop onto it
+		{ // top surface: drop onto it, zero Z there
 			Approach: gcode.Vector3{X: inX, Y: inY, Z: stock.Max.Z + probeApproachGap},
 			Target:   gcode.Vector3{X: inX, Y: inY, Z: stock.Min.Z},
+			SetAxis:  "Z",
 		},
-		{ // −X face: probe toward +X
+		{ // −X face: probe toward +X, zero X there
 			Approach: gcode.Vector3{X: stock.Min.X - probeApproachGap, Y: inY, Z: midZ},
 			Target:   gcode.Vector3{X: stock.Min.X + probeOvertravel, Y: inY, Z: midZ},
+			SetAxis:  "X",
 		},
-		{ // −Y face: probe toward +Y
+		{ // −Y face: probe toward +Y, zero Y there
 			Approach: gcode.Vector3{X: inX, Y: stock.Min.Y - probeApproachGap, Z: midZ},
 			Target:   gcode.Vector3{X: inX, Y: stock.Min.Y + probeOvertravel, Z: midZ},
+			SetAxis:  "Y",
 		},
 	}
 }

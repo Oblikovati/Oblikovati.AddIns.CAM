@@ -73,7 +73,7 @@ func TestProbeParameters(t *testing.T) {
 func TestProbeOpRoundTrip(t *testing.T) {
 	j := NewJob()
 	j.PostProcessor = "grbl"
-	j.Operations = []Operation{&ProbeOp{OpBase: OpBase{OpLabel: "Probe", IsActive: true}, ProbeFeed: 75}}
+	j.Operations = []Operation{&ProbeOp{OpBase: OpBase{OpLabel: "Probe", IsActive: true}, ProbeFeed: 75, WorkOffset: 3}}
 	payload, err := MarshalJob(j)
 	if err != nil {
 		t.Fatalf("MarshalJob: %v", err)
@@ -83,7 +83,7 @@ func TestProbeOpRoundTrip(t *testing.T) {
 		t.Fatalf("UnmarshalJob: %v", err)
 	}
 	op, ok := back.Operations[0].(*ProbeOp)
-	if !ok || op.ProbeFeed != 75 {
+	if !ok || op.ProbeFeed != 75 || op.WorkOffset != 3 {
 		t.Errorf("probe op not preserved: %+v", back.Operations[0])
 	}
 }

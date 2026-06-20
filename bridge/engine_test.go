@@ -293,6 +293,10 @@ func TestEngineRunProbeJob(t *testing.T) {
 	if probes := strings.Count(res.GCode, "G38.2"); probes != 3 {
 		t.Errorf("probe job should emit 3 G38.2 moves, got %d", probes)
 	}
+	// the corner cycle zeroes all three axes of the work offset (one G10 per touch).
+	if sets := strings.Count(res.GCode, "G10"); sets != 3 {
+		t.Errorf("corner probe should set the work offset on all three axes, got %d G10s", sets)
+	}
 }
 
 // TestEngineRunCounterboreJob runs the counterbore flow and checks it spot-faces the holes with
