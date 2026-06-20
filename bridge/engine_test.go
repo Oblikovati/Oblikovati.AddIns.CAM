@@ -354,6 +354,45 @@ func TestEngineRunCounterboreJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunTappingJobISO runs the tapping flow on an ISO controller and checks it emits a
+// native G84 tap cycle and cancels it with G80.
+func TestEngineRunTappingJobISO(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("linuxcnc").RunTappingJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunTappingJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "tapped") {
+		t.Errorf("summary = %q, want it to mention tapped", res.Summary)
+	}
+	if !strings.Contains(res.GCode, "G84") {
+		t.Error("an ISO post should emit a native G84 tap cycle")
+	}
+	if !strings.Contains(res.GCode, "G80") {
+		t.Error("the tap cycle should be cancelled with G80")
+	}
+}
+
+// TestEngineRunTappingJobGRBL checks GRBL — which lacks rigid tapping — expands the cycle into
+// explicit feed moves rather than leaking a G84 code it cannot run.
+func TestEngineRunTappingJobGRBL(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunTappingJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunTappingJobOnHost: %v", err)
+	}
+	for _, line := range strings.Split(res.GCode, "\n") {
+		code := strings.TrimSpace(line)
+		if strings.HasPrefix(code, "G84") || strings.HasPrefix(code, "G74") {
+			t.Errorf("GRBL has no rigid tapping; the cycle must be expanded, not emitted as an active code: %q", line)
+		}
+	}
+	if !strings.Contains(res.GCode, "soft tap") {
+		t.Error("the GRBL expansion should flag the soft tap in a comment")
+	}
+	if !strings.Contains(res.GCode, "G1 Z") {
+		t.Error("the GRBL tap expansion should feed in and out with G1 Z moves")
+	}
+}
+
 // TestEngineRunCountersinkJob runs the countersink flow and checks it cuts a conical recess.
 func TestEngineRunCountersinkJob(t *testing.T) {
 	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunCountersinkJobOnHost(0)

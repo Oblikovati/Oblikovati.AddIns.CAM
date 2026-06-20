@@ -121,6 +121,7 @@ func shots() []shot {
 		{"helix", &bridge.HelixOp{OpBase: deepEnv("Helix"), HoleRadius: 8, Pitch: 1.5, Direction: gen.HelixCW, Holes: boreHole()}},
 		{"threadmill", &bridge.ThreadMillOp{OpBase: deepEnv("Thread"), MajorDiameter: 16, Pitch: 1.5, Internal: true, Climb: true, Holes: boreHole()}},
 		{"counterbore", &bridge.CounterboreOp{OpBase: deepEnv("Counterbore"), Diameter: 14, Depth: 4, Pitch: 1, Holes: boreHole()}},
+		{"tapping", &bridge.TappingOp{OpBase: millEnv("Tapping"), Pitch: 1.5, Holes: holes()}},
 		{"countersink", &bridge.CountersinkOp{OpBase: deepEnv("Countersink"), Diameter: 14, ToolAngle: 90, Holes: boreHole()}},
 		{"surface", &bridge.SurfaceOp{OpBase: deepEnv("Surface"), Zigzag: true, Rows: pyramidRows()}},
 		{"waterline", &bridge.WaterlineOp{OpBase: deepEnv("Waterline"), Levels: pyramidLevels()}},

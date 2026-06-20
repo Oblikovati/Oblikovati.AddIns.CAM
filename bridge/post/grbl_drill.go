@@ -55,6 +55,46 @@ func (r *grblRenderer) drillTranslate(tokens []string, c gcode.Command) string {
 	return b.String()
 }
 
+// tapTranslate expands a tapping canned cycle (G84 right-hand / G74 left-hand) into the
+// explicit moves a controller without rigid tapping understands: position over the hole at the
+// R plane, feed down to depth at the synchronised feed, then feed back out at the same feed.
+// This is the motion a tension-compression (self-reversing) tapping head needs; the spindle
+// direction reversal is the head's job, so a comment flags the soft tap. GRBL has no canned
+// cycles, so this is the only way the operation survives to the controller.
+func (r *grblRenderer) tapTranslate(tokens []string, c gcode.Command) string {
+	var b strings.Builder
+	if r.opts.OutputComments && len(tokens) > 0 {
+		commented := append([]string(nil), tokens...)
+		commented[0] = "(" + commented[0]
+		commented[len(commented)-1] += ")"
+		b.WriteString(r.lineNumber() + formatOutstring(commented) + "\n")
+	}
+	hand := "right-hand"
+	if c.Name == "G74" {
+		hand = "left-hand"
+	}
+	if r.opts.OutputComments {
+		b.WriteString(r.lineNumber() + "(soft tap " + hand + ": feed in/out, spindle reverse by tapping head )\n")
+	}
+
+	x, y, z, rPlane := c.Params["X"], c.Params["Y"], c.Params["Z"], c.Params["R"]
+	if rPlane < z {
+		b.WriteString(r.lineNumber() + "(tap cycle error: R less than Z )\n")
+		return b.String()
+	}
+	feed := r.drillFeed(c.Params["F"])
+	if r.curZ < rPlane {
+		b.WriteString(r.lineNumber() + "G0 Z" + r.fixed(r.toUnit(rPlane)) + "\n")
+	}
+	b.WriteString(r.lineNumber() + "G0 X" + r.fixed(r.toUnit(x)) + " Y" + r.fixed(r.toUnit(y)) + "\n")
+	if r.curZ > rPlane {
+		b.WriteString(r.lineNumber() + "G0 Z" + r.fixed(r.toUnit(rPlane)) + "\n")
+	}
+	b.WriteString(r.lineNumber() + "G1 Z" + r.fixed(r.toUnit(z)) + feed)
+	b.WriteString(r.lineNumber() + "G1 Z" + r.fixed(r.toUnit(rPlane)) + feed)
+	return b.String()
+}
+
 // peck emits the G83 peck-drilling moves: descend in Q-step increments, retracting to the
 // clearance plane after each peck and rapiding back to just above the last depth, until the
 // final depth is reached. Mirrors the upstream G83 loop (a_bit = 5% of the step). A zero

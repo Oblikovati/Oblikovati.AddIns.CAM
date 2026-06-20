@@ -431,6 +431,32 @@ func (op *CounterboreOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Tapping ---
+
+// Parameters lists the editable tapping parameters.
+func (op *TappingOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("pitch", "Thread pitch (mm)", op.Pitch),
+		boolParam("lefthand", "Left-hand thread", op.LeftHand),
+		numberParam("dwell", "Bottom dwell (s)", op.DwellTime),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one tapping parameter edit.
+func (op *TappingOp) SetParameter(id, value string) bool {
+	switch id {
+	case "pitch":
+		op.Pitch = panelNum(value, op.Pitch)
+	case "lefthand":
+		op.LeftHand = parseBool(value)
+	case "dwell":
+		op.DwellTime = panelNum(value, op.DwellTime)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Countersink ---
 
 // Parameters lists the editable countersink parameters.

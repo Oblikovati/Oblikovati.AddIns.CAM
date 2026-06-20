@@ -106,6 +106,7 @@ const (
 	GenerateHelixCommandID       = "CAM.GenerateHelix"       // helical bore
 	GenerateThreadMillCommandID  = "CAM.GenerateThreadMill"  // thread milling
 	GenerateCounterboreCommandID = "CAM.GenerateCounterbore" // counterbore / spot-face
+	GenerateTappingCommandID     = "CAM.GenerateTapping"     // rigid tapping (internal threads)
 	GenerateCountersinkCommandID = "CAM.GenerateCountersink" // countersink (conical recess)
 	GenerateMillFaceCommandID    = "CAM.GenerateMillFace"    // face milling
 	GenerateEngraveCommandID     = "CAM.GenerateEngrave"     // engraving
@@ -157,6 +158,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateHelixCommandID, "Generate Helix Job", "Bore the part's holes with a helix (for holes wider than the tool)."},
 	{GenerateThreadMillCommandID, "Generate Thread Job", "Thread-mill the part's holes by helical interpolation."},
 	{GenerateCounterboreCommandID, "Generate Counterbore Job", "Spot-face a flat-bottom recess at each hole top for a screw head."},
+	{GenerateTappingCommandID, "Generate Tapping Job", "Cut internal threads in the part's holes with a synchronised tap cycle (G84/G74)."},
 	{GenerateCountersinkCommandID, "Generate Countersink Job", "Cut a conical recess at each hole top for a flat-head screw."},
 	{GenerateMillFaceCommandID, "Generate Face Job", "Face the top of the stock over the part's outline."},
 	{GenerateEngraveCommandID, "Generate Engrave Job", "Engrave the part's outline on the tool centre."},
@@ -286,6 +288,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunThreadMillJobOnHost(body) })
 	case GenerateCounterboreCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunCounterboreJobOnHost(body) })
+	case GenerateTappingCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunTappingJobOnHost(body) })
 	case GenerateCountersinkCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunCountersinkJobOnHost(body) })
 	case GenerateMillFaceCommandID:

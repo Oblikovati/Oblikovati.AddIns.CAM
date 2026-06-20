@@ -88,6 +88,8 @@ func (r *marlinRenderer) writePath(b *strings.Builder, obj Object) {
 		switch {
 		case c.Name == "G81" || c.Name == "G82" || c.Name == "G83":
 			r.drillTranslate(b, c)
+		case c.Name == "G84" || c.Name == "G74":
+			r.tapTranslate(b, c)
 		case c.Name == "M6" || c.Name == "M06":
 			r.comment(b, "tool change — pausing for a manual swap")
 			b.WriteString("M0\n")
@@ -160,6 +162,30 @@ func (r *marlinRenderer) drillTranslate(b *strings.Builder, c gcode.Command) {
 		}
 	}
 	b.WriteString("G0 Z" + r.fixed(r.toUnit(rPlane)) + "\n")
+}
+
+// tapTranslate expands a tapping canned cycle (G84 right-hand / G74 left-hand) into explicit
+// moves for firmware without rigid tapping: rapid over the hole and to the retract plane, feed
+// down to depth at the synchronised feed, then feed back out at the same feed. This is the
+// motion a self-reversing (tension-compression) tapping head needs; the head handles the spindle
+// reversal, so a comment flags the soft tap.
+func (r *marlinRenderer) tapTranslate(b *strings.Builder, c gcode.Command) {
+	x, y := r.coord(c, "X", r.curX), r.coord(c, "Y", r.curY)
+	z, rPlane := c.Params["Z"], c.Params["R"]
+	if rPlane < z {
+		r.comment(b, "tap cycle error: R below Z")
+		return
+	}
+	hand := "right-hand"
+	if c.Name == "G74" {
+		hand = "left-hand"
+	}
+	r.comment(b, "soft tap "+hand+": feed in/out, spindle reverse by tapping head")
+	feed := r.feedSuffix(c.Params["F"])
+	b.WriteString("G0 X" + r.fixed(r.toUnit(x)) + " Y" + r.fixed(r.toUnit(y)) + "\n")
+	b.WriteString("G0 Z" + r.fixed(r.toUnit(rPlane)) + "\n")
+	b.WriteString("G1 Z" + r.fixed(r.toUnit(z)) + feed)
+	b.WriteString("G1 Z" + r.fixed(r.toUnit(rPlane)) + feed)
 }
 
 // peck emits the G83 peck moves: descend in Q-step increments, retracting to the R plane after

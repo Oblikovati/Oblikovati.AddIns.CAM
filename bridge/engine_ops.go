@@ -20,6 +20,7 @@ const (
 	cboreDiameter   = 12.0 // mm — counterbore recess diameter
 	cboreDepth      = 4.0  // mm — counterbore recess depth
 	cborePitch      = 1.0  // mm — counterbore helix pitch
+	tapPitch        = 1.5  // mm — thread pitch for the tapping demo (e.g. M10×1.5)
 	csinkDiameter   = 10.0 // mm — countersink rim diameter
 	csinkAngle      = 90.0 // deg — countersink tool included angle
 	faceDepth       = 1.0  // mm — facing depth off the stock top
@@ -82,6 +83,22 @@ func (e *Engine) RunCounterboreJobOnHost(bodyIndex int) (*JobResult, error) {
 		Holes: holes,
 	}}
 	return e.postPreviewResult(job, fmt.Sprintf("counterbored %d hole(s)", len(holes)))
+}
+
+// RunTappingJobOnHost cuts internal threads in each of the part's holes with a synchronised tap
+// cycle, feeding at the thread pitch per spindle revolution.
+func (e *Engine) RunTappingJobOnHost(bodyIndex int) (*JobResult, error) {
+	holes, stock, err := e.detectHolesAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&TappingOp{
+		OpBase: e.millEnvelope("Tapping", stock),
+		Pitch:  tapPitch,
+		Holes:  holes,
+	}}
+	return e.postPreviewResult(job, fmt.Sprintf("tapped %d hole(s)", len(holes)))
 }
 
 // RunCountersinkJobOnHost cuts a conical recess at each of the part's hole tops.

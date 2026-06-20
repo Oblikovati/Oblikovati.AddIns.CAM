@@ -184,6 +184,10 @@ func (r *grblRenderer) parsePath(obj Object) string {
 			out.WriteString(r.drillTranslate(tokens, c))
 			continue
 		}
+		if r.opts.TranslateDrill && (c.Name == "G84" || c.Name == "G74") {
+			out.WriteString(r.tapTranslate(tokens, c))
+			continue
+		}
 		// When translating cycles, the canned-cycle return-mode/cancel codes are not valid
 		// GRBL — comment them out (the upstream's SUPPRESS_COMMANDS), e.g. G80 → "( G80 )".
 		if r.opts.TranslateDrill && (c.Name == "G80" || c.Name == "G98" || c.Name == "G99") {
