@@ -10,11 +10,13 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 
 	"oblikovati.org/cam/bridge"
 	"oblikovati.org/cam/bridge/dressup"
+	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/gen"
 	"oblikovati.org/cam/bridge/geom2d"
 	"oblikovati.org/cam/bridge/plot"
@@ -71,7 +73,52 @@ func shots() []shot {
 		{"drilling", &bridge.DrillingOp{OpBase: millEnv("Drilling"), Holes: holes()}},
 		{"helix", &bridge.HelixOp{OpBase: deepEnv("Helix"), HoleRadius: 8, Pitch: 1.5, Direction: gen.HelixCW, Holes: boreHole()}},
 		{"threadmill", &bridge.ThreadMillOp{OpBase: deepEnv("Thread"), MajorDiameter: 16, Pitch: 1.5, Internal: true, Climb: true, Holes: boreHole()}},
+		{"surface", &bridge.SurfaceOp{OpBase: deepEnv("Surface"), Zigzag: true, Rows: pyramidRows()}},
+		{"waterline", &bridge.WaterlineOp{OpBase: deepEnv("Waterline"), Levels: pyramidLevels()}},
 	}
+}
+
+// The 3D-finishing shots run on a synthetic pyramid surface — apex at the centre (z=0) sloping
+// down to z=-4 at the ±20mm edges — so the surface/waterline toolpaths render without a mesh or
+// the OpenCAMLib drop-cutter (which needs cgo).
+const (
+	pyramidHalf = 20.0 // mm — half-width of the pyramid base
+	pyramidDrop = 4.0  // mm — depth at the base edge below the apex
+)
+
+// pyramidHeight is the surface Z at (x,y): 0 at the centre, −pyramidDrop at the base edge.
+func pyramidHeight(x, y float64) float64 {
+	d := math.Max(math.Abs(x), math.Abs(y))
+	if d > pyramidHalf {
+		d = pyramidHalf
+	}
+	return -pyramidDrop * d / pyramidHalf
+}
+
+// pyramidRows samples the pyramid along parallel X scan lines — the drop-cutter rows a surface
+// finish consumes.
+func pyramidRows() [][]gcode.Vector3 {
+	var rows [][]gcode.Vector3
+	for y := -pyramidHalf; y <= pyramidHalf; y += 3 {
+		var row []gcode.Vector3
+		for x := -pyramidHalf; x <= pyramidHalf; x += 2 {
+			row = append(row, gcode.Vector3{X: x, Y: y, Z: pyramidHeight(x, y)})
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+// pyramidLevels gives the constant-Z square contours of the pyramid at three heights — the
+// level loops a waterline finish consumes (nested squares growing toward the base).
+func pyramidLevels() []gen.LevelLoops {
+	var levels []gen.LevelLoops
+	for _, z := range []float64{-1, -2, -3} {
+		d := -z / pyramidDrop * pyramidHalf // half-size of the square section at height z
+		loop := []gcode.Vector3{{X: -d, Y: -d, Z: z}, {X: d, Y: -d, Z: z}, {X: d, Y: d, Z: z}, {X: -d, Y: d, Z: z}}
+		levels = append(levels, gen.LevelLoops{Z: z, Loops: [][]gcode.Vector3{loop}})
+	}
+	return levels
 }
 
 // boreHole is a single central bored/tapped hole (mm) for the helix and thread-mill shots.

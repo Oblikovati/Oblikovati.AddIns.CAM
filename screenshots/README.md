@@ -27,3 +27,8 @@ point, **grey** = the driving part boundary.
 | `drilling.png` | Drilling: canned-cycle points at each detected hole. |
 | `helix.png` | Helix bore: the tool-centre orbit for a hole wider than the tool. |
 | `threadmill.png` | Thread milling: the thread orbit plus the lead-in/out arc easing on/off the thread. |
+| `surface.png` | 3D surface finish: parallel zig-zag passes; the depth shade (orange high → blue low) shows the surface. |
+| `waterline.png` | 3D waterline finish: nested constant-Z contour loops down the surface. |
+
+The `surface` and `waterline` shots run on a synthetic pyramid surface so the 3D-finishing
+toolpaths render without a mesh or the OpenCAMLib drop-cutter.
