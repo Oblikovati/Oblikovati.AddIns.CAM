@@ -272,6 +272,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("chamfer", o.OpBase)
 		d.Width, d.ToolAngle, d.Side, d.Climb = o.Width, o.ToolAngle, o.Side, o.Climb
 		return d, nil
+	case *SlotOp:
+		d := baseDoc("slot", o.OpBase)
+		d.Width, d.StepOver, d.Climb, d.StepDown = o.Width, o.StepOver, o.Climb, o.StepDown
+		return d, nil
 	case *HelixOp:
 		d := baseDoc("helix", o.OpBase)
 		d.HoleRadius, d.Pitch, d.Direction = o.HoleRadius, o.Pitch, o.Direction
@@ -314,6 +318,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &EngraveOp{OpBase: opBaseFrom(d), Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "chamfer":
 		return &ChamferOp{OpBase: opBaseFrom(d), Width: d.Width, ToolAngle: d.ToolAngle, Side: d.Side, Climb: d.Climb}, nil
+	case "slot":
+		return &SlotOp{OpBase: opBaseFrom(d), Width: d.Width, StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "helix":
 		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
 	case "threadmill":

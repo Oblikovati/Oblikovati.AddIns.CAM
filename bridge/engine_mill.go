@@ -66,6 +66,16 @@ func (e *Engine) RunTrochoidalJobOnHost(bodyIndex int) (*JobResult, error) {
 	return e.finishMillJob(job, boundary, "trochoidally milled")
 }
 
+// RunSlotJobOnHost cuts a channel centred on the body's outline: extract the silhouette, build a
+// slot job, post it, and overlay the toolpath.
+func (e *Engine) RunSlotJobOnHost(bodyIndex int) (*JobResult, error) {
+	job, boundary, err := e.buildSlotJob(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	return e.finishMillJob(job, boundary, "slotted")
+}
+
 // finishMillJob posts a milling job, overlays its boundary contour, and builds the summary.
 func (e *Engine) finishMillJob(job *Job, boundary geom2d.Polygon, verb string) (*JobResult, error) {
 	gcodeText, err := e.GenerateGCode(job)
@@ -187,6 +197,27 @@ func (e *Engine) buildTrochoidalJob(bodyIndex int) (*Job, geom2d.Polygon, error)
 		Side:       "outside",
 		StepDown:   cut.StepDown,
 		Boundary:   boundary,
+	}}
+	return job, boundary, nil
+}
+
+// slotWidthFactor seeds the slot width from the tool diameter when the engine builds the job.
+const slotWidthFactor = 2.0 // slot width = 2× the tool diameter
+
+// buildSlotJob assembles a slot-milling job centred on the body's silhouette.
+func (e *Engine) buildSlotJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
+	boundary, stock, err := e.contourAndStock(bodyIndex)
+	if err != nil {
+		return nil, nil, err
+	}
+	cut := e.cutting()
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&SlotOp{
+		OpBase:   e.millEnvelope("Slot", stock),
+		Width:    cut.ToolDiameter * slotWidthFactor,
+		Climb:    true,
+		StepDown: cut.StepDown,
+		Boundary: boundary,
 	}}
 	return job, boundary, nil
 }

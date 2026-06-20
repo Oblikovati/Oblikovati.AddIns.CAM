@@ -114,6 +114,35 @@ func (op *RestOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Slot ---
+
+// Parameters lists the editable slot parameters.
+func (op *SlotOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("width", "Width (mm)", op.Width),
+		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
+		numberParam("stepDown", "Step-down (mm)", op.StepDown),
+		boolParam("climb", "Climb", op.Climb),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one slot parameter edit.
+func (op *SlotOp) SetParameter(id, value string) bool {
+	switch id {
+	case "width":
+		op.Width = panelNum(value, op.Width)
+	case "stepOver":
+		op.StepOver = panelNum(value, op.StepOver)
+	case "stepDown":
+		op.StepDown = panelNum(value, op.StepDown)
+	case "climb":
+		op.Climb = parseBool(value)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Trochoidal ---
 
 // Parameters lists the editable trochoidal parameters.

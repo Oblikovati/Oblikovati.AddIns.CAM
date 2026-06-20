@@ -18,6 +18,7 @@ point, **grey** = the driving part boundary.
 | `adaptive.png` | HSM adaptive clearing: one continuous low-engagement spiral that stays down (no rapids between passes). |
 | `rest.png` | Rest machining: only the wall band a previous larger tool left (a few rings, interior untouched). |
 | `trochoidal.png` | Trochoidal milling: overlapping circular loops marching along the contour (low engagement). |
+| `slot.png` | Slot / groove milling: a channel of a set width centred on the contour (passes straddle both sides). |
 | `millface.png` | Facing: raster rows over the region. |
 | `engrave.png` | Engraving: the contour run on the tool centre (no compensation). |
 | `chamfer.png` | Chamfer / edge-break: a single bevel pass offset by the chamfer width at the angle-derived depth. |

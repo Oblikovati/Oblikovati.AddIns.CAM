@@ -81,6 +81,8 @@ func operationKind(op Operation) string {
 		return "Engrave"
 	case *ChamferOp:
 		return "Chamfer"
+	case *SlotOp:
+		return "Slot"
 	case *HelixOp:
 		return "Helix"
 	case *ThreadMillOp:

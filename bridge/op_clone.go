@@ -27,6 +27,7 @@ func (op *TrochoidalOp) Clone() Operation {
 func (op *MillFaceOp) Clone() Operation { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *EngraveOp) Clone() Operation  { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *ChamferOp) Clone() Operation  { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
+func (op *SlotOp) Clone() Operation     { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *HelixOp) Clone() Operation    { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *ThreadMillOp) Clone() Operation {
 	cp := *op
