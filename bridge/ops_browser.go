@@ -77,6 +77,8 @@ func operationKind(op Operation) string {
 		return "Helix"
 	case *SurfaceOp:
 		return "Surface"
+	case *WaterlineOp:
+		return "Waterline"
 	default:
 		return "Operation"
 	}

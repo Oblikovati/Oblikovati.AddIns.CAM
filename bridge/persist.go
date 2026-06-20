@@ -59,7 +59,7 @@ type opDoc struct {
 	Pitch      float64 `json:"pitch,omitempty"`
 	Direction  string  `json:"direction,omitempty"`
 
-	// Surface (3D finishing) — Rows are re-resolved from the part mesh, not persisted.
+	// Surface / Waterline (3D finishing) — geometry is re-resolved from the part mesh, not persisted.
 	Sampling float64 `json:"sampling,omitempty"`
 	Zigzag   bool    `json:"zigzag,omitempty"`
 
@@ -196,6 +196,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("surface", o.OpBase)
 		d.StepOver, d.Sampling, d.Zigzag = o.StepOver, o.Sampling, o.Zigzag
 		return d, nil
+	case *WaterlineOp:
+		d := baseDoc("waterline", o.OpBase)
+		d.StepOver, d.StepDown = o.StepOver, o.StepDown
+		return d, nil
 	default:
 		return opDoc{}, fmt.Errorf("cannot serialise operation of type %T", op)
 	}
@@ -218,6 +222,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
 	case "surface":
 		return &SurfaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Sampling: d.Sampling, Zigzag: d.Zigzag}, nil
+	case "waterline":
+		return &WaterlineOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown}, nil
 	default:
 		return nil, fmt.Errorf("unknown operation kind %q", d.Kind)
 	}

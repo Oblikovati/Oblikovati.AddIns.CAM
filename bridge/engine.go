@@ -56,18 +56,19 @@ func (e *Engine) SetPost(name string) *Engine {
 // The CAM commands the add-in registers; firing one (a ribbon click or the MCP bridge's
 // execute_command) generates the corresponding toolpath for the active part.
 const (
-	GenerateJobCommandID      = "CAM.GenerateJob"      // drilling (kept stable for M1 callers)
-	GenerateProfileCommandID  = "CAM.GenerateProfile"  // contour profile
-	GeneratePocketCommandID   = "CAM.GeneratePocket"   // area-clearing pocket
-	GenerateHelixCommandID    = "CAM.GenerateHelix"    // helical bore
-	GenerateMillFaceCommandID = "CAM.GenerateMillFace" // face milling
-	GenerateEngraveCommandID  = "CAM.GenerateEngrave"  // engraving
-	GenerateSurfaceCommandID  = "CAM.GenerateSurface"  // 3D surface finishing (drop-cutter)
-	PreviewProfileCommandID   = "CAM.PreviewProfile"   // transient toolpath preview (not committed)
-	ClearPreviewCommandID     = "CAM.ClearPreview"     // remove the transient toolpath preview
-	ShowOperationsCommandID   = "CAM.ShowOperations"   // open the operations browser
-	SaveJobCommandID          = "CAM.SaveJob"          // persist the job into the document
-	LoadJobCommandID          = "CAM.LoadJob"          // load the job from the document
+	GenerateJobCommandID       = "CAM.GenerateJob"       // drilling (kept stable for M1 callers)
+	GenerateProfileCommandID   = "CAM.GenerateProfile"   // contour profile
+	GeneratePocketCommandID    = "CAM.GeneratePocket"    // area-clearing pocket
+	GenerateHelixCommandID     = "CAM.GenerateHelix"     // helical bore
+	GenerateMillFaceCommandID  = "CAM.GenerateMillFace"  // face milling
+	GenerateEngraveCommandID   = "CAM.GenerateEngrave"   // engraving
+	GenerateSurfaceCommandID   = "CAM.GenerateSurface"   // 3D surface finishing (parallel drop-cutter)
+	GenerateWaterlineCommandID = "CAM.GenerateWaterline" // 3D waterline (constant-Z) finishing
+	PreviewProfileCommandID    = "CAM.PreviewProfile"    // transient toolpath preview (not committed)
+	ClearPreviewCommandID      = "CAM.ClearPreview"      // remove the transient toolpath preview
+	ShowOperationsCommandID    = "CAM.ShowOperations"    // open the operations browser
+	SaveJobCommandID           = "CAM.SaveJob"           // persist the job into the document
+	LoadJobCommandID           = "CAM.LoadJob"           // load the job from the document
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -79,6 +80,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateMillFaceCommandID, "Generate Face Job", "Face the top of the stock over the part's outline."},
 	{GenerateEngraveCommandID, "Generate Engrave Job", "Engrave the part's outline on the tool centre."},
 	{GenerateSurfaceCommandID, "Generate Surface Job", "Finish the part's 3D surface with a ball-nose end mill (parallel drop-cutter passes)."},
+	{GenerateWaterlineCommandID, "Generate Waterline Job", "Finish the part's 3D surface with constant-Z (waterline) passes — good for steep walls."},
 	{PreviewProfileCommandID, "Preview Profile", "Show the profile toolpath as a live overlay without committing or posting it."},
 	{ClearPreviewCommandID, "Clear Preview", "Remove the live toolpath preview overlay."},
 	{ShowOperationsCommandID, "Show Operations", "Open the CAM operations browser for the last generated job."},
@@ -158,6 +160,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunEngraveJobOnHost(0) })
 	case GenerateSurfaceCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunSurface3DJobOnHost(0) })
+	case GenerateWaterlineCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunWaterlineJobOnHost(0) })
 	case PreviewProfileCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.PreviewProfileOnHost(0) })
 	case ClearPreviewCommandID:
