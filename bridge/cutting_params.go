@@ -30,11 +30,11 @@ func (e *Engine) cutting() cutSettings {
 // stepOverDistance converts the step-over fraction to an absolute distance (mm) for the tool.
 func (c cutSettings) stepOverDistance() float64 { return c.StepOver * c.ToolDiameter }
 
-// passSpacing returns the absolute pass/grid spacing (mm) the 3D ops sample at — the
-// step-over distance, falling back to a default when the settings would give a non-positive
-// spacing (so a half-typed field never produces zero or negative scan lines).
-func passSpacing(c cutSettings, fallback float64) float64 {
-	if d := c.stepOverDistance(); d > 0 {
+// passSpacing returns the absolute pass spacing (mm) a 3D op samples at — the step-over
+// fraction times the selected tool's diameter — falling back to a default when that would be
+// non-positive (so a half-typed field never produces zero or negative scan lines).
+func passSpacing(c cutSettings, toolDiameter, fallback float64) float64 {
+	if d := c.StepOver * toolDiameter; d > 0 {
 		return d
 	}
 	return fallback

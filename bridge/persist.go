@@ -9,12 +9,56 @@ import (
 	"oblikovati.org/api/types"
 )
 
-// CAMAttributeSet is the document attribute-set namespace the CAM add-in persists its job
-// into (the add-in id), and CAMJobAttribute the attribute name holding the serialised job.
+// CAMAttributeSet is the document attribute-set namespace the CAM add-in persists into (the
+// add-in id); CAMJobAttribute holds the serialised job and CAMToolsAttribute the tool library.
 const (
-	CAMAttributeSet = "com.oblikovati.cam"
-	CAMJobAttribute = "job"
+	CAMAttributeSet   = "com.oblikovati.cam"
+	CAMJobAttribute   = "job"
+	CAMToolsAttribute = "tools"
 )
+
+// SaveToolLibrary persists the tool library into the active document (best-effort: it is a
+// no-op when no document is open, since the library is also held in the session).
+func (e *Engine) SaveToolLibrary() error {
+	docID, err := e.activeDocumentID()
+	if err != nil {
+		return nil //nolint:nilerr // no document yet: keep the session library only
+	}
+	e.mu.Lock()
+	lib := e.library
+	e.mu.Unlock()
+	payload, err := json.Marshal(lib)
+	if err != nil {
+		return fmt.Errorf("marshal tool library: %w", err)
+	}
+	_, err = e.api.Attributes().Set(docID, CAMAttributeSet, CAMToolsAttribute, types.StringVariant(string(payload)))
+	return err
+}
+
+// LoadToolLibrary reads the tool library stored in the active document into the engine, leaving
+// the current library unchanged when none is stored.
+func (e *Engine) LoadToolLibrary() error {
+	docID, err := e.activeDocumentID()
+	if err != nil {
+		return nil //nolint:nilerr // no document: keep the default library
+	}
+	res, err := e.api.Attributes().Get(docID, CAMAttributeSet, CAMToolsAttribute)
+	if err != nil || !res.Found {
+		return nil //nolint:nilerr // nothing stored: keep the default library
+	}
+	payload, ok := res.Attribute.Value.Str()
+	if !ok {
+		return fmt.Errorf("CAM tool-library attribute is not a string value")
+	}
+	var lib ToolLibrary
+	if err := json.Unmarshal([]byte(payload), &lib); err != nil {
+		return fmt.Errorf("unmarshal tool library: %w", err)
+	}
+	e.mu.Lock()
+	e.library = lib
+	e.mu.Unlock()
+	return nil
+}
 
 // jobDoc is the serialisable form of a Job: the tools, post config, and the operation
 // configurations (parameters only — the driving geometry is re-resolved from the part on

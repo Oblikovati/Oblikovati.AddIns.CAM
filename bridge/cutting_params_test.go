@@ -36,8 +36,11 @@ func TestCutSettingsHelpers(t *testing.T) {
 	if (cutSettings{}).finalDepth(10, 0) != 0 { // CutDepth 0 → through to bottom
 		t.Errorf("finalDepth with CutDepth=0 should be the stock bottom")
 	}
-	if passSpacing(cutSettings{}, 1.5) != 1.5 {
+	if passSpacing(cutSettings{}, 6, 1.5) != 1.5 {
 		t.Errorf("passSpacing must fall back when step-over distance is zero")
+	}
+	if passSpacing(cutSettings{StepOver: 0.5}, 6, 1.5) != 3 {
+		t.Errorf("passSpacing = step-over × diameter (0.5×6=3)")
 	}
 	if levelSpacing(cutSettings{}, 1.0) != 1.0 {
 		t.Errorf("levelSpacing must fall back when step-down is zero")

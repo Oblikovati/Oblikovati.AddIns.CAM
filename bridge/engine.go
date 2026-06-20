@@ -32,12 +32,34 @@ type Engine struct {
 	lastJob       *Job   // most recently generated job (for the operations browser + Save)
 	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
 	cut           cutSettings
+	library       ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
 	surfacer      Surfacer
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
 func NewEngine(host HostCaller) *Engine {
-	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, cut: defaultCutSettings(), surfacer: oclSurfacer{}}
+	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, cut: defaultCutSettings(), library: DefaultToolLibrary(), surfacer: oclSurfacer{}}
+}
+
+// activeEndmill is the primary milling tool (T1), built from the panel's tool-diameter and feed
+// fields. It is always present at index 0 of a job's tool list.
+func (e *Engine) activeEndmill() ToolController {
+	e.mu.Lock()
+	feed, dia := e.plungFeed, e.cut.ToolDiameter
+	e.mu.Unlock()
+	return ToolController{
+		Label: "End mill", ToolNumber: 1, SpindleSpeed: 5000, SpindleDir: "Forward",
+		VertFeed: feed, HorizFeed: feed * 3, Tool: ToolBit{Name: "End mill", ShapeType: "endmill", Diameter: dia},
+	}
+}
+
+// jobTools returns the controllers loaded into a job: the primary end mill (T1) followed by the
+// library tools. Operations select among them by cutter shape (indexForShape).
+func (e *Engine) jobTools() []ToolController {
+	e.mu.Lock()
+	lib := e.library.snapshot()
+	e.mu.Unlock()
+	return append([]ToolController{e.activeEndmill()}, lib...)
 }
 
 // defaultPlungeFeed is the default drilling plunge feed (mm/min) until the panel overrides it.
@@ -65,9 +87,15 @@ const (
 	GenerateEngraveCommandID   = "CAM.GenerateEngrave"   // engraving
 	GenerateSurfaceCommandID   = "CAM.GenerateSurface"   // 3D surface finishing (parallel drop-cutter)
 	GenerateWaterlineCommandID = "CAM.GenerateWaterline" // 3D waterline (constant-Z) finishing
+	GenerateAllCommandID       = "CAM.GenerateAll"       // one program over several ops + tools
 	PreviewProfileCommandID    = "CAM.PreviewProfile"    // transient toolpath preview (not committed)
 	ClearPreviewCommandID      = "CAM.ClearPreview"      // remove the transient toolpath preview
 	ShowOperationsCommandID    = "CAM.ShowOperations"    // open the operations browser
+	ShowToolsCommandID         = "CAM.ShowTools"         // open the tool-library browser
+	AddEndmillCommandID        = "CAM.AddEndmill"        // add an end mill to the library
+	AddDrillCommandID          = "CAM.AddDrill"          // add a drill to the library
+	AddBallnoseCommandID       = "CAM.AddBallnose"       // add a ball-nose to the library
+	RemoveToolCommandID        = "CAM.RemoveTool"        // remove the last library tool
 	SaveJobCommandID           = "CAM.SaveJob"           // persist the job into the document
 	LoadJobCommandID           = "CAM.LoadJob"           // load the job from the document
 )
@@ -82,9 +110,15 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateEngraveCommandID, "Generate Engrave Job", "Engrave the part's outline on the tool centre."},
 	{GenerateSurfaceCommandID, "Generate Surface Job", "Finish the part's 3D surface with a ball-nose end mill (parallel drop-cutter passes)."},
 	{GenerateWaterlineCommandID, "Generate Waterline Job", "Finish the part's 3D surface with constant-Z (waterline) passes — good for steep walls."},
+	{GenerateAllCommandID, "Generate All Operations", "Generate one program that drills, contours, and surface-finishes the part — with tool changes between operations."},
 	{PreviewProfileCommandID, "Preview Profile", "Show the profile toolpath as a live overlay without committing or posting it."},
 	{ClearPreviewCommandID, "Clear Preview", "Remove the live toolpath preview overlay."},
 	{ShowOperationsCommandID, "Show Operations", "Open the CAM operations browser for the last generated job."},
+	{ShowToolsCommandID, "Show Tool Library", "Open the CAM tool-library browser."},
+	{AddEndmillCommandID, "Add End Mill", "Add an end mill to the tool library."},
+	{AddDrillCommandID, "Add Drill", "Add a drill to the tool library."},
+	{AddBallnoseCommandID, "Add Ball-nose", "Add a ball-nose cutter to the tool library."},
+	{RemoveToolCommandID, "Remove Tool", "Remove the last tool added to the library."},
 	{SaveJobCommandID, "Save CAM Job", "Persist the CAM job into the active document."},
 	{LoadJobCommandID, "Load CAM Job", "Load the CAM job stored in the active document."},
 }
@@ -163,6 +197,18 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunSurface3DJobOnHost(0) })
 	case GenerateWaterlineCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunWaterlineJobOnHost(0) })
+	case GenerateAllCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunAllJobsOnHost(0) })
+	case ShowToolsCommandID:
+		e.launchRun(e.showToolLibraryAction)
+	case AddEndmillCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.addToolAction("endmill") })
+	case AddDrillCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.addToolAction("drill") })
+	case AddBallnoseCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.addToolAction("ballend") })
+	case RemoveToolCommandID:
+		e.launchRun(e.removeToolAction)
 	case PreviewProfileCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.PreviewProfileOnHost(0) })
 	case ClearPreviewCommandID:
