@@ -16,6 +16,9 @@ const (
 	helixPitch      = 1.5  // mm/turn
 	threadMajorDia  = 10.0 // mm — nominal thread diameter for the thread-mill demo
 	threadPitch     = 1.5  // mm — thread lead per turn
+	cboreDiameter   = 12.0 // mm — counterbore recess diameter
+	cboreDepth      = 4.0  // mm — counterbore recess depth
+	cborePitch      = 1.0  // mm — counterbore helix pitch
 	faceDepth       = 1.0  // mm — facing depth off the stock top
 	engraveDepth    = 0.5  // mm — engraving depth off the stock top
 	chamferWidth    = 1.0  // mm — chamfer/deburr bevel width
@@ -62,6 +65,21 @@ const (
 	probeApproachGap = 5.0
 	probeOvertravel  = 5.0
 )
+
+// RunCounterboreJobOnHost spot-faces a flat-bottom recess at each of the part's hole tops.
+func (e *Engine) RunCounterboreJobOnHost(bodyIndex int) (*JobResult, error) {
+	holes, stock, err := e.detectHolesAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&CounterboreOp{
+		OpBase:   e.millEnvelope("Counterbore", stock),
+		Diameter: cboreDiameter, Depth: cboreDepth, Pitch: cborePitch,
+		Holes: holes,
+	}}
+	return e.postPreviewResult(job, fmt.Sprintf("counterbored %d hole(s)", len(holes)))
+}
 
 // RunProbeJobOnHost probes the stock's top and two edges to find the work origin.
 func (e *Engine) RunProbeJobOnHost(bodyIndex int) (*JobResult, error) {

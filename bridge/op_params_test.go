@@ -58,7 +58,7 @@ func TestDrillingParameters(t *testing.T) {
 // TestEveryOpIsEditable confirms each concrete operation exposes editable parameters.
 func TestEveryOpIsEditable(t *testing.T) {
 	ops := []Operation{
-		&DrillingOp{}, &ProfileOp{}, &PocketOp{}, &AdaptiveOp{}, &RestOp{}, &TrochoidalOp{}, &SlotOp{}, &MillFaceOp{}, &EngraveOp{}, &ChamferOp{}, &HelixOp{}, &ThreadMillOp{}, &ProbeOp{}, &SurfaceOp{}, &WaterlineOp{},
+		&DrillingOp{}, &ProfileOp{}, &PocketOp{}, &AdaptiveOp{}, &RestOp{}, &TrochoidalOp{}, &SlotOp{}, &MillFaceOp{}, &EngraveOp{}, &ChamferOp{}, &HelixOp{}, &ThreadMillOp{}, &CounterboreOp{}, &ProbeOp{}, &SurfaceOp{}, &WaterlineOp{},
 	}
 	for _, op := range ops {
 		ed, ok := op.(Editable)

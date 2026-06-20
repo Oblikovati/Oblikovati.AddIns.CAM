@@ -83,47 +83,48 @@ func (e *Engine) SetPost(name string) *Engine {
 // The CAM commands the add-in registers; firing one (a ribbon click or the MCP bridge's
 // execute_command) generates the corresponding toolpath for the active part.
 const (
-	GenerateJobCommandID        = "CAM.GenerateJob"        // drilling (kept stable for M1 callers)
-	GenerateProfileCommandID    = "CAM.GenerateProfile"    // contour profile
-	GeneratePocketCommandID     = "CAM.GeneratePocket"     // area-clearing pocket
-	GenerateAdaptiveCommandID   = "CAM.GenerateAdaptive"   // high-speed adaptive clearing
-	GenerateRestCommandID       = "CAM.GenerateRest"       // rest machining (wall band a larger tool missed)
-	GenerateTrochoidalCommandID = "CAM.GenerateTrochoidal" // trochoidal contour milling
-	GenerateSlotCommandID       = "CAM.GenerateSlot"       // slot / groove milling
-	GenerateProbeCommandID      = "CAM.GenerateProbe"      // workpiece touch probing
-	GenerateHelixCommandID      = "CAM.GenerateHelix"      // helical bore
-	GenerateThreadMillCommandID = "CAM.GenerateThreadMill" // thread milling
-	GenerateMillFaceCommandID   = "CAM.GenerateMillFace"   // face milling
-	GenerateEngraveCommandID    = "CAM.GenerateEngrave"    // engraving
-	GenerateChamferCommandID    = "CAM.GenerateChamfer"    // edge chamfer / deburr
-	GenerateSurfaceCommandID    = "CAM.GenerateSurface"    // 3D surface finishing (parallel drop-cutter)
-	GenerateWaterlineCommandID  = "CAM.GenerateWaterline"  // 3D waterline (constant-Z) finishing
-	GenerateAllCommandID        = "CAM.GenerateAll"        // one program over several ops + tools
-	PreviewProfileCommandID     = "CAM.PreviewProfile"     // transient toolpath preview (not committed)
-	ClearPreviewCommandID       = "CAM.ClearPreview"       // remove the transient toolpath preview
-	ShowOperationsCommandID     = "CAM.ShowOperations"     // open the operations browser
-	EditOperationCommandID      = "CAM.EditOperation"      // open the operation editor
-	RegenerateCommandID         = "CAM.RegenerateJob"      // re-run + re-post the edited job
-	ToggleOpCommandID           = "CAM.ToggleOperation"    // enable/disable the selected operation
-	MoveOpUpCommandID           = "CAM.MoveOperationUp"    // move the selected operation earlier
-	MoveOpDownCommandID         = "CAM.MoveOperationDown"  // move the selected operation later
-	DeleteOpCommandID           = "CAM.DeleteOperation"    // remove the selected operation
-	DuplicateOpCommandID        = "CAM.DuplicateOperation" // copy the selected operation
-	AddTabsCommandID            = "CAM.AddTabs"            // add holding tabs to the selected operation
-	AddDogboneCommandID         = "CAM.AddDogbone"         // add dogbone relief to the selected operation
-	AddRampCommandID            = "CAM.AddRamp"            // add ramp entry to the selected operation
-	AddLeadInOutCommandID       = "CAM.AddLeadInOut"       // add lead-in/out to the selected operation
-	ClearDressupsCommandID      = "CAM.ClearDressups"      // remove the selected operation's dressups
-	ShowToolsCommandID          = "CAM.ShowTools"          // open the tool-library browser
-	AddEndmillCommandID         = "CAM.AddEndmill"         // add an end mill to the library
-	AddDrillCommandID           = "CAM.AddDrill"           // add a drill to the library
-	AddBallnoseCommandID        = "CAM.AddBallnose"        // add a ball-nose to the library
-	RemoveToolCommandID         = "CAM.RemoveTool"         // remove the last library tool
-	ExportToolsCommandID        = "CAM.ExportTools"        // export the tool library to a file
-	ImportToolsCommandID        = "CAM.ImportTools"        // import a tool library from a file
-	SaveJobCommandID            = "CAM.SaveJob"            // persist the job into the document
-	LoadJobCommandID            = "CAM.LoadJob"            // load the job from the document
-	SaveGCodeCommandID          = "CAM.SaveGCode"          // export the posted program to a file
+	GenerateJobCommandID         = "CAM.GenerateJob"         // drilling (kept stable for M1 callers)
+	GenerateProfileCommandID     = "CAM.GenerateProfile"     // contour profile
+	GeneratePocketCommandID      = "CAM.GeneratePocket"      // area-clearing pocket
+	GenerateAdaptiveCommandID    = "CAM.GenerateAdaptive"    // high-speed adaptive clearing
+	GenerateRestCommandID        = "CAM.GenerateRest"        // rest machining (wall band a larger tool missed)
+	GenerateTrochoidalCommandID  = "CAM.GenerateTrochoidal"  // trochoidal contour milling
+	GenerateSlotCommandID        = "CAM.GenerateSlot"        // slot / groove milling
+	GenerateProbeCommandID       = "CAM.GenerateProbe"       // workpiece touch probing
+	GenerateHelixCommandID       = "CAM.GenerateHelix"       // helical bore
+	GenerateThreadMillCommandID  = "CAM.GenerateThreadMill"  // thread milling
+	GenerateCounterboreCommandID = "CAM.GenerateCounterbore" // counterbore / spot-face
+	GenerateMillFaceCommandID    = "CAM.GenerateMillFace"    // face milling
+	GenerateEngraveCommandID     = "CAM.GenerateEngrave"     // engraving
+	GenerateChamferCommandID     = "CAM.GenerateChamfer"     // edge chamfer / deburr
+	GenerateSurfaceCommandID     = "CAM.GenerateSurface"     // 3D surface finishing (parallel drop-cutter)
+	GenerateWaterlineCommandID   = "CAM.GenerateWaterline"   // 3D waterline (constant-Z) finishing
+	GenerateAllCommandID         = "CAM.GenerateAll"         // one program over several ops + tools
+	PreviewProfileCommandID      = "CAM.PreviewProfile"      // transient toolpath preview (not committed)
+	ClearPreviewCommandID        = "CAM.ClearPreview"        // remove the transient toolpath preview
+	ShowOperationsCommandID      = "CAM.ShowOperations"      // open the operations browser
+	EditOperationCommandID       = "CAM.EditOperation"       // open the operation editor
+	RegenerateCommandID          = "CAM.RegenerateJob"       // re-run + re-post the edited job
+	ToggleOpCommandID            = "CAM.ToggleOperation"     // enable/disable the selected operation
+	MoveOpUpCommandID            = "CAM.MoveOperationUp"     // move the selected operation earlier
+	MoveOpDownCommandID          = "CAM.MoveOperationDown"   // move the selected operation later
+	DeleteOpCommandID            = "CAM.DeleteOperation"     // remove the selected operation
+	DuplicateOpCommandID         = "CAM.DuplicateOperation"  // copy the selected operation
+	AddTabsCommandID             = "CAM.AddTabs"             // add holding tabs to the selected operation
+	AddDogboneCommandID          = "CAM.AddDogbone"          // add dogbone relief to the selected operation
+	AddRampCommandID             = "CAM.AddRamp"             // add ramp entry to the selected operation
+	AddLeadInOutCommandID        = "CAM.AddLeadInOut"        // add lead-in/out to the selected operation
+	ClearDressupsCommandID       = "CAM.ClearDressups"       // remove the selected operation's dressups
+	ShowToolsCommandID           = "CAM.ShowTools"           // open the tool-library browser
+	AddEndmillCommandID          = "CAM.AddEndmill"          // add an end mill to the library
+	AddDrillCommandID            = "CAM.AddDrill"            // add a drill to the library
+	AddBallnoseCommandID         = "CAM.AddBallnose"         // add a ball-nose to the library
+	RemoveToolCommandID          = "CAM.RemoveTool"          // remove the last library tool
+	ExportToolsCommandID         = "CAM.ExportTools"         // export the tool library to a file
+	ImportToolsCommandID         = "CAM.ImportTools"         // import a tool library from a file
+	SaveJobCommandID             = "CAM.SaveJob"             // persist the job into the document
+	LoadJobCommandID             = "CAM.LoadJob"             // load the job from the document
+	SaveGCodeCommandID           = "CAM.SaveGCode"           // export the posted program to a file
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -138,6 +139,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateProbeCommandID, "Generate Probe Job", "Probe the stock top and two edges to find the work origin (G38.2), and post it to G-code."},
 	{GenerateHelixCommandID, "Generate Helix Job", "Bore the part's holes with a helix (for holes wider than the tool)."},
 	{GenerateThreadMillCommandID, "Generate Thread Job", "Thread-mill the part's holes by helical interpolation."},
+	{GenerateCounterboreCommandID, "Generate Counterbore Job", "Spot-face a flat-bottom recess at each hole top for a screw head."},
 	{GenerateMillFaceCommandID, "Generate Face Job", "Face the top of the stock over the part's outline."},
 	{GenerateEngraveCommandID, "Generate Engrave Job", "Engrave the part's outline on the tool centre."},
 	{GenerateChamferCommandID, "Generate Chamfer Job", "Break (bevel) the part's top edge with a V-tool chamfer pass."},
@@ -257,6 +259,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunHelixJobOnHost(body) })
 	case GenerateThreadMillCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunThreadMillJobOnHost(body) })
+	case GenerateCounterboreCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunCounterboreJobOnHost(body) })
 	case GenerateMillFaceCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunMillFaceJobOnHost(body) })
 	case GenerateEngraveCommandID:

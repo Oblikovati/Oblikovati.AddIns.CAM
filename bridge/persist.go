@@ -126,6 +126,10 @@ type opDoc struct {
 	// Probe
 	ProbeFeed float64 `json:"probeFeed,omitempty"`
 
+	// Counterbore
+	Diameter float64 `json:"diameter,omitempty"`
+	Depth    float64 `json:"depth,omitempty"`
+
 	Dressups []dressupDoc `json:"dressups,omitempty"`
 }
 
@@ -291,6 +295,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("threadmill", o.OpBase)
 		d.MajorDiameter, d.Pitch, d.Internal, d.Climb = o.MajorDiameter, o.Pitch, o.Internal, o.Climb
 		return d, nil
+	case *CounterboreOp:
+		d := baseDoc("counterbore", o.OpBase)
+		d.Diameter, d.Depth, d.Pitch = o.Diameter, o.Depth, o.Pitch
+		return d, nil
 	case *SurfaceOp:
 		d := baseDoc("surface", o.OpBase)
 		d.StepOver, d.Sampling, d.Zigzag = o.StepOver, o.Sampling, o.Zigzag
@@ -333,6 +341,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
 	case "threadmill":
 		return &ThreadMillOp{OpBase: opBaseFrom(d), MajorDiameter: d.MajorDiameter, Pitch: d.Pitch, Internal: d.Internal, Climb: d.Climb}, nil
+	case "counterbore":
+		return &CounterboreOp{OpBase: opBaseFrom(d), Diameter: d.Diameter, Depth: d.Depth, Pitch: d.Pitch}, nil
 	case "surface":
 		return &SurfaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Sampling: d.Sampling, Zigzag: d.Zigzag}, nil
 	case "waterline":
