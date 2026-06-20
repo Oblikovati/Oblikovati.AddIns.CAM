@@ -29,13 +29,20 @@ func (e *Engine) showOperationEditorAction() (*JobResult, error) {
 
 // ShowOperationEditor builds the operation-editor window: a dropdown to pick which operation to
 // edit, that operation's editable parameters as fields, and a Regenerate button to re-run and
-// re-post the job with the edits. An empty job shows a hint.
+// re-post the job with the edits. An empty job shows a hint. The window spec is assembled under
+// the engine lock (so reading operation parameters can't race a concurrent edit), then sent.
 func (e *Engine) ShowOperationEditor(job *Job, idx int) (wire.OKResult, error) {
+	return e.api.DockableWindows().Set(e.editorSpec(job, idx))
+}
+
+// editorSpec builds the operation-editor window spec under the engine lock.
+func (e *Engine) editorSpec(job *Job, idx int) wire.DockableWindowSpec {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	spec := wire.DockableWindowSpec{ID: OpEditorID, Title: "CAM Operation", Dock: types.DockLeft, Visible: true}
 	if job == nil || len(job.Operations) == 0 {
-		return e.api.DockableWindows().Set(wire.DockableWindowSpec{
-			ID: OpEditorID, Title: "CAM Operation", Dock: types.DockLeft, Visible: true,
-			Controls: []wire.PanelControlSpec{client.PanelLabel("empty", "No job yet — generate one first.")},
-		})
+		spec.Controls = []wire.PanelControlSpec{client.PanelLabel("empty", "No job yet — generate one first.")}
+		return spec
 	}
 	if idx < 0 || idx >= len(job.Operations) {
 		idx = 0
@@ -49,7 +56,7 @@ func (e *Engine) ShowOperationEditor(job *Job, idx int) (wire.OKResult, error) {
 		client.PanelSeparator(),
 	}
 	controls = append(controls, opParamControls(op)...)
-	controls = append(controls,
+	spec.Controls = append(controls,
 		client.PanelSeparator(),
 		client.PanelButton("toggle", "Enable / Disable", ToggleOpCommandID),
 		client.PanelButton("up", "Move Up", MoveOpUpCommandID),
@@ -58,9 +65,7 @@ func (e *Engine) ShowOperationEditor(job *Job, idx int) (wire.OKResult, error) {
 		client.PanelSeparator(),
 		client.PanelButton("regen", "Regenerate + Post", RegenerateCommandID),
 	)
-	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
-		ID: OpEditorID, Title: "CAM Operation", Dock: types.DockLeft, Visible: true, Controls: controls,
-	})
+	return spec
 }
 
 // opParamControls renders an operation's editable parameters as panel controls (or a hint when
@@ -109,13 +114,12 @@ func (e *Engine) handleOpEditorEdit(controlID, value string) {
 	}
 	e.mu.Lock()
 	job, idx := e.lastJob, e.editingOp
+	if job != nil && idx >= 0 && idx < len(job.Operations) {
+		if ed, ok := job.Operations[idx].(Editable); ok {
+			ed.SetParameter(controlID, value) // under the lock: serialised with the editor's reads
+		}
+	}
 	e.mu.Unlock()
-	if job == nil || idx < 0 || idx >= len(job.Operations) {
-		return
-	}
-	if ed, ok := job.Operations[idx].(Editable); ok {
-		ed.SetParameter(controlID, value)
-	}
 }
 
 // parseOpChoice reads the leading "N:" index of an operation-dropdown value back to a 0-based
