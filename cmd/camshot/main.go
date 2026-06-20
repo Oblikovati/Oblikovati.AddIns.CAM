@@ -74,6 +74,7 @@ func shots() []shot {
 		{"dressup-leadinout", profileOp([]bridge.Dressup{bridge.NewLeadInOutDressup(2, dressup.SideLeft)})},
 		{"drilling", &bridge.DrillingOp{OpBase: millEnv("Drilling"), Holes: holes()}},
 		{"probe", &bridge.ProbeOp{OpBase: deepEnv("Probe"), ProbeFeed: 50, Points: cornerProbe()}},
+		{"boreprobe", &bridge.ProbeOp{OpBase: deepEnv("Bore Probe"), ProbeFeed: 50, Points: boreProbe()}},
 		{"helix", &bridge.HelixOp{OpBase: deepEnv("Helix"), HoleRadius: 8, Pitch: 1.5, Direction: gen.HelixCW, Holes: boreHole()}},
 		{"threadmill", &bridge.ThreadMillOp{OpBase: deepEnv("Thread"), MajorDiameter: 16, Pitch: 1.5, Internal: true, Climb: true, Holes: boreHole()}},
 		{"counterbore", &bridge.CounterboreOp{OpBase: deepEnv("Counterbore"), Diameter: 14, Depth: 4, Pitch: 1, Holes: boreHole()}},
@@ -134,6 +135,20 @@ func cornerProbe() []gen.ProbePoint {
 		{Approach: gcode.Vector3{X: -5, Y: 8, Z: -2}, Target: gcode.Vector3{X: 6, Y: 8, Z: -2}}, // probe +X
 		{Approach: gcode.Vector3{X: 8, Y: -5, Z: -2}, Target: gcode.Vector3{X: 8, Y: 6, Z: -2}}, // probe +Y
 	}
+}
+
+// boreProbe is a four-touch bore-centre cycle: from a hole centre, probe outward to the wall in
+// +X, −X, +Y, −Y, for the bore-probe shot.
+func boreProbe() []gen.ProbePoint {
+	centre := gcode.Vector3{X: 12, Y: 12, Z: -3}
+	var pts []gen.ProbePoint
+	for _, d := range [][2]float64{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+		pts = append(pts, gen.ProbePoint{
+			Approach: centre,
+			Target:   gcode.Vector3{X: 12 + d[0]*10, Y: 12 + d[1]*10, Z: -3},
+		})
+	}
+	return pts
 }
 
 // boreHole is a single central bored/tapped hole (mm) for the helix and thread-mill shots.

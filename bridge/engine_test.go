@@ -266,6 +266,21 @@ func TestEngineRunSlotJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunBoreProbeJob runs the bore-centre probing flow and checks it emits four G38.2
+// touch moves per detected hole.
+func TestEngineRunBoreProbeJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunBoreProbeJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunBoreProbeJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "bore-probed") {
+		t.Errorf("summary = %q, want it to mention bore-probed", res.Summary)
+	}
+	if probes := strings.Count(res.GCode, "G38.2"); probes == 0 || probes%4 != 0 {
+		t.Errorf("bore probing should emit four G38.2 moves per hole, got %d", probes)
+	}
+}
+
 // TestEngineRunProbeJob runs the probing flow and checks it emits G38.2 touch moves.
 func TestEngineRunProbeJob(t *testing.T) {
 	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunProbeJobOnHost(0)
