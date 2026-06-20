@@ -19,6 +19,7 @@ point, **grey** = the driving part boundary.
 | `rest.png` | Rest machining: only the wall band a previous larger tool left (a few rings, interior untouched). |
 | `millface.png` | Facing: raster rows over the region. |
 | `engrave.png` | Engraving: the contour run on the tool centre (no compensation). |
+| `chamfer.png` | Chamfer / edge-break: a single bevel pass offset by the chamfer width at the angle-derived depth. |
 | `dressup-tabs.png` | Holding tabs lifting the tool over the boundary. |
 | `dressup-dogbone.png` | Dogbone corner relief: 45° bones at the corners. |
 | `dressup-ramp.png` | Ramp entry: the straight plunge replaced by an angled descent. |

@@ -223,6 +223,20 @@ func TestEngineRunThreadMillJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunChamferJob runs the chamfer flow and checks it bevels the outline.
+func TestEngineRunChamferJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunChamferJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunChamferJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "chamfered") {
+		t.Errorf("summary = %q, want it to mention chamfered", res.Summary)
+	}
+	if !strings.Contains(res.GCode, "G1") {
+		t.Error("chamfer should emit a cutting pass")
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}

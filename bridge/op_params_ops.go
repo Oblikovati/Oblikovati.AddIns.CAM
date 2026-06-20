@@ -211,6 +211,35 @@ func (op *HelixOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Chamfer ---
+
+// Parameters lists the editable chamfer parameters.
+func (op *ChamferOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("width", "Width (mm)", op.Width),
+		numberParam("toolAngle", "Tool angle (°)", op.ToolAngle),
+		choiceParam("side", "Side", op.Side, gen.SideOutside, gen.SideInside, gen.SideOn),
+		boolParam("climb", "Climb", op.Climb),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one chamfer parameter edit.
+func (op *ChamferOp) SetParameter(id, value string) bool {
+	switch id {
+	case "width":
+		op.Width = panelNum(value, op.Width)
+	case "toolAngle":
+		op.ToolAngle = panelNum(value, op.ToolAngle)
+	case "side":
+		op.Side = value
+	case "climb":
+		op.Climb = parseBool(value)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Thread mill ---
 
 // Parameters lists the editable thread-milling parameters.

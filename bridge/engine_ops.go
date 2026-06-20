@@ -17,6 +17,8 @@ const (
 	threadPitch     = 1.5  // mm — thread lead per turn
 	faceDepth       = 1.0  // mm — facing depth off the stock top
 	engraveDepth    = 0.5  // mm — engraving depth off the stock top
+	chamferWidth    = 1.0  // mm — chamfer/deburr bevel width
+	chamferAngle    = 90.0 // deg — chamfer V-tool included angle
 )
 
 // RapidOverlayID is the client-graphics id for the rapid-move (grey) overlay, drawn beside
@@ -78,6 +80,21 @@ func (e *Engine) RunEngraveJobOnHost(bodyIndex int) (*JobResult, error) {
 	env.FinalDepth = stock.TopZ() - engraveDepth
 	job.Operations = []Operation{&EngraveOp{OpBase: env, Climb: true, Boundary: boundary}}
 	return e.postPreviewResult(job, "engraved the outline")
+}
+
+// RunChamferJobOnHost breaks (bevels) the part's top edge with a V-tool chamfer pass.
+func (e *Engine) RunChamferJobOnHost(bodyIndex int) (*JobResult, error) {
+	boundary, stock, err := e.contourAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	env := e.millEnvelope("Chamfer", stock)
+	env.StartDepth = stock.TopZ()
+	job.Operations = []Operation{&ChamferOp{
+		OpBase: env, Width: chamferWidth, ToolAngle: chamferAngle, Side: gen.SideOutside, Climb: true, Boundary: boundary,
+	}}
+	return e.postPreviewResult(job, "chamfered the top edge")
 }
 
 // postPreviewResult runs the job, remembers it (for the operations browser + Save), pushes a

@@ -92,6 +92,7 @@ const (
 	GenerateThreadMillCommandID = "CAM.GenerateThreadMill" // thread milling
 	GenerateMillFaceCommandID   = "CAM.GenerateMillFace"   // face milling
 	GenerateEngraveCommandID    = "CAM.GenerateEngrave"    // engraving
+	GenerateChamferCommandID    = "CAM.GenerateChamfer"    // edge chamfer / deburr
 	GenerateSurfaceCommandID    = "CAM.GenerateSurface"    // 3D surface finishing (parallel drop-cutter)
 	GenerateWaterlineCommandID  = "CAM.GenerateWaterline"  // 3D waterline (constant-Z) finishing
 	GenerateAllCommandID        = "CAM.GenerateAll"        // one program over several ops + tools
@@ -133,6 +134,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateThreadMillCommandID, "Generate Thread Job", "Thread-mill the part's holes by helical interpolation."},
 	{GenerateMillFaceCommandID, "Generate Face Job", "Face the top of the stock over the part's outline."},
 	{GenerateEngraveCommandID, "Generate Engrave Job", "Engrave the part's outline on the tool centre."},
+	{GenerateChamferCommandID, "Generate Chamfer Job", "Break (bevel) the part's top edge with a V-tool chamfer pass."},
 	{GenerateSurfaceCommandID, "Generate Surface Job", "Finish the part's 3D surface with a ball-nose end mill (parallel drop-cutter passes)."},
 	{GenerateWaterlineCommandID, "Generate Waterline Job", "Finish the part's 3D surface with constant-Z (waterline) passes — good for steep walls."},
 	{GenerateAllCommandID, "Generate All Operations", "Generate one program that drills, contours, and surface-finishes the part — with tool changes between operations."},
@@ -247,6 +249,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunMillFaceJobOnHost(body) })
 	case GenerateEngraveCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunEngraveJobOnHost(body) })
+	case GenerateChamferCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunChamferJobOnHost(body) })
 	case GenerateSurfaceCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunSurface3DJobOnHost(body) })
 	case GenerateWaterlineCommandID:
