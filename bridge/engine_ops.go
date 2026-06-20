@@ -5,6 +5,7 @@ package bridge
 import (
 	"fmt"
 
+	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/gen"
 	"oblikovati.org/cam/bridge/post"
 )
@@ -53,6 +54,48 @@ func (e *Engine) RunThreadMillJobOnHost(bodyIndex int) (*JobResult, error) {
 		Holes: holes,
 	}}
 	return e.postPreviewResult(job, fmt.Sprintf("thread-milled %d hole(s)", len(holes)))
+}
+
+// probeApproachGap is how far (mm) outside a face the probe starts its approach, and
+// probeOvertravel how far past the expected face the probe is allowed to travel before erroring.
+const (
+	probeApproachGap = 5.0
+	probeOvertravel  = 5.0
+)
+
+// RunProbeJobOnHost probes the stock's top and two edges to find the work origin.
+func (e *Engine) RunProbeJobOnHost(bodyIndex int) (*JobResult, error) {
+	_, stock, err := e.detectHolesAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&ProbeOp{
+		OpBase: e.millEnvelope("Probe", stock),
+		Points: cornerProbePoints(stock),
+	}}
+	return e.postPreviewResult(job, "probed the stock top and two edges")
+}
+
+// cornerProbePoints builds a three-touch corner cycle on the stock's minimum corner: a Z
+// touch-off on the top, then an edge probe toward the −X and −Y faces at mid height.
+func cornerProbePoints(stock Stock) []gen.ProbePoint {
+	midZ := (stock.Min.Z + stock.Max.Z) / 2
+	inX, inY := stock.Min.X+probeApproachGap*2, stock.Min.Y+probeApproachGap*2
+	return []gen.ProbePoint{
+		{ // top surface: drop onto it
+			Approach: gcode.Vector3{X: inX, Y: inY, Z: stock.Max.Z + probeApproachGap},
+			Target:   gcode.Vector3{X: inX, Y: inY, Z: stock.Min.Z},
+		},
+		{ // −X face: probe toward +X
+			Approach: gcode.Vector3{X: stock.Min.X - probeApproachGap, Y: inY, Z: midZ},
+			Target:   gcode.Vector3{X: stock.Min.X + probeOvertravel, Y: inY, Z: midZ},
+		},
+		{ // −Y face: probe toward +Y
+			Approach: gcode.Vector3{X: inX, Y: stock.Min.Y - probeApproachGap, Z: midZ},
+			Target:   gcode.Vector3{X: inX, Y: stock.Min.Y + probeOvertravel, Z: midZ},
+		},
+	}
 }
 
 // RunMillFaceJobOnHost faces the top of the stock over the part's outline.

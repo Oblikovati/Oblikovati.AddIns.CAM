@@ -123,6 +123,9 @@ type opDoc struct {
 	LoopRadius float64 `json:"loopRadius,omitempty"`
 	Advance    float64 `json:"advance,omitempty"`
 
+	// Probe
+	ProbeFeed float64 `json:"probeFeed,omitempty"`
+
 	Dressups []dressupDoc `json:"dressups,omitempty"`
 }
 
@@ -276,6 +279,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("slot", o.OpBase)
 		d.Width, d.StepOver, d.Climb, d.StepDown = o.Width, o.StepOver, o.Climb, o.StepDown
 		return d, nil
+	case *ProbeOp:
+		d := baseDoc("probe", o.OpBase)
+		d.ProbeFeed = o.ProbeFeed
+		return d, nil
 	case *HelixOp:
 		d := baseDoc("helix", o.OpBase)
 		d.HoleRadius, d.Pitch, d.Direction = o.HoleRadius, o.Pitch, o.Direction
@@ -320,6 +327,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &ChamferOp{OpBase: opBaseFrom(d), Width: d.Width, ToolAngle: d.ToolAngle, Side: d.Side, Climb: d.Climb}, nil
 	case "slot":
 		return &SlotOp{OpBase: opBaseFrom(d), Width: d.Width, StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
+	case "probe":
+		return &ProbeOp{OpBase: opBaseFrom(d), ProbeFeed: d.ProbeFeed}, nil
 	case "helix":
 		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
 	case "threadmill":

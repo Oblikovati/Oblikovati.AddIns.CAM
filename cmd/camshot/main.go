@@ -73,6 +73,7 @@ func shots() []shot {
 		{"dressup-ramp", profileOp([]bridge.Dressup{bridge.NewRampDressup(4, 0.26)})},
 		{"dressup-leadinout", profileOp([]bridge.Dressup{bridge.NewLeadInOutDressup(2, dressup.SideLeft)})},
 		{"drilling", &bridge.DrillingOp{OpBase: millEnv("Drilling"), Holes: holes()}},
+		{"probe", &bridge.ProbeOp{OpBase: deepEnv("Probe"), ProbeFeed: 50, Points: cornerProbe()}},
 		{"helix", &bridge.HelixOp{OpBase: deepEnv("Helix"), HoleRadius: 8, Pitch: 1.5, Direction: gen.HelixCW, Holes: boreHole()}},
 		{"threadmill", &bridge.ThreadMillOp{OpBase: deepEnv("Thread"), MajorDiameter: 16, Pitch: 1.5, Internal: true, Climb: true, Holes: boreHole()}},
 		{"surface", &bridge.SurfaceOp{OpBase: deepEnv("Surface"), Zigzag: true, Rows: pyramidRows()}},
@@ -121,6 +122,16 @@ func pyramidLevels() []gen.LevelLoops {
 		levels = append(levels, gen.LevelLoops{Z: z, Loops: [][]gcode.Vector3{loop}})
 	}
 	return levels
+}
+
+// cornerProbe is a three-touch corner cycle (Z top-off plus two edge probes) on the sample
+// part's bounding box, for the probe shot.
+func cornerProbe() []gen.ProbePoint {
+	return []gen.ProbePoint{
+		{Approach: gcode.Vector3{X: 8, Y: 8, Z: 5}, Target: gcode.Vector3{X: 8, Y: 8, Z: -3}},   // probe down
+		{Approach: gcode.Vector3{X: -5, Y: 8, Z: -2}, Target: gcode.Vector3{X: 6, Y: 8, Z: -2}}, // probe +X
+		{Approach: gcode.Vector3{X: 8, Y: -5, Z: -2}, Target: gcode.Vector3{X: 8, Y: 6, Z: -2}}, // probe +Y
+	}
 }
 
 // boreHole is a single central bored/tapped hole (mm) for the helix and thread-mill shots.

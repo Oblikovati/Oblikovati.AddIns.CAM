@@ -8,8 +8,9 @@ with:
 go run ./cmd/camshot screenshots
 ```
 
-Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **green** = plunge / drilled
-point, **grey** = the driving part boundary.
+Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = cut above the floor
+(tab lift / ramp), **green** = plunge / drilled point, **magenta** = G38 touch-probe move, **grey**
+= the driving part boundary.
 
 | Image | Validates |
 |---|---|
@@ -27,6 +28,7 @@ point, **grey** = the driving part boundary.
 | `dressup-ramp.png` | Ramp entry: the straight plunge replaced by an angled descent. |
 | `dressup-leadinout.png` | Lead in/out: plunge relocated off the contour, tangential arc entry/exit. |
 | `drilling.png` | Drilling: canned-cycle points at each detected hole. |
+| `probe.png` | Probing: G38.2 touch moves finding the stock top and two edges (magenta). |
 | `helix.png` | Helix bore: the tool-centre orbit for a hole wider than the tool. |
 | `threadmill.png` | Thread milling: the thread orbit plus the lead-in/out arc easing on/off the thread. |
 | `surface.png` | 3D surface finish: parallel zig-zag passes; the depth shade (orange high → blue low) shows the surface. |

@@ -172,6 +172,26 @@ func (op *TrochoidalOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Probe ---
+
+// Parameters lists the editable probe parameters.
+func (op *ProbeOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("probeFeed", "Probe feed (mm/min)", op.ProbeFeed),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one probe parameter edit.
+func (op *ProbeOp) SetParameter(id, value string) bool {
+	switch id {
+	case "probeFeed":
+		op.ProbeFeed = panelNum(value, op.ProbeFeed)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Drilling ---
 
 // Parameters lists the editable drilling parameters.

@@ -47,6 +47,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("rest", "Rest", GenerateRestCommandID),
 			client.PanelButton("trochoidal", "Trochoidal", GenerateTrochoidalCommandID),
 			client.PanelButton("slot", "Slot", GenerateSlotCommandID),
+			client.PanelButton("probe", "Probe", GenerateProbeCommandID),
 			client.PanelButton("helix", "Helix bore", GenerateHelixCommandID),
 			client.PanelButton("thread", "Thread mill", GenerateThreadMillCommandID),
 			client.PanelButton("face", "Face", GenerateMillFaceCommandID),
