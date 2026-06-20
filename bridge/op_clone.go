@@ -17,6 +17,7 @@ func (b OpBase) cloned(suffix string) OpBase {
 func (op *DrillingOp) Clone() Operation { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *ProfileOp) Clone() Operation  { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *PocketOp) Clone() Operation   { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
+func (op *AdaptiveOp) Clone() Operation { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *MillFaceOp) Clone() Operation { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *EngraveOp) Clone() Operation  { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *HelixOp) Clone() Operation    { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }

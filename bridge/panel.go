@@ -43,6 +43,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("drill", "Drilling", GenerateJobCommandID),
 			client.PanelButton("profile", "Profile", GenerateProfileCommandID),
 			client.PanelButton("pocket", "Pocket", GeneratePocketCommandID),
+			client.PanelButton("adaptive", "Adaptive", GenerateAdaptiveCommandID),
 			client.PanelButton("helix", "Helix bore", GenerateHelixCommandID),
 			client.PanelButton("face", "Face", GenerateMillFaceCommandID),
 			client.PanelButton("engrave", "Engrave", GenerateEngraveCommandID),

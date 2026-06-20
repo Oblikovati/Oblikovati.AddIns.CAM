@@ -69,6 +69,8 @@ func operationKind(op Operation) string {
 		return "Profile"
 	case *PocketOp:
 		return "Pocket"
+	case *AdaptiveOp:
+		return "Adaptive"
 	case *MillFaceOp:
 		return "Face"
 	case *EngraveOp:

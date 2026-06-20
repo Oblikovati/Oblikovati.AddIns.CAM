@@ -233,6 +233,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("pocket", o.OpBase)
 		d.StepOver, d.Climb, d.StepDown = o.StepOver, o.Climb, o.StepDown
 		return d, nil
+	case *AdaptiveOp:
+		d := baseDoc("adaptive", o.OpBase)
+		d.StepOver, d.Climb, d.StepDown = o.StepOver, o.Climb, o.StepDown
+		return d, nil
 	case *MillFaceOp:
 		d := baseDoc("millface", o.OpBase)
 		d.StepOver, d.StepDown = o.StepOver, o.StepDown
@@ -267,6 +271,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &ProfileOp{OpBase: opBaseFrom(d), Side: d.Side, OffsetExtra: d.OffsetExtra, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "pocket":
 		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
+	case "adaptive":
+		return &AdaptiveOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "millface":
 		return &MillFaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown}, nil
 	case "engrave":

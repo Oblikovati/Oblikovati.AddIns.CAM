@@ -36,6 +36,16 @@ func (e *Engine) RunPocketJobOnHost(bodyIndex int) (*JobResult, error) {
 	return e.finishMillJob(job, boundary, "pocketed")
 }
 
+// RunAdaptiveJobOnHost clears the body's outline region with high-speed adaptive clearing:
+// extract the silhouette, build an adaptive job, post it, and overlay the toolpath.
+func (e *Engine) RunAdaptiveJobOnHost(bodyIndex int) (*JobResult, error) {
+	job, boundary, err := e.buildAdaptiveJob(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	return e.finishMillJob(job, boundary, "adaptively cleared")
+}
+
 // finishMillJob posts a milling job, overlays its boundary contour, and builds the summary.
 func (e *Engine) finishMillJob(job *Job, boundary geom2d.Polygon, verb string) (*JobResult, error) {
 	gcodeText, err := e.GenerateGCode(job)
@@ -87,6 +97,23 @@ func (e *Engine) buildPocketJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 	job.Operations = []Operation{&PocketOp{
 		OpBase:   e.millEnvelope("Pocket", stock),
 		StepOver: cut.StepOver,
+		Climb:    true,
+		StepDown: cut.StepDown,
+		Boundary: boundary,
+	}}
+	return job, boundary, nil
+}
+
+// buildAdaptiveJob assembles a high-speed adaptive clearing job over the body's silhouette region.
+func (e *Engine) buildAdaptiveJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
+	boundary, stock, err := e.contourAndStock(bodyIndex)
+	if err != nil {
+		return nil, nil, err
+	}
+	cut := e.cutting()
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&AdaptiveOp{
+		OpBase:   e.millEnvelope("Adaptive", stock),
 		Climb:    true,
 		StepDown: cut.StepDown,
 		Boundary: boundary,
