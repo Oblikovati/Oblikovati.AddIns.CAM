@@ -172,9 +172,10 @@ func (e *Engine) buildAdaptiveJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 const restPrevToolFactor = 2.0
 
 // buildRestJob assembles a rest-machining job over the body's silhouette region, assuming a
-// previous tool restPrevToolFactor× the current one cleared the interior.
+// previous tool restPrevToolFactor× the current one cleared the interior. The wall bands around
+// any inner holes/islands the section reveals are cleared too.
 func (e *Engine) buildRestJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
-	boundary, stock, err := e.contourAndStock(bodyIndex)
+	contours, stock, err := e.sectionContours(bodyIndex)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,9 +187,10 @@ func (e *Engine) buildRestJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 		StepOver:         cut.StepOver,
 		Climb:            true,
 		StepDown:         cut.StepDown,
-		Boundary:         boundary,
+		Boundary:         contours[0],
+		Islands:          contours[1:],
 	}}
-	return job, boundary, nil
+	return job, contours[0], nil
 }
 
 // trochoidalLoopFactor and trochoidalAdvanceFactor seed the trochoidal loop radius and advance

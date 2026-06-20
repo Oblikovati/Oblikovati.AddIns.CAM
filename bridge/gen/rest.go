@@ -20,6 +20,7 @@ type RestParams struct {
 	PrevRadius float64
 	StepOver   float64 // fraction of tool diameter between rings (0..1); 0 → defaultStepOver
 	Climb      bool
+	Islands    []geom2d.Polygon // standing regions; their walls leave their own uncut band to clear
 }
 
 // GenerateRest clears the uncut wall band left by a previous tool of radius PrevRadius: the
@@ -39,13 +40,52 @@ func GenerateRest(boundary geom2d.Polygon, levels []float64, feeds Feeds, p Rest
 	if len(rings) == 0 {
 		return nil, fmt.Errorf("rest machining: no wall band to clear (tool radius %g, previous %g, area %g)", p.ToolRadius, p.PrevRadius, boundary.Area())
 	}
+	keepouts := grownIslands(p.Islands, p.ToolRadius)
+	islandBands := restIslandBands(p.Islands, p.ToolRadius, p.PrevRadius, p.stepDistance())
 	var cmds []gcode.Command
 	for _, z := range levels {
 		for _, ring := range rings {
+			oriented := orient(ring, p.Climb)
+			if len(keepouts) == 0 {
+				cmds = append(cmds, walkLoop(oriented, z, feeds)...)
+				continue
+			}
+			for _, run := range clipRingAroundIslands(oriented, keepouts) {
+				cmds = append(cmds, walkOpenPath(run, z, feeds)...)
+			}
+		}
+		for _, ring := range islandBands {
 			cmds = append(cmds, walkLoop(orient(ring, p.Climb), z, feeds)...)
 		}
 	}
 	return cmds, nil
+}
+
+// restIslandBands builds the wall-band rings around each island. A previous, larger tool could
+// bring its centre no closer than its radius to an island wall, so it leaves an uncut band hugging
+// every island just as it does the outer boundary. The current tool clears it with rings offset
+// OUTWARD from each island — from one current-tool radius (the tool just touching the island wall)
+// out to (but not reaching) the previous tool's radius. Islands set close together do not mutually
+// clip their bands (the common case is well-separated islands); see cam-port/gaps.md.
+func restIslandBands(islands []geom2d.Polygon, radius, prevRadius, spacing float64) []geom2d.Polygon {
+	var rings []geom2d.Polygon
+	for _, isl := range islands {
+		if len(isl) < 3 {
+			continue
+		}
+		ccw := isl.EnsureCCW()
+		for d := radius; d < prevRadius; d += spacing {
+			ring, ok := geom2d.Offset(ccw, d) // positive offset grows the island outward
+			if !ok {
+				break
+			}
+			rings = append(rings, ring)
+			if spacing <= 0 { // guard against a non-advancing loop
+				break
+			}
+		}
+	}
+	return rings
 }
 
 // stepDistance is the spacing between rings in millimetres (step-over fraction × tool diameter),
