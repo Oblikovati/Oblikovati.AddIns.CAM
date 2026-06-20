@@ -88,3 +88,19 @@ func TestPanelEditsStock(t *testing.T) {
 		t.Errorf("stock margins after edits = %+v", g)
 	}
 }
+
+// TestPanelEditsBody routes the body-index field and the generate commands use it.
+func TestPanelEditsBody(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	if e.body() != 0 {
+		t.Errorf("default body = %d, want 0", e.body())
+	}
+	e.applyPanelEdit("body", "2")
+	if e.body() != 2 {
+		t.Errorf("body after edit = %d, want 2", e.body())
+	}
+	e.applyPanelEdit("body", "-1") // negative rejected
+	if e.body() != 2 {
+		t.Errorf("negative body must be rejected, got %d", e.body())
+	}
+}

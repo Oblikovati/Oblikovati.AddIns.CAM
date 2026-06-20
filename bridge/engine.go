@@ -31,6 +31,7 @@ type Engine struct {
 	plungFeed     float64
 	lastJob       *Job   // most recently generated job (for the operations browser + Save)
 	lastGCode     string // most recently posted G-code (for export to a file)
+	targetBody    int    // index of the body the generate commands machine
 	editingOp     int    // index of the operation shown in the operation editor
 	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
 	cut           cutSettings
@@ -213,25 +214,26 @@ func (e *Engine) Notify(ev []byte) {
 // dispatchCommand maps a fired command id to the job that produces its toolpath, ignoring
 // commands the add-in does not own.
 func (e *Engine) dispatchCommand(commandID string) {
+	body := e.body()
 	switch commandID {
 	case GenerateJobCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunDrillingJobOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunDrillingJobOnHost(body) })
 	case GenerateProfileCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunProfileJobOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunProfileJobOnHost(body) })
 	case GeneratePocketCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunPocketJobOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunPocketJobOnHost(body) })
 	case GenerateHelixCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunHelixJobOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunHelixJobOnHost(body) })
 	case GenerateMillFaceCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunMillFaceJobOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunMillFaceJobOnHost(body) })
 	case GenerateEngraveCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunEngraveJobOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunEngraveJobOnHost(body) })
 	case GenerateSurfaceCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunSurface3DJobOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunSurface3DJobOnHost(body) })
 	case GenerateWaterlineCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunWaterlineJobOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunWaterlineJobOnHost(body) })
 	case GenerateAllCommandID:
-		e.launchRun(func() (*JobResult, error) { return e.RunAllJobsOnHost(0) })
+		e.launchRun(func() (*JobResult, error) { return e.RunAllJobsOnHost(body) })
 	case EditOperationCommandID:
 		e.launchRun(e.showOperationEditorAction)
 	case RegenerateCommandID:
@@ -304,6 +306,13 @@ func (e *Engine) launchRun(run func() (*JobResult, error)) {
 		}
 		e.reportStatus(res.Summary)
 	}()
+}
+
+// body returns the index of the body the generate commands machine (set from the panel).
+func (e *Engine) body() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.targetBody
 }
 
 // reportStatus surfaces a job's outcome on the host status bar (best-effort).

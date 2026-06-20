@@ -19,7 +19,7 @@ const CAMPanelID = "com.oblikovati.cam.panel"
 // (applyPanelEdit).
 func (e *Engine) ShowPanel() (wire.OKResult, error) {
 	e.mu.Lock()
-	postName, feed, cut := e.postName, e.plungFeed, e.cut
+	postName, feed, cut, body := e.postName, e.plungFeed, e.cut, e.targetBody
 	e.mu.Unlock()
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID:      CAMPanelID,
@@ -29,6 +29,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 		Controls: []wire.PanelControlSpec{
 			client.PanelLabel("hdr", "— CAM job —"),
 			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl"}, postName),
+			client.PanelTextBox("body", "Body index", strconv.Itoa(body)),
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(feed)),
 			client.PanelTextBox("tool_dia", "Tool ⌀ (mm)", num(cut.ToolDiameter)),
 			client.PanelTextBox("step_down", "Step-down (mm)", num(cut.StepDown)),
@@ -65,6 +66,10 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 	case "post":
 		if v := strings.TrimSpace(value); v == "linuxcnc" || v == "grbl" {
 			e.postName = v
+		}
+	case "body":
+		if b := int(panelNum(value, float64(e.targetBody))); b >= 0 {
+			e.targetBody = b
 		}
 	case "plunge_feed":
 		e.plungFeed = panelNum(value, e.plungFeed)
