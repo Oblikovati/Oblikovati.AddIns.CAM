@@ -30,7 +30,8 @@ func (e *Engine) RunSurface3DJobOnHost(bodyIndex int) (*JobResult, error) {
 	job.Tools[0].Tool.ShapeType = "ballend" // finishing uses a ball-nose cutter
 	diameter := job.Tools[0].Tool.Diameter
 
-	lines := scanLines(stock, surfStepOver)
+	stepOver := passSpacing(e.cutting(), surfStepOver)
+	lines := scanLines(stock, stepOver)
 	rows, err := e.surfacer.DropCutter(tris, diameter, ballCutterLength, stock.BottomZ(), surfSampling, lines)
 	if err != nil {
 		return nil, fmt.Errorf("drop-cutter over %d triangles / %d passes: %w", len(tris), len(lines), err)
@@ -38,7 +39,7 @@ func (e *Engine) RunSurface3DJobOnHost(bodyIndex int) (*JobResult, error) {
 	clRows := toVectorRows(rows)
 	job.Operations = []Operation{&SurfaceOp{
 		OpBase:   e.millEnvelope("Surface", stock),
-		StepOver: surfStepOver, Sampling: surfSampling, Zigzag: true, Rows: clRows,
+		StepOver: stepOver, Sampling: surfSampling, Zigzag: true, Rows: clRows,
 	}}
 	return e.postPreviewResult(job, fmt.Sprintf("finished the surface (%d passes)", countRows(clRows)))
 }

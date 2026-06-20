@@ -62,12 +62,13 @@ func (e *Engine) buildProfileJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	cut := e.cutting()
 	job := e.newMillJob(bodyIndex, stock)
 	job.Operations = []Operation{&ProfileOp{
 		OpBase:   e.millEnvelope("Profile", stock),
 		Side:     "outside",
 		Climb:    true,
-		StepDown: millStepDown,
+		StepDown: cut.StepDown,
 		Boundary: boundary,
 	}}
 	return job, boundary, nil
@@ -79,12 +80,13 @@ func (e *Engine) buildPocketJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	cut := e.cutting()
 	job := e.newMillJob(bodyIndex, stock)
 	job.Operations = []Operation{&PocketOp{
 		OpBase:   e.millEnvelope("Pocket", stock),
-		StepOver: 0.5,
+		StepOver: cut.StepOver,
 		Climb:    true,
-		StepDown: millStepDown,
+		StepDown: cut.StepDown,
 		Boundary: boundary,
 	}}
 	return job, boundary, nil
@@ -94,28 +96,30 @@ func (e *Engine) buildPocketJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 // plunge feed drives both vertical and horizontal feeds for the milestone-2 demo).
 func (e *Engine) newMillJob(bodyIndex int, stock Stock) *Job {
 	e.mu.Lock()
-	feed := e.plungFeed
+	feed, cut := e.plungFeed, e.cut
 	e.mu.Unlock()
 	job := NewJob()
 	job.Stock = stock
 	job.ModelBodies = []int{bodyIndex}
 	job.Tools = []ToolController{{
 		Label: "EndMill", ToolNumber: 1, SpindleSpeed: 5000, SpindleDir: "Forward",
-		VertFeed: feed, HorizFeed: feed * 3, Tool: ToolBit{Name: "EndMill", ShapeType: "endmill", Diameter: millEndmillDia},
+		VertFeed: feed, HorizFeed: feed * 3, Tool: ToolBit{Name: "EndMill", ShapeType: "endmill", Diameter: cut.ToolDiameter},
 	}}
 	return job
 }
 
-// millEnvelope builds the depth/height envelope for a milling op framed to the stock (cut
-// from the top through to the bottom, clearance/safe planes above).
+// millEnvelope builds the depth/height envelope for a milling op framed to the stock:
+// clearance/safe planes above the top, cutting from the top down to the user's cut depth (or
+// through to the stock bottom when the cut depth is zero).
 func (e *Engine) millEnvelope(label string, stock Stock) OpBase {
+	cut := e.cutting()
 	return OpBase{
 		OpLabel: label, IsActive: true, ToolController: 0,
 		ClearanceHeight: stock.TopZ() + drillClearanceAbove,
 		SafeHeight:      stock.TopZ() + drillRetractAbove,
 		RetractHeight:   stock.TopZ() + drillRetractAbove,
 		StartDepth:      stock.TopZ(),
-		FinalDepth:      stock.BottomZ(),
+		FinalDepth:      cut.finalDepth(stock.TopZ(), stock.BottomZ()),
 	}
 }
 

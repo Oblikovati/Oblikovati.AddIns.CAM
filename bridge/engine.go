@@ -31,12 +31,13 @@ type Engine struct {
 	plungFeed     float64
 	lastJob       *Job   // most recently generated job (for the operations browser + Save)
 	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
+	cut           cutSettings
 	surfacer      Surfacer
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
 func NewEngine(host HostCaller) *Engine {
-	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, surfacer: oclSurfacer{}}
+	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, cut: defaultCutSettings(), surfacer: oclSurfacer{}}
 }
 
 // defaultPlungeFeed is the default drilling plunge feed (mm/min) until the panel overrides it.

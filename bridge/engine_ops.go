@@ -42,10 +42,11 @@ func (e *Engine) RunMillFaceJobOnHost(bodyIndex int) (*JobResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	cut := e.cutting()
 	job := e.newMillJob(bodyIndex, stock)
 	env := e.millEnvelope("Face", stock)
 	env.FinalDepth = stock.TopZ() - faceDepth
-	job.Operations = []Operation{&MillFaceOp{OpBase: env, StepOver: 0.6, StepDown: millStepDown, Boundary: boundary}}
+	job.Operations = []Operation{&MillFaceOp{OpBase: env, StepOver: cut.StepOver, StepDown: cut.StepDown, Boundary: boundary}}
 	return e.postPreviewResult(job, "faced the top")
 }
 

@@ -19,7 +19,7 @@ const CAMPanelID = "com.oblikovati.cam.panel"
 // (applyPanelEdit).
 func (e *Engine) ShowPanel() (wire.OKResult, error) {
 	e.mu.Lock()
-	postName, feed := e.postName, e.plungFeed
+	postName, feed, cut := e.postName, e.plungFeed, e.cut
 	e.mu.Unlock()
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID:      CAMPanelID,
@@ -29,7 +29,11 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 		Controls: []wire.PanelControlSpec{
 			client.PanelLabel("hdr", "— CAM job —"),
 			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl"}, postName),
-			client.PanelTextBox("plunge_feed", "Feed (mm/min)", strconv.FormatFloat(feed, 'g', -1, 64)),
+			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(feed)),
+			client.PanelTextBox("tool_dia", "Tool ⌀ (mm)", num(cut.ToolDiameter)),
+			client.PanelTextBox("step_down", "Step-down (mm)", num(cut.StepDown)),
+			client.PanelTextBox("step_over", "Step-over (×⌀)", num(cut.StepOver)),
+			client.PanelTextBox("cut_depth", "Cut depth (mm, 0=thru)", num(cut.CutDepth)),
 			client.PanelSeparator(),
 			client.PanelButton("drill", "Drilling", GenerateJobCommandID),
 			client.PanelButton("profile", "Profile", GenerateProfileCommandID),
@@ -58,8 +62,23 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		}
 	case "plunge_feed":
 		e.plungFeed = panelNum(value, e.plungFeed)
+	case "tool_dia":
+		if d := panelNum(value, e.cut.ToolDiameter); d > 0 {
+			e.cut.ToolDiameter = d
+		}
+	case "step_down":
+		e.cut.StepDown = panelNum(value, e.cut.StepDown)
+	case "step_over":
+		if s := panelNum(value, e.cut.StepOver); s > 0 {
+			e.cut.StepOver = s
+		}
+	case "cut_depth":
+		e.cut.CutDepth = panelNum(value, e.cut.CutDepth)
 	}
 }
+
+// num formats a parameter value for a panel text box (no trailing zeros).
+func num(v float64) string { return strconv.FormatFloat(v, 'g', -1, 64) }
 
 // panelNum reads the leading number from a form value (e.g. "120 mm/min" → 120), keeping the
 // fallback when the field is empty or half-typed.
