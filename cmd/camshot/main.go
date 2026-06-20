@@ -99,6 +99,7 @@ func shots() []shot {
 		{"pocket", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: part()}},
 		{"pocket-island", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: squarePoly(40), Islands: []geom2d.Polygon{islandPoly()}}},
 		{"adaptive", &bridge.AdaptiveOp{OpBase: millEnv("Adaptive"), Climb: true, Boundary: part()}},
+		{"adaptive-island", &bridge.AdaptiveOp{OpBase: millEnv("Adaptive"), StepOver: 0.2, Climb: true, Boundary: squarePoly(40), Islands: []geom2d.Polygon{islandPoly()}}},
 		{"rest", &bridge.RestOp{OpBase: millEnv("Rest"), PrevToolDiameter: 16, StepOver: 0.5, Climb: true, Boundary: part()}},
 		{"trochoidal", &bridge.TrochoidalOp{OpBase: millEnv("Trochoidal"), LoopRadius: 3, Advance: 2.5, Side: gen.SideOutside, Boundary: part()}},
 		{"slot", &bridge.SlotOp{OpBase: millEnv("Slot"), Width: 10, StepOver: 0.6, Climb: true, Boundary: part()}},

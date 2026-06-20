@@ -19,6 +19,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `pocket.png` | Area clearing: concentric inward rings, rapids between them. |
 | `pocket-island.png` | Pocket with an island: the clearing routes around a central island, leaving it standing. |
 | `adaptive.png` | HSM adaptive clearing: one continuous low-engagement spiral that stays down (no rapids between passes). |
+| `adaptive-island.png` | Adaptive clearing with an island: the low-engagement passes route around a central island, leaving it standing. |
 | `rest.png` | Rest machining: only the wall band a previous larger tool left (a few rings, interior untouched). |
 | `trochoidal.png` | Trochoidal milling: overlapping circular loops marching along the contour (low engagement). |
 | `slot.png` | Slot / groove milling: a channel of a set width centred on the contour (passes straddle both sides). |

@@ -18,6 +18,7 @@ type AdaptiveParams struct {
 	ToolRadius float64
 	StepOver   float64
 	Climb      bool
+	Islands    []geom2d.Polygon // regions to leave standing; the clearing routes around them
 }
 
 // defaultAdaptiveStepOver is the radial engagement (fraction of tool diameter) used when
@@ -40,11 +41,32 @@ func GenerateAdaptive(boundary geom2d.Polygon, levels []float64, feeds Feeds, p 
 	if len(rings) == 0 {
 		return nil, fmt.Errorf("adaptive clearing: tool radius %g is too large to enter the region (area %g)", p.ToolRadius, boundary.Area())
 	}
+	keepouts := grownIslands(p.Islands, p.ToolRadius)
 	var cmds []gcode.Command
 	for _, z := range levels {
-		cmds = append(cmds, walkSpiral(rings, z, feeds, p.Climb)...)
+		if len(keepouts) == 0 {
+			cmds = append(cmds, walkSpiral(rings, z, feeds, p.Climb)...)
+			continue
+		}
+		cmds = append(cmds, walkClippedRings(rings, keepouts, z, feeds, p.Climb)...)
 	}
 	return cmds, nil
+}
+
+// walkClippedRings is the island-aware fallback for the stay-down spiral: an island interrupts
+// the continuous inward spiral (the tool cannot stay down across a standing region), so each ring
+// is clipped to the arc runs clear of every island and cut as its own low-engagement pass. The
+// small step-over still bounds the radial engagement on straight runs; only the inter-ring
+// stay-down linking is given up where an island breaks the spiral.
+func walkClippedRings(rings, keepouts []geom2d.Polygon, z float64, feeds Feeds, climb bool) []gcode.Command {
+	var cmds []gcode.Command
+	for _, ring := range rings {
+		oriented := orient(ring, climb)
+		for _, run := range clipRingAroundIslands(oriented, keepouts) {
+			cmds = append(cmds, walkOpenPath(run, z, feeds)...)
+		}
+	}
+	return cmds
 }
 
 // stepDistance is the spacing between spiral passes in millimetres (step-over fraction × tool

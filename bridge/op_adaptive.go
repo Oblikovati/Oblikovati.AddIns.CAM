@@ -17,10 +17,11 @@ import (
 // pure given the boundary, tool, and depths.
 type AdaptiveOp struct {
 	OpBase
-	StepOver float64        // radial engagement as a fraction of the tool diameter (0..1); 0 → 0.1
-	Climb    bool           // climb vs conventional milling
-	StepDown float64        // max Z step per pass (mm); <=0 → single pass
-	Boundary geom2d.Polygon // driving region (mm), populated by the engine
+	StepOver float64          // radial engagement as a fraction of the tool diameter (0..1); 0 → 0.1
+	Climb    bool             // climb vs conventional milling
+	StepDown float64          // max Z step per pass (mm); <=0 → single pass
+	Boundary geom2d.Polygon   // driving region (mm), populated by the engine
+	Islands  []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
 }
 
 // Features reports the property groups an adaptive clearing op uses.
@@ -43,6 +44,7 @@ func (op *AdaptiveOp) Execute(job *Job) (gcode.Path, error) {
 		ToolRadius: tc.Tool.Diameter / 2,
 		StepOver:   op.StepOver,
 		Climb:      op.Climb,
+		Islands:    op.Islands,
 	})
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("adaptive operation %q: %w", op.OpLabel, err)
