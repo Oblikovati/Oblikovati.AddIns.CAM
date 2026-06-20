@@ -34,9 +34,10 @@ func commandNames(cmds []gcode.Command) []string {
 // recordingHost is a fake HostCaller that records every method called and answers the
 // engine's geometry queries with a fixed two-hole plate. Unknown methods return "{}".
 type recordingHost struct {
-	mu      sync.Mutex
-	methods []string
-	failOn  string // when set, that method returns an error
+	mu           sync.Mutex
+	methods      []string
+	failOn       string              // when set, that method returns an error
+	sectionWires []wire.WirePolyline // when set, overrides the default single-square section
 }
 
 func (h *recordingHost) Call(method string, _ []byte) ([]byte, error) {
@@ -56,6 +57,9 @@ func (h *recordingHost) Call(method string, _ []byte) ([]byte, error) {
 	case wire.MethodBodyRangeBox:
 		return json.Marshal(wire.BodyRangeBoxResult{Min: []float64{0, 0, 0}, Max: []float64{4, 4, 1}})
 	case wire.MethodBrepSectionWithPlane:
+		if h.sectionWires != nil {
+			return json.Marshal(wire.BrepWiresResult{Wires: h.sectionWires})
+		}
 		// A 4×4 cm square outline at mid-height (closed loop, cm).
 		return json.Marshal(wire.BrepWiresResult{Wires: []wire.WirePolyline{{
 			Points: []float64{0, 0, 0.5, 4, 0, 0.5, 4, 4, 0.5, 0, 4, 0.5, 0, 0, 0.5}, Closed: true,
@@ -428,6 +432,36 @@ func TestEngineFanucPost(t *testing.T) {
 	}
 	if !strings.HasPrefix(res.GCode, "%\n") || !strings.Contains(res.GCode, "O0001") || !strings.Contains(res.GCode, "M30") {
 		t.Errorf("expected Fanuc-dialect output (%% / O-number / M30), got:\n%s", res.GCode)
+	}
+}
+
+// TestEngineProfileMachinesHoles checks profiling contours the outer outline plus each inner
+// hole — one ProfileOp per contour, the holes cut inside.
+func TestEngineProfileMachinesHoles(t *testing.T) {
+	// a 4×4 cm plate (outer) with a 1×1 cm square hole near the corner (cm coords).
+	h := &recordingHost{sectionWires: []wire.WirePolyline{
+		{Points: []float64{0, 0, 0.5, 4, 0, 0.5, 4, 4, 0.5, 0, 4, 0.5, 0, 0, 0.5}, Closed: true},
+		{Points: []float64{1, 1, 0.5, 2, 1, 0.5, 2, 2, 0.5, 1, 2, 0.5, 1, 1, 0.5}, Closed: true},
+	}}
+	e := NewEngine(h).SetPost("grbl")
+	job, _, err := e.buildProfileJob(0)
+	if err != nil {
+		t.Fatalf("buildProfileJob: %v", err)
+	}
+	if len(job.Operations) != 2 {
+		t.Fatalf("want 2 profile ops (outer + 1 hole), got %d", len(job.Operations))
+	}
+	outer, ok := job.Operations[0].(*ProfileOp)
+	if !ok || outer.Side != "outside" {
+		t.Errorf("first op should be the outer outline profiled outside, got %+v", job.Operations[0])
+	}
+	hole, ok := job.Operations[1].(*ProfileOp)
+	if !ok || hole.Side != "inside" {
+		t.Errorf("second op should be the hole profiled inside, got %+v", job.Operations[1])
+	}
+	// the hole's contour is smaller than the outer outline (sorted largest-first).
+	if hole.Boundary.Area() >= outer.Boundary.Area() {
+		t.Errorf("hole contour (%g) should be smaller than the outer outline (%g)", hole.Boundary.Area(), outer.Boundary.Area())
 	}
 }
 

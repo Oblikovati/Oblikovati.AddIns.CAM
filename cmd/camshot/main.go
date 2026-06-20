@@ -44,6 +44,32 @@ func main() {
 		}
 		fmt.Printf("wrote %s/%s.png  (%d commands)\n", outDir, sh.name, len(path.Commands))
 	}
+	writeProfileHoles(outDir)
+}
+
+// writeProfileHoles renders island-aware profiling: the outer outline cut outside plus an inner
+// hole cut inside, combined into one toolpath — what the engine's profile job now produces.
+func writeProfileHoles(outDir string) {
+	outer := &bridge.ProfileOp{OpBase: millEnv("Profile"), Side: gen.SideOutside, Climb: true, Boundary: part()}
+	hole := &bridge.ProfileOp{OpBase: millEnv("Hole"), Side: gen.SideInside, Climb: true, Boundary: holePoly()}
+	var combined gcode.Path
+	for _, op := range []*bridge.ProfileOp{outer, hole} {
+		p, err := op.Execute(job())
+		if err != nil {
+			fail(err)
+		}
+		combined.Commands = append(combined.Commands, p.Commands...)
+	}
+	img := plot.Render(plot.Scene{Path: combined, Boundary: part()}, imageSize)
+	if err := writePNG(filepath.Join(outDir, "profile-holes.png"), img); err != nil {
+		fail(err)
+	}
+	fmt.Printf("wrote %s/profile-holes.png  (%d commands)\n", outDir, len(combined.Commands))
+}
+
+// holePoly is a small square hole (mm) inside the sample part, for the island-aware profile shot.
+func holePoly() geom2d.Polygon {
+	return geom2d.Polygon{{X: 22, Y: 22}, {X: 32, Y: 22}, {X: 32, Y: 32}, {X: 22, Y: 32}}
 }
 
 // shot is one labelled gallery entry: an operation and the boundary it renders over.

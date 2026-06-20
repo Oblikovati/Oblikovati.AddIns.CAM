@@ -4,6 +4,7 @@ package bridge
 
 import (
 	"fmt"
+	"sort"
 
 	"oblikovati.org/api/wire"
 	"oblikovati.org/cam/bridge/geom2d"
@@ -98,9 +99,11 @@ func (e *Engine) finishMillJob(job *Job, boundary geom2d.Polygon, verb string) (
 	}, nil
 }
 
-// buildProfileJob assembles an outside-contour profile job over the body's silhouette.
+// buildProfileJob assembles a profile job that contours the body's outer silhouette (outside
+// compensation) plus each inner hole/island (inside compensation), so the holes are machined
+// too — one ProfileOp per contour. Returns the outer boundary for the overlay.
 func (e *Engine) buildProfileJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
-	boundary, stock, err := e.contourAndStock(bodyIndex)
+	contours, stock, err := e.sectionContours(bodyIndex)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -111,9 +114,18 @@ func (e *Engine) buildProfileJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 		Side:     "outside",
 		Climb:    true,
 		StepDown: cut.StepDown,
-		Boundary: boundary,
+		Boundary: contours[0],
 	}}
-	return job, boundary, nil
+	for i, hole := range contours[1:] {
+		job.Operations = append(job.Operations, &ProfileOp{
+			OpBase:   e.millEnvelope(fmt.Sprintf("Profile hole %d", i+1), stock),
+			Side:     "inside",
+			Climb:    true,
+			StepDown: cut.StepDown,
+			Boundary: hole,
+		})
+	}
+	return job, contours[0], nil
 }
 
 // buildPocketJob assembles an area-clearing pocket job over the body's silhouette region.
@@ -249,10 +261,20 @@ func (e *Engine) millEnvelope(label string, stock Stock) OpBase {
 }
 
 // contourAndStock reads the body's extent and sections it to obtain the outer silhouette
-// contour (the largest section wire), returned in millimetres along with the stock. The
-// section plane follows a selected planar face when one is picked, otherwise a horizontal
-// plane at the body's mid-height — both give a clean outline for a prismatic part.
+// contour (the largest section wire), returned in millimetres along with the stock.
 func (e *Engine) contourAndStock(bodyIndex int) (geom2d.Polygon, Stock, error) {
+	contours, stock, err := e.sectionContours(bodyIndex)
+	if err != nil {
+		return nil, Stock{}, err
+	}
+	return contours[0], stock, nil // contours are sorted largest-first → the outer boundary
+}
+
+// sectionContours sections the body and returns every closed contour (the outer silhouette and
+// any inner holes/islands), sorted by enclosed area descending, in millimetres along with the
+// stock. The section plane follows a selected planar face when one is picked, otherwise a
+// horizontal plane at the body's mid-height — both give a clean outline for a prismatic part.
+func (e *Engine) sectionContours(bodyIndex int) ([]geom2d.Polygon, Stock, error) {
 	rbox, err := e.api.Body().RangeBox(wire.BodyRangeBoxArgs{BodyIndex: bodyIndex, Precise: true})
 	if err != nil {
 		return nil, Stock{}, fmt.Errorf("read range box of body %d: %w", bodyIndex, err)
@@ -275,26 +297,25 @@ func (e *Engine) contourAndStock(bodyIndex int) (geom2d.Polygon, Stock, error) {
 	if err != nil {
 		return nil, Stock{}, fmt.Errorf("section body %d at %s plane: %w", bodyIndex, plane.source, err)
 	}
-	boundary := largestContour(section.Wires)
-	if len(boundary) < 3 {
+	contours := sortedContours(section.Wires)
+	if len(contours) == 0 {
 		return nil, Stock{}, fmt.Errorf("section of body %d produced no usable outline (got %d wires)", bodyIndex, len(section.Wires))
 	}
-	return boundary, stock, nil
+	return contours, stock, nil
 }
 
-// largestContour converts the section wires (flat xyz in cm) to XY polygons in millimetres
-// and returns the one enclosing the greatest area — the outer boundary (inner wires are
-// holes, handled in a later milestone).
-func largestContour(wires []wire.WirePolyline) geom2d.Polygon {
-	var best geom2d.Polygon
-	var bestArea float64
+// sortedContours converts the section wires (flat xyz in cm) to XY polygons in millimetres,
+// drops degenerate ones (<3 points), and returns them sorted by enclosed area descending, so
+// the first is the outer boundary and the rest are inner holes/islands.
+func sortedContours(wires []wire.WirePolyline) []geom2d.Polygon {
+	var polys []geom2d.Polygon
 	for _, w := range wires {
-		poly := wirePolyline(w)
-		if a := poly.Area(); a > bestArea {
-			best, bestArea = poly, a
+		if poly := wirePolyline(w); len(poly) >= 3 {
+			polys = append(polys, poly)
 		}
 	}
-	return best
+	sort.Slice(polys, func(i, j int) bool { return polys[i].Area() > polys[j].Area() })
+	return polys
 }
 
 // wirePolyline converts one sampled section wire (flat xyz triplets in cm) to an XY polygon

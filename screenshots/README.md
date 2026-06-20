@@ -15,6 +15,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | Image | Validates |
 |---|---|
 | `profile.png` | Outside contour: the cut loop is the boundary grown by the tool radius. |
+| `profile-holes.png` | Island-aware profiling: the outer outline cut outside plus each inner hole cut inside. |
 | `pocket.png` | Area clearing: concentric inward rings, rapids between them. |
 | `adaptive.png` | HSM adaptive clearing: one continuous low-engagement spiral that stays down (no rapids between passes). |
 | `rest.png` | Rest machining: only the wall band a previous larger tool left (a few rings, interior untouched). |
