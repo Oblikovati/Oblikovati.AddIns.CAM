@@ -11,10 +11,11 @@ import (
 
 // PocketParams configure an area-clearing (pocket) pass.
 type PocketParams struct {
-	ToolRadius float64          // mm
-	StepOver   float64          // fraction of the tool diameter to step between rings (0..1); 0 → 0.5
-	Climb      bool             // climb vs conventional
-	Islands    []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
+	ToolRadius      float64          // mm
+	StepOver        float64          // fraction of the tool diameter to step between rings (0..1); 0 → 0.5
+	Climb           bool             // climb vs conventional
+	Islands         []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
+	FinishAllowance float64          // mm of stock to leave on the walls when roughing; >0 adds a final wall pass
 }
 
 // defaultStepOver is the ring step (fraction of tool diameter) used when StepOver is unset.
@@ -26,30 +27,76 @@ const defaultStepOver = 0.5
 // client-side area-clearing that stands in for libarea's makePocket (the offset-pattern
 // mode); the offset & slicing primitives it would use host-side exist in the API, but the
 // clearing pattern itself is add-in logic. See cam-port/gaps.md.
+//
+// With a FinishAllowance the roughing rings stop that far short of every wall (outer boundary
+// and islands) and a single finishing pass is then run right at the walls, so the rough cut
+// leaves a thin even skin the finish pass cleans to size — the standard rough-then-finish split.
 func GeneratePocket(boundary geom2d.Polygon, levels []float64, feeds Feeds, p PocketParams) ([]gcode.Command, error) {
 	if p.ToolRadius <= 0 {
 		return nil, fmt.Errorf("pocket needs a positive tool radius, got %g", p.ToolRadius)
 	}
-	rings := pocketRings(boundary, p.ToolRadius, p.stepDistance())
+	wallDist := p.ToolRadius + p.FinishAllowance // roughing rings leave the allowance on every wall
+	rings := pocketRings(boundary, wallDist, p.stepDistance())
 	if len(rings) == 0 {
-		return nil, fmt.Errorf("pocket: tool radius %g is too large to enter the region (area %g)", p.ToolRadius, boundary.Area())
+		return nil, fmt.Errorf("pocket: tool radius %g (+ allowance %g) is too large to enter the region (area %g)", p.ToolRadius, p.FinishAllowance, boundary.Area())
 	}
-	keepouts := grownIslands(p.Islands, p.ToolRadius)
+	roughKeepouts := grownIslands(p.Islands, wallDist)
+	finishRings, finishKeepouts := pocketFinishPass(boundary, p)
 
 	var cmds []gcode.Command
 	for _, z := range levels {
-		for _, ring := range rings {
-			oriented := orient(ring, p.Climb)
-			if len(keepouts) == 0 {
-				cmds = append(cmds, walkLoop(oriented, z, feeds)...)
-				continue
-			}
-			for _, run := range clipRingAroundIslands(oriented, keepouts) {
-				cmds = append(cmds, walkOpenPath(run, z, feeds)...)
-			}
-		}
+		cmds = append(cmds, walkPocketRings(rings, roughKeepouts, z, feeds, p.Climb)...)
+		cmds = append(cmds, walkPocketRings(finishRings, finishKeepouts, z, feeds, p.Climb)...)
 	}
 	return cmds, nil
+}
+
+// walkPocketRings walks each ring at depth z routed around the keepouts: a ring clear of every
+// keepout is cut as a closed loop, one crossing a keepout is split into the open arc runs that
+// stay outside them. Shared by the roughing and finishing passes.
+func walkPocketRings(rings, keepouts []geom2d.Polygon, z float64, feeds Feeds, climb bool) []gcode.Command {
+	var cmds []gcode.Command
+	for _, ring := range rings {
+		oriented := orient(ring, climb)
+		if len(keepouts) == 0 {
+			cmds = append(cmds, walkLoop(oriented, z, feeds)...)
+			continue
+		}
+		for _, run := range clipRingAroundIslands(oriented, keepouts) {
+			cmds = append(cmds, walkOpenPath(run, z, feeds)...)
+		}
+	}
+	return cmds
+}
+
+// pocketFinishPass builds the finishing rings (right at every wall) and their keepouts, or nil
+// when no FinishAllowance was asked for. The outer wall is the boundary offset in by one radius;
+// each island wall is the island offset out by one radius. The finish rings route around the
+// islands grown by just the radius (the walls they are cleaning to).
+func pocketFinishPass(boundary geom2d.Polygon, p PocketParams) (rings, keepouts []geom2d.Polygon) {
+	if p.FinishAllowance <= 0 {
+		return nil, nil
+	}
+	if wall, ok := geom2d.Offset(boundary, -p.ToolRadius); ok {
+		rings = append(rings, wall)
+	}
+	rings = append(rings, islandFinishRings(p.Islands, p.ToolRadius)...)
+	return rings, grownIslands(p.Islands, p.ToolRadius)
+}
+
+// islandFinishRings returns one ring hugging each island wall (the island offset outward by the
+// tool radius), the finishing pass around the islands.
+func islandFinishRings(islands []geom2d.Polygon, toolRadius float64) []geom2d.Polygon {
+	var out []geom2d.Polygon
+	for _, isl := range islands {
+		if len(isl) < 3 {
+			continue
+		}
+		if ring, ok := geom2d.Offset(isl.EnsureCCW(), toolRadius); ok {
+			out = append(out, ring)
+		}
+	}
+	return out
 }
 
 // grownIslands offsets each island outward by the tool radius, so the tool centre — clearing
