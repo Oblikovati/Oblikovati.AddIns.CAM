@@ -31,6 +31,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `drilling.png` | Drilling: canned-cycle points at each detected hole. |
 | `probe.png` | Probing: G38.2 touch moves finding the stock top and two edges (magenta). |
 | `boreprobe.png` | Bore-centre probing: four G38.2 touches from a hole centre out to the wall (a cross). |
+| `bossprobe.png` | Boss-centre probing: four G38.2 touches inward from outside the outline to the walls. |
 | `helix.png` | Helix bore: the tool-centre orbit for a hole wider than the tool. |
 | `threadmill.png` | Thread milling: the thread orbit plus the lead-in/out arc easing on/off the thread. |
 | `counterbore.png` | Counterbore / spot-face: concentric helical passes clearing a flat-bottom recess at the hole top. |

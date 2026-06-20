@@ -120,6 +120,26 @@ func TestBoreProbePoints(t *testing.T) {
 	}
 }
 
+// TestBossProbePoints checks the engine builds four inward wall probes around the outline, each
+// approaching from outside its bounding box and aimed at the footprint centre.
+func TestBossProbePoints(t *testing.T) {
+	boundary := squarePoly(20) // 0..20 in X and Y → centre (10,10)
+	stock := Stock{Min: gcode.Vector3{X: -5, Y: -5, Z: -10}, Max: gcode.Vector3{X: 25, Y: 25, Z: 0}}
+	pts := bossProbePoints(boundary, stock)
+	if len(pts) != 4 {
+		t.Fatalf("got %d probe points, want 4", len(pts))
+	}
+	for _, p := range pts {
+		if p.Target.X != 10 || p.Target.Y != 10 {
+			t.Errorf("boss probe should aim at the footprint centre (10,10), got target %+v", p.Target)
+		}
+	}
+	// the +X probe approaches from beyond the +X wall (x > 20) and probes inward (target x < approach).
+	if pts[0].Approach.X <= 20 || pts[0].Target.X >= pts[0].Approach.X {
+		t.Errorf("+X boss probe should approach outside the wall and probe inward: %+v", pts[0])
+	}
+}
+
 // TestCornerProbePoints checks the engine builds a Z touch-off plus two edge probes from the
 // stock bounds.
 func TestCornerProbePoints(t *testing.T) {

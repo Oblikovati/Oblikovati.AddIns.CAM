@@ -7,6 +7,7 @@ import (
 
 	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/gen"
+	"oblikovati.org/cam/bridge/geom2d"
 	"oblikovati.org/cam/bridge/post"
 )
 
@@ -135,6 +136,63 @@ func boreProbePoints(holes []DrillTarget) []gen.ProbePoint {
 		}
 	}
 	return pts
+}
+
+// RunBossProbeJobOnHost finds the part footprint's centre by probing its outline walls inward
+// from four sides — the outward-in counterpart of bore probing.
+func (e *Engine) RunBossProbeJobOnHost(bodyIndex int) (*JobResult, error) {
+	boundary, stock, err := e.contourAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&ProbeOp{
+		OpBase: e.millEnvelope("Boss Probe", stock),
+		Points: bossProbePoints(boundary, stock),
+	}}
+	return e.postPreviewResult(job, "boss-probed the part outline")
+}
+
+// bossProbePoints builds a four-touch centre cycle on a raised feature: from just outside the
+// outline's bounding box on each side, probe inward toward the centre until the wall trips (the
+// four trip points bisect to the footprint centre). No axis is zeroed — the centre comes from
+// averaging, like bore probing.
+func bossProbePoints(boundary geom2d.Polygon, stock Stock) []gen.ProbePoint {
+	minX, minY, maxX, maxY := boundaryBounds(boundary)
+	cx, cy := (minX+maxX)/2, (minY+maxY)/2
+	midZ := (stock.Min.Z + stock.Max.Z) / 2
+	return []gen.ProbePoint{
+		{Approach: gcode.Vector3{X: maxX + probeApproachGap, Y: cy, Z: midZ}, Target: gcode.Vector3{X: cx, Y: cy, Z: midZ}}, // +X wall, probe −X
+		{Approach: gcode.Vector3{X: minX - probeApproachGap, Y: cy, Z: midZ}, Target: gcode.Vector3{X: cx, Y: cy, Z: midZ}}, // −X wall, probe +X
+		{Approach: gcode.Vector3{X: cx, Y: maxY + probeApproachGap, Z: midZ}, Target: gcode.Vector3{X: cx, Y: cy, Z: midZ}}, // +Y wall, probe −Y
+		{Approach: gcode.Vector3{X: cx, Y: minY - probeApproachGap, Z: midZ}, Target: gcode.Vector3{X: cx, Y: cy, Z: midZ}}, // −Y wall, probe +Y
+	}
+}
+
+// boundaryBounds returns the axis-aligned bounding box of a polygon (mm).
+func boundaryBounds(poly geom2d.Polygon) (minX, minY, maxX, maxY float64) {
+	minX, minY = poly[0].X, poly[0].Y
+	maxX, maxY = poly[0].X, poly[0].Y
+	for _, p := range poly[1:] {
+		minX, minY = minF(minX, p.X), minF(minY, p.Y)
+		maxX, maxY = maxF(maxX, p.X), maxF(maxY, p.Y)
+	}
+	return minX, minY, maxX, maxY
+}
+
+// minF / maxF are float min/max helpers (kept local to avoid a math import here).
+func minF(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxF(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // RunProbeJobOnHost probes the stock's top and two edges to find the work origin.

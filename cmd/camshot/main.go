@@ -76,6 +76,7 @@ func shots() []shot {
 		{"drilling", &bridge.DrillingOp{OpBase: millEnv("Drilling"), Holes: holes()}},
 		{"probe", &bridge.ProbeOp{OpBase: deepEnv("Probe"), ProbeFeed: 50, Points: cornerProbe()}},
 		{"boreprobe", &bridge.ProbeOp{OpBase: deepEnv("Bore Probe"), ProbeFeed: 50, Points: boreProbe()}},
+		{"bossprobe", &bridge.ProbeOp{OpBase: deepEnv("Boss Probe"), ProbeFeed: 50, Points: bossProbe()}},
 		{"helix", &bridge.HelixOp{OpBase: deepEnv("Helix"), HoleRadius: 8, Pitch: 1.5, Direction: gen.HelixCW, Holes: boreHole()}},
 		{"threadmill", &bridge.ThreadMillOp{OpBase: deepEnv("Thread"), MajorDiameter: 16, Pitch: 1.5, Internal: true, Climb: true, Holes: boreHole()}},
 		{"counterbore", &bridge.CounterboreOp{OpBase: deepEnv("Counterbore"), Diameter: 14, Depth: 4, Pitch: 1, Holes: boreHole()}},
@@ -147,6 +148,21 @@ func boreProbe() []gen.ProbePoint {
 		pts = append(pts, gen.ProbePoint{
 			Approach: centre,
 			Target:   gcode.Vector3{X: 12 + d[0]*10, Y: 12 + d[1]*10, Z: -3},
+		})
+	}
+	return pts
+}
+
+// bossProbe is a four-touch boss-centre cycle: probe inward from outside a 24mm-square boss in
+// +X/−X/+Y/−Y toward its centre, for the boss-probe shot.
+func bossProbe() []gen.ProbePoint {
+	const half = 12
+	centre := gcode.Vector3{X: 0, Y: 0, Z: -3}
+	var pts []gen.ProbePoint
+	for _, d := range [][2]float64{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+		pts = append(pts, gen.ProbePoint{
+			Approach: gcode.Vector3{X: d[0] * (half + 5), Y: d[1] * (half + 5), Z: -3},
+			Target:   centre,
 		})
 	}
 	return pts

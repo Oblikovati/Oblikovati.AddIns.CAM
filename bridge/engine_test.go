@@ -281,6 +281,24 @@ func TestEngineRunBoreProbeJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunBossProbeJob runs the boss-centre probing flow and checks it emits four inward
+// G38.2 touch moves (and sets no work offset — the centre comes from averaging).
+func TestEngineRunBossProbeJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunBossProbeJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunBossProbeJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "boss-probed") {
+		t.Errorf("summary = %q, want it to mention boss-probed", res.Summary)
+	}
+	if probes := strings.Count(res.GCode, "G38.2"); probes != 4 {
+		t.Errorf("boss probing should emit four G38.2 moves, got %d", probes)
+	}
+	if strings.Contains(res.GCode, "G10") {
+		t.Errorf("boss probing should not set a work offset (centre comes from averaging):\n%s", res.GCode)
+	}
+}
+
 // TestEngineRunProbeJob runs the probing flow and checks it emits G38.2 touch moves.
 func TestEngineRunProbeJob(t *testing.T) {
 	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunProbeJobOnHost(0)
