@@ -130,7 +130,7 @@ func TestExportDispatch(t *testing.T) {
 	if _, err := Export("grbl", grblObject("G0 X1"), "--no-header"); err != nil {
 		t.Errorf("grbl dispatch: %v", err)
 	}
-	if _, err := Export("haas", nil, ""); err == nil {
+	if _, err := Export("nonesuch", nil, ""); err == nil {
 		t.Error("unknown post must error")
 	}
 }
