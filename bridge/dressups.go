@@ -37,6 +37,21 @@ func (d DogboneDressup) Apply(path gcode.Path) gcode.Path {
 // Name implements Dressup.
 func (d DogboneDressup) Name() string { return "Dogbone" }
 
+// RampDressup replaces straight plunges with a ramped descent (FreeCAD's ramp-entry dressup).
+type RampDressup struct{ Params dressup.RampParams }
+
+// Apply implements Dressup.
+func (d RampDressup) Apply(path gcode.Path) gcode.Path { return dressup.ApplyRamp(path, d.Params) }
+
+// Name implements Dressup.
+func (d RampDressup) Name() string { return "Ramp" }
+
+// NewRampDressup builds a ramp-entry dressup with the given run length (mm) and descent angle
+// (radians).
+func NewRampDressup(length, angle float64) RampDressup {
+	return RampDressup{Params: dressup.RampParams{Length: length, Angle: angle}}
+}
+
 // NewTagsDressup builds a holding-tabs dressup with count tabs of the given width/height (mm).
 func NewTagsDressup(count int, width, height float64) TagsDressup {
 	return TagsDressup{Params: dressup.TagParams{Count: count, Width: width, Height: height}}

@@ -19,12 +19,19 @@ func (e *Engine) addDogboneAction() (*JobResult, error) {
 	return e.addDressup(NewDogboneDressup(dressup.StyleDogbone, defaultBoneLength, math.Pi/4, dressup.SideBoth), "dogbone")
 }
 
+// addRampAction adds a ramp-entry dressup to the selected operation.
+func (e *Engine) addRampAction() (*JobResult, error) {
+	return e.addDressup(NewRampDressup(defaultRampLength, defaultRampAngle), "ramp entry")
+}
+
 // Defaults for dressups added from the editor (mm / radians).
 const (
 	defaultTabCount   = 4
 	defaultTabWidth   = 3.0
 	defaultTabHeight  = 1.0
 	defaultBoneLength = 2.0
+	defaultRampLength = 4.0
+	defaultRampAngle  = math.Pi / 12 // 15°
 )
 
 // addDressup appends a dressup to the editor's selected operation, refreshing the windows.
