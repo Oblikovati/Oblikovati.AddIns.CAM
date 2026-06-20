@@ -58,6 +58,25 @@ type opDoc struct {
 	HoleRadius float64 `json:"holeRadius,omitempty"`
 	Pitch      float64 `json:"pitch,omitempty"`
 	Direction  string  `json:"direction,omitempty"`
+
+	// Surface / Waterline (3D finishing) — geometry is re-resolved from the part mesh, not persisted.
+	Sampling float64 `json:"sampling,omitempty"`
+	Zigzag   bool    `json:"zigzag,omitempty"`
+
+	Dressups []dressupDoc `json:"dressups,omitempty"`
+}
+
+// dressupDoc is the tagged serialisation of one toolpath dressup; only the fields for Kind
+// are populated.
+type dressupDoc struct {
+	Kind     string  `json:"kind"`
+	Count    int     `json:"count,omitempty"`
+	Width    float64 `json:"width,omitempty"`
+	Height   float64 `json:"height,omitempty"`
+	Style    string  `json:"style,omitempty"`
+	Length   float64 `json:"length,omitempty"`
+	MinAngle float64 `json:"minAngle,omitempty"`
+	Side     string  `json:"side,omitempty"`
 }
 
 // MarshalJob serialises a job's configuration to JSON (excluding resolved geometry).
@@ -99,22 +118,51 @@ func UnmarshalJob(s string) (*Job, error) {
 	return job, nil
 }
 
-// baseDoc copies an operation's common envelope fields into an opDoc.
+// baseDoc copies an operation's common envelope fields (including its dressup chain) into an
+// opDoc.
 func baseDoc(kind string, b OpBase) opDoc {
 	return opDoc{
 		Kind: kind, Label: b.OpLabel, Active: b.IsActive, ToolController: b.ToolController,
 		ClearanceHeight: b.ClearanceHeight, SafeHeight: b.SafeHeight, RetractHeight: b.RetractHeight,
-		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth,
+		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth, Dressups: dressupDocs(b.Dressups),
 	}
 }
 
-// opBaseFrom rebuilds the common envelope from an opDoc.
+// opBaseFrom rebuilds the common envelope (including dressups) from an opDoc.
 func opBaseFrom(d opDoc) OpBase {
 	return OpBase{
 		OpLabel: d.Label, IsActive: d.Active, ToolController: d.ToolController,
 		ClearanceHeight: d.ClearanceHeight, SafeHeight: d.SafeHeight, RetractHeight: d.RetractHeight,
-		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth,
+		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth, Dressups: dressupsFrom(d.Dressups),
 	}
+}
+
+// dressupDocs serialises a dressup chain to its tagged form.
+func dressupDocs(ds []Dressup) []dressupDoc {
+	var out []dressupDoc
+	for _, d := range ds {
+		switch x := d.(type) {
+		case TagsDressup:
+			out = append(out, dressupDoc{Kind: "tags", Count: x.Params.Count, Width: x.Params.Width, Height: x.Params.Height})
+		case DogboneDressup:
+			out = append(out, dressupDoc{Kind: "dogbone", Style: x.Params.Style, Length: x.Params.Length, MinAngle: x.Params.MinAngle, Side: x.Params.Side})
+		}
+	}
+	return out
+}
+
+// dressupsFrom rebuilds a dressup chain from its tagged serialisation, skipping unknown kinds.
+func dressupsFrom(docs []dressupDoc) []Dressup {
+	var out []Dressup
+	for _, d := range docs {
+		switch d.Kind {
+		case "tags":
+			out = append(out, NewTagsDressup(d.Count, d.Width, d.Height))
+		case "dogbone":
+			out = append(out, NewDogboneDressup(d.Style, d.Length, d.MinAngle, d.Side))
+		}
+	}
+	return out
 }
 
 // toOpDoc converts an operation to its tagged serialisation.
@@ -144,6 +192,14 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("helix", o.OpBase)
 		d.HoleRadius, d.Pitch, d.Direction = o.HoleRadius, o.Pitch, o.Direction
 		return d, nil
+	case *SurfaceOp:
+		d := baseDoc("surface", o.OpBase)
+		d.StepOver, d.Sampling, d.Zigzag = o.StepOver, o.Sampling, o.Zigzag
+		return d, nil
+	case *WaterlineOp:
+		d := baseDoc("waterline", o.OpBase)
+		d.StepOver, d.StepDown = o.StepOver, o.StepDown
+		return d, nil
 	default:
 		return opDoc{}, fmt.Errorf("cannot serialise operation of type %T", op)
 	}
@@ -164,6 +220,10 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &EngraveOp{OpBase: opBaseFrom(d), Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "helix":
 		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
+	case "surface":
+		return &SurfaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Sampling: d.Sampling, Zigzag: d.Zigzag}, nil
+	case "waterline":
+		return &WaterlineOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown}, nil
 	default:
 		return nil, fmt.Errorf("unknown operation kind %q", d.Kind)
 	}

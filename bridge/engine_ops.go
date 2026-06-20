@@ -76,6 +76,7 @@ func (e *Engine) postPreviewResult(job *Job, verb string) (*JobResult, error) {
 	e.mu.Unlock()
 
 	overlayID, _ := e.pushToolpathPreview(results)
+	_ = e.clearToolpathPreview() // the committed overlay replaces any transient preview
 	gcodeText, err := post.Export(postName, PostObjects(results), "--no-show-editor")
 	if err != nil {
 		return nil, err

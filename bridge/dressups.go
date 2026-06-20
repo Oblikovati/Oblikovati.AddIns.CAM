@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+package bridge
+
+import (
+	"oblikovati.org/cam/bridge/dressup"
+	"oblikovati.org/cam/bridge/gcode"
+)
+
+// Dressup is a post-process applied to an operation's toolpath to add a manufacturing
+// feature the raw geometry lacks — holding tabs, dogbone corner relief, … It is the bridge
+// adapter over the pure dressup package, letting an operation carry an ordered chain of
+// dressups that frame() applies after generating the cut. Mirrors FreeCAD's Path/Dressup.
+type Dressup interface {
+	Apply(gcode.Path) gcode.Path // transform the toolpath
+	Name() string                // display name (operations browser / persistence)
+}
+
+// TagsDressup lifts the tool over evenly spaced holding tabs (FreeCAD's Tags dressup).
+type TagsDressup struct{ Params dressup.TagParams }
+
+// Apply implements Dressup.
+func (d TagsDressup) Apply(path gcode.Path) gcode.Path { return dressup.ApplyTags(path, d.Params) }
+
+// Name implements Dressup.
+func (d TagsDressup) Name() string { return "Tags" }
+
+// DogboneDressup cuts corner-relief bones so a round end mill reaches internal corners
+// (FreeCAD's DogboneII dressup).
+type DogboneDressup struct{ Params dressup.DogboneParams }
+
+// Apply implements Dressup.
+func (d DogboneDressup) Apply(path gcode.Path) gcode.Path {
+	return dressup.ApplyDogbone(path, d.Params)
+}
+
+// Name implements Dressup.
+func (d DogboneDressup) Name() string { return "Dogbone" }
+
+// NewTagsDressup builds a holding-tabs dressup with count tabs of the given width/height (mm).
+func NewTagsDressup(count int, width, height float64) TagsDressup {
+	return TagsDressup{Params: dressup.TagParams{Count: count, Width: width, Height: height}}
+}
+
+// NewDogboneDressup builds a dogbone dressup of the given style and bone length (mm), relieving
+// corners turning sharper than minAngle (radians) on the chosen side.
+func NewDogboneDressup(style string, length, minAngle float64, side string) DogboneDressup {
+	return DogboneDressup{Params: dressup.DogboneParams{Style: style, Length: length, MinAngle: minAngle, Side: side}}
+}
