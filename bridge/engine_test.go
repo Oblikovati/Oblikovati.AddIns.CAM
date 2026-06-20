@@ -425,6 +425,20 @@ func TestPanelMaterialFeeds(t *testing.T) {
 	}
 }
 
+// TestEngineHaasPost checks the panel can select the Haas post and a job posts in its dialect
+// (five-digit O-number + safe-start block + G28 home return).
+func TestEngineHaasPost(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.applyPanelEdit("post", "haas")
+	res, err := e.RunProfileJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunProfileJobOnHost: %v", err)
+	}
+	if !strings.HasPrefix(res.GCode, "%\n") || !strings.Contains(res.GCode, "O00001") || !strings.Contains(res.GCode, "G40 G49 G80") || !strings.Contains(res.GCode, "G28 G91 Z0.") {
+		t.Errorf("expected Haas-dialect output (O00001 / safe-start / G28 home):\n%s", res.GCode)
+	}
+}
+
 // TestEngineMarlinPost checks the panel can select the Marlin post and a job posts in its dialect
 // (semicolon comments + metric/absolute preamble, no tape wrapper).
 func TestEngineMarlinPost(t *testing.T) {
