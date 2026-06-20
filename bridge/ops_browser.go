@@ -83,6 +83,8 @@ func operationKind(op Operation) string {
 		return "Chamfer"
 	case *SlotOp:
 		return "Slot"
+	case *ProbeOp:
+		return "Probe"
 	case *HelixOp:
 		return "Helix"
 	case *ThreadMillOp:

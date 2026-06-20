@@ -29,6 +29,7 @@ var (
 	colCut        = color.RGBA{0x3d, 0x8b, 0xff, 0xff} // G1/G2/G3 XY at full depth — blue
 	colElevated   = color.RGBA{0xf2, 0x9d, 0x38, 0xff} // cut above the floor (tab lift / ramp) — orange
 	colPlunge     = color.RGBA{0x35, 0xc4, 0x6a, 0xff} // plunge point — green
+	colProbe      = color.RGBA{0xc9, 0x5a, 0xff, 0xff} // G38 touch-probe move — magenta
 )
 
 // Render rasterises a scene into a size×size RGBA image, fitting the boundary and toolpath with
@@ -64,6 +65,11 @@ func drawMoves(img *image.RGBA, path gcode.Path, tf transform) {
 	for _, c := range path.Commands {
 		nx, ny, nz, hasXY := next(c, x, y, z)
 		switch {
+		case isProbe(c):
+			if hasXY && known {
+				line(img, tf.px(x, y), tf.px(nx, ny), colProbe)
+			}
+			dot(img, tf.px(nx, ny), colProbe) // touch point
 		case isDrillCycle(c):
 			dot(img, tf.px(nx, ny), colPlunge) // a canned drill cycle bores at the hole
 		case hasXY && known && c.Name == "G0":
@@ -163,6 +169,15 @@ func arcSweep(a0, a1 float64, ccw bool) float64 {
 
 // isArc reports whether a command is a G2/G3 arc move.
 func isArc(c gcode.Command) bool { return c.Name == "G2" || c.Name == "G3" }
+
+// isProbe reports whether a command is a G38 straight-probe move.
+func isProbe(c gcode.Command) bool {
+	switch c.Name {
+	case "G38.2", "G38.3", "G38.4", "G38.5":
+		return true
+	}
+	return false
+}
 
 // next applies a command's X/Y/Z to the running position, reporting whether it moved in XY.
 func next(c gcode.Command, x, y, z float64) (nx, ny, nz float64, hasXY bool) {

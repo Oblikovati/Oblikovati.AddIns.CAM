@@ -266,6 +266,20 @@ func TestEngineRunSlotJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunProbeJob runs the probing flow and checks it emits G38.2 touch moves.
+func TestEngineRunProbeJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunProbeJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunProbeJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "probed") {
+		t.Errorf("summary = %q, want it to mention probed", res.Summary)
+	}
+	if probes := strings.Count(res.GCode, "G38.2"); probes != 3 {
+		t.Errorf("probe job should emit 3 G38.2 moves, got %d", probes)
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}
