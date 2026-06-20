@@ -30,3 +30,16 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Go workspace file (local-dev only; CI injects the equivalent replaces).
+go.work
+go.work.sum
+
+# The c-shared library build output (Makefile writes here).
+/build/
+
+# C ABI header vendored from the oblikovati.org/api module by `make sync-header`.
+/include/
+
+# Built CLI driver binaries.
+/camrun
