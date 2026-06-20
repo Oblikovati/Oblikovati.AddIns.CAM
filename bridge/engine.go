@@ -94,6 +94,10 @@ const (
 	ShowOperationsCommandID    = "CAM.ShowOperations"    // open the operations browser
 	EditOperationCommandID     = "CAM.EditOperation"     // open the operation editor
 	RegenerateCommandID        = "CAM.RegenerateJob"     // re-run + re-post the edited job
+	ToggleOpCommandID          = "CAM.ToggleOperation"   // enable/disable the selected operation
+	MoveOpUpCommandID          = "CAM.MoveOperationUp"   // move the selected operation earlier
+	MoveOpDownCommandID        = "CAM.MoveOperationDown" // move the selected operation later
+	DeleteOpCommandID          = "CAM.DeleteOperation"   // remove the selected operation
 	ShowToolsCommandID         = "CAM.ShowTools"         // open the tool-library browser
 	AddEndmillCommandID        = "CAM.AddEndmill"        // add an end mill to the library
 	AddDrillCommandID          = "CAM.AddDrill"          // add a drill to the library
@@ -119,6 +123,10 @@ var camCommands = []struct{ id, name, tip string }{
 	{ShowOperationsCommandID, "Show Operations", "Open the CAM operations browser for the last generated job."},
 	{EditOperationCommandID, "Edit Operation", "Open the operation editor to change a generated operation's parameters."},
 	{RegenerateCommandID, "Regenerate Job", "Re-run and re-post the job after editing its operations."},
+	{ToggleOpCommandID, "Enable/Disable Operation", "Toggle whether the selected operation runs."},
+	{MoveOpUpCommandID, "Move Operation Up", "Run the selected operation earlier in the program."},
+	{MoveOpDownCommandID, "Move Operation Down", "Run the selected operation later in the program."},
+	{DeleteOpCommandID, "Delete Operation", "Remove the selected operation from the job."},
 	{ShowToolsCommandID, "Show Tool Library", "Open the CAM tool-library browser."},
 	{AddEndmillCommandID, "Add End Mill", "Add an end mill to the tool library."},
 	{AddDrillCommandID, "Add Drill", "Add a drill to the tool library."},
@@ -213,6 +221,14 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.showOperationEditorAction)
 	case RegenerateCommandID:
 		e.launchRun(e.regenerateAction)
+	case ToggleOpCommandID:
+		e.launchRun(e.toggleOpAction)
+	case MoveOpUpCommandID:
+		e.launchRun(e.moveOpUpAction)
+	case MoveOpDownCommandID:
+		e.launchRun(e.moveOpDownAction)
+	case DeleteOpCommandID:
+		e.launchRun(e.deleteOpAction)
 	case ShowToolsCommandID:
 		e.launchRun(e.showToolLibraryAction)
 	case AddEndmillCommandID:

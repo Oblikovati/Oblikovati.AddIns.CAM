@@ -41,13 +41,20 @@ func (e *Engine) ShowOperationEditor(job *Job, idx int) (wire.OKResult, error) {
 		idx = 0
 	}
 	labels := opChoices(job)
+	op := job.Operations[idx]
 	controls := []wire.PanelControlSpec{
 		client.PanelLabel("hdr", "— Edit operation —"),
 		client.PanelDropdown("edit_op", "Operation", labels, labels[idx]),
+		client.PanelLabel("state", "Active: "+boolWord(op.Active())),
 		client.PanelSeparator(),
 	}
-	controls = append(controls, opParamControls(job.Operations[idx])...)
+	controls = append(controls, opParamControls(op)...)
 	controls = append(controls,
+		client.PanelSeparator(),
+		client.PanelButton("toggle", "Enable / Disable", ToggleOpCommandID),
+		client.PanelButton("up", "Move Up", MoveOpUpCommandID),
+		client.PanelButton("down", "Move Down", MoveOpDownCommandID),
+		client.PanelButton("del", "Delete", DeleteOpCommandID),
 		client.PanelSeparator(),
 		client.PanelButton("regen", "Regenerate + Post", RegenerateCommandID),
 	)

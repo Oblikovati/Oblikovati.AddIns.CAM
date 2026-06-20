@@ -33,6 +33,7 @@ func (f FeatureFlag) Has(x FeatureFlag) bool { return f&x != 0 }
 type Operation interface {
 	Label() string            // display label, also emitted as a path comment
 	Active() bool             // inactive ops are skipped by Job.GenerateAll
+	SetActive(bool)           // enable/disable the operation
 	ToolControllerIndex() int // index into Job.Tools
 	Features() FeatureFlag    // the property groups this op uses
 	Execute(job *Job) (gcode.Path, error)
@@ -63,6 +64,9 @@ func (b *OpBase) Label() string { return b.OpLabel }
 
 // Active implements Operation.
 func (b *OpBase) Active() bool { return b.IsActive }
+
+// SetActive implements Operation.
+func (b *OpBase) SetActive(v bool) { b.IsActive = v }
 
 // ToolControllerIndex implements Operation.
 func (b *OpBase) ToolControllerIndex() int { return b.ToolController }
