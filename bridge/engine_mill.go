@@ -92,19 +92,14 @@ func (e *Engine) buildPocketJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 	return job, boundary, nil
 }
 
-// newMillJob builds a job with stock and a single end-mill tool controller (the engine's
-// plunge feed drives both vertical and horizontal feeds for the milestone-2 demo).
+// newMillJob builds a job with stock and the loaded tool controllers (the primary end mill plus
+// the library tools). Milling operations run on the end mill at index 0; the 3D ops select the
+// ball-nose. Mirrors a FreeCAD job loading its tool controllers.
 func (e *Engine) newMillJob(bodyIndex int, stock Stock) *Job {
-	e.mu.Lock()
-	feed, cut := e.plungFeed, e.cut
-	e.mu.Unlock()
 	job := NewJob()
 	job.Stock = stock
 	job.ModelBodies = []int{bodyIndex}
-	job.Tools = []ToolController{{
-		Label: "EndMill", ToolNumber: 1, SpindleSpeed: 5000, SpindleDir: "Forward",
-		VertFeed: feed, HorizFeed: feed * 3, Tool: ToolBit{Name: "EndMill", ShapeType: "endmill", Diameter: cut.ToolDiameter},
-	}}
+	job.Tools = e.jobTools()
 	return job
 }
 

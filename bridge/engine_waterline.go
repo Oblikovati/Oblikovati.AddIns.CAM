@@ -26,18 +26,18 @@ func (e *Engine) RunWaterlineJobOnHost(bodyIndex int) (*JobResult, error) {
 		return nil, err
 	}
 	job := e.newMillJob(bodyIndex, stock)
-	job.Tools[0].Tool.ShapeType = "ballend"
-	diameter := job.Tools[0].Tool.Diameter
-
 	cut := e.cutting()
-	hf, err := e.dropCutterField(tris, stock, diameter)
+	ball := indexForShape(job.Tools, "ballend")
+	hf, err := e.dropCutterField(tris, stock, job.Tools[ball].Tool.Diameter)
 	if err != nil {
 		return nil, err
 	}
 	stepDown := levelSpacing(cut, waterStepDown)
 	levels := extractLevels(hf, stepDown)
+	env := e.millEnvelope("Waterline", stock)
+	env.ToolController = ball
 	job.Operations = []Operation{&WaterlineOp{
-		OpBase:   e.millEnvelope("Waterline", stock),
+		OpBase:   env,
 		StepOver: waterStepOver, StepDown: stepDown, Levels: levels,
 	}}
 	return e.postPreviewResult(job, fmt.Sprintf("waterline-finished the surface (%d levels)", len(levels)))

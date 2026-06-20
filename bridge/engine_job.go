@@ -46,26 +46,26 @@ func (e *Engine) buildDrillingJob(bodyIndex int) (*Job, []DrillTarget, error) {
 	job := NewJob()
 	job.Stock = stock
 	job.ModelBodies = []int{bodyIndex}
-
-	e.mu.Lock()
-	feed := e.plungFeed
-	e.mu.Unlock()
-	job.Tools = []ToolController{{
-		Label: "Drill", ToolNumber: 1, SpindleSpeed: 2000, SpindleDir: "Forward",
-		VertFeed: feed, HorizFeed: feed, Tool: ToolBit{Name: "Drill", ShapeType: "drill", Diameter: 6},
-	}}
+	job.Tools = e.jobTools()
 	job.Operations = []Operation{&DrillingOp{
-		OpBase: OpBase{
-			OpLabel: "Drilling", IsActive: true, ToolController: 0,
-			ClearanceHeight: stock.TopZ() + drillClearanceAbove,
-			SafeHeight:      stock.TopZ() + drillRetractAbove,
-			RetractHeight:   stock.TopZ() + drillRetractAbove,
-			StartDepth:      stock.TopZ(),
-			FinalDepth:      stock.BottomZ(),
-		},
-		Holes: holes,
+		OpBase: drillEnvelope(stock, indexForShape(job.Tools, "drill")),
+		Holes:  holes,
 	}}
 	return job, holes, nil
+}
+
+// drillEnvelope builds the depth/height envelope for a drilling operation framed to the stock
+// (rapid clearance + canned-cycle R plane above the top, drilling from the top through the
+// bottom), on the given tool controller.
+func drillEnvelope(stock Stock, toolController int) OpBase {
+	return OpBase{
+		OpLabel: "Drilling", IsActive: true, ToolController: toolController,
+		ClearanceHeight: stock.TopZ() + drillClearanceAbove,
+		SafeHeight:      stock.TopZ() + drillRetractAbove,
+		RetractHeight:   stock.TopZ() + drillRetractAbove,
+		StartDepth:      stock.TopZ(),
+		FinalDepth:      stock.BottomZ(),
+	}
 }
 
 // ToolpathOverlayID is the stable client-graphics id the CAM toolpath overlay owns.

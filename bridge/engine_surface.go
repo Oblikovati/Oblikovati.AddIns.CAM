@@ -27,21 +27,12 @@ func (e *Engine) RunSurface3DJobOnHost(bodyIndex int) (*JobResult, error) {
 		return nil, err
 	}
 	job := e.newMillJob(bodyIndex, stock)
-	job.Tools[0].Tool.ShapeType = "ballend" // finishing uses a ball-nose cutter
-	diameter := job.Tools[0].Tool.Diameter
-
-	stepOver := passSpacing(e.cutting(), surfStepOver)
-	lines := scanLines(stock, stepOver)
-	rows, err := e.surfacer.DropCutter(tris, diameter, ballCutterLength, stock.BottomZ(), surfSampling, lines)
+	op, err := e.surfaceOp(job, stock, tris, e.cutting())
 	if err != nil {
-		return nil, fmt.Errorf("drop-cutter over %d triangles / %d passes: %w", len(tris), len(lines), err)
+		return nil, err
 	}
-	clRows := toVectorRows(rows)
-	job.Operations = []Operation{&SurfaceOp{
-		OpBase:   e.millEnvelope("Surface", stock),
-		StepOver: stepOver, Sampling: surfSampling, Zigzag: true, Rows: clRows,
-	}}
-	return e.postPreviewResult(job, fmt.Sprintf("finished the surface (%d passes)", countRows(clRows)))
+	job.Operations = []Operation{op}
+	return e.postPreviewResult(job, fmt.Sprintf("finished the surface (%d passes)", countRows(op.Rows)))
 }
 
 // meshAndStock reads the body's range box (for stock) and its tessellation (for the surface

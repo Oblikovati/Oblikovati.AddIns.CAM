@@ -95,11 +95,18 @@ func (e *Engine) saveJobAction() (*JobResult, error) {
 	if err := e.SaveJob(job); err != nil {
 		return nil, err
 	}
+	if err := e.SaveToolLibrary(); err != nil {
+		return nil, err
+	}
 	return &JobResult{Summary: fmt.Sprintf("CAM: job saved (%d operation(s)).", len(job.Operations))}, nil
 }
 
-// loadJobAction loads the stored job from the active document and makes it the current job.
+// loadJobAction loads the stored job (and tool library) from the active document and makes it
+// the current job.
 func (e *Engine) loadJobAction() (*JobResult, error) {
+	if err := e.LoadToolLibrary(); err != nil {
+		return nil, err
+	}
 	job, err := e.LoadJob()
 	if err != nil {
 		return nil, err

@@ -43,9 +43,11 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("engrave", "Engrave", GenerateEngraveCommandID),
 			client.PanelButton("surface", "3D Surface", GenerateSurfaceCommandID),
 			client.PanelButton("waterline", "Waterline", GenerateWaterlineCommandID),
+			client.PanelButton("all", "Generate All", GenerateAllCommandID),
 			client.PanelSeparator(),
 			client.PanelButton("preview", "Preview profile", PreviewProfileCommandID),
 			client.PanelButton("clearpreview", "Clear preview", ClearPreviewCommandID),
+			client.PanelButton("tools", "Tools…", ShowToolsCommandID),
 			client.PanelButton("ops", "Operations…", ShowOperationsCommandID),
 		},
 	})
