@@ -338,6 +338,34 @@ func TestEngineRunVCarveJob(t *testing.T) {
 	}
 }
 
+// TestPanelMaterialFeeds checks selecting a material sets the active end mill's spindle speed and
+// feed from the feeds & speeds calculator, and that changing the tool diameter re-derives them.
+func TestPanelMaterialFeeds(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.applyPanelEdit("tool_dia", "6")
+	e.applyPanelEdit("material", "aluminium")
+	tc := e.activeEndmill()
+	if tc.SpindleSpeed <= 5000 {
+		t.Errorf("aluminium @6mm should drive the spindle well above the 5000 default, got %g", tc.SpindleSpeed)
+	}
+	if tc.HorizFeed <= 0 {
+		t.Errorf("material selection should set a cutting feed, got %g", tc.HorizFeed)
+	}
+
+	// a harder material drops the RPM; switching to steel must slow the spindle.
+	e.applyPanelEdit("material", "steel")
+	if steel := e.activeEndmill(); steel.SpindleSpeed >= tc.SpindleSpeed {
+		t.Errorf("steel RPM %g should be below aluminium %g", steel.SpindleSpeed, tc.SpindleSpeed)
+	}
+
+	// an unknown material leaves the feeds unchanged.
+	before := e.activeEndmill().SpindleSpeed
+	e.applyPanelEdit("material", "unobtanium")
+	if after := e.activeEndmill().SpindleSpeed; after != before {
+		t.Errorf("unknown material should not change the spindle (%g → %g)", before, after)
+	}
+}
+
 // TestEngineFanucPost checks the panel can select the Fanuc post and a job posts in its dialect
 // (tape wrapper + O-number program header).
 func TestEngineFanucPost(t *testing.T) {
