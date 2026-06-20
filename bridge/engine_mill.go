@@ -44,11 +44,14 @@ func (e *Engine) finishMillJob(job *Job, boundary geom2d.Polygon, verb string) (
 	}
 	overlayID, _ := e.pushContourOverlay(boundary, job.Stock.TopZ())
 	lines := countLines(gcodeText)
+	e.mu.Lock()
+	source := e.sectionSource
+	e.mu.Unlock()
 	return &JobResult{
 		GCode:      gcodeText,
 		GCodeLines: lines,
 		OverlayID:  overlayID,
-		Summary:    fmt.Sprintf("CAM: %s the outline (%d boundary pts), %d G-code lines (%s).", verb, len(boundary), lines, e.postName),
+		Summary:    fmt.Sprintf("CAM: %s the outline from the %s (%d boundary pts), %d G-code lines (%s).", verb, source, len(boundary), lines, e.postName),
 	}, nil
 }
 
@@ -115,10 +118,10 @@ func (e *Engine) millEnvelope(label string, stock Stock) OpBase {
 	}
 }
 
-// contourAndStock reads the body's extent and sections it at mid-height to obtain the outer
-// silhouette contour (the largest section wire), returned in millimetres along with the
-// stock. The mid-height section gives a clean outline for a prismatic part; per-face
-// selection is a later milestone.
+// contourAndStock reads the body's extent and sections it to obtain the outer silhouette
+// contour (the largest section wire), returned in millimetres along with the stock. The
+// section plane follows a selected planar face when one is picked, otherwise a horizontal
+// plane at the body's mid-height — both give a clean outline for a prismatic part.
 func (e *Engine) contourAndStock(bodyIndex int) (geom2d.Polygon, Stock, error) {
 	rbox, err := e.api.Body().RangeBox(wire.BodyRangeBoxArgs{BodyIndex: bodyIndex, Precise: true})
 	if err != nil {
@@ -128,13 +131,19 @@ func (e *Engine) contourAndStock(bodyIndex int) (geom2d.Polygon, Stock, error) {
 		return nil, Stock{}, fmt.Errorf("body %d has no extent", bodyIndex)
 	}
 	stock := StockFromRangeBox(rbox.Min, rbox.Max)
-	midZ := (rbox.Min[2] + rbox.Max[2]) / 2 // cm
+	plane, err := e.sectionPlaneFor(bodyIndex, rbox)
+	if err != nil {
+		return nil, Stock{}, err
+	}
+	e.mu.Lock()
+	e.sectionSource = plane.source
+	e.mu.Unlock()
 
 	bi := bodyIndex
 	section, err := e.api.TransientBRep().CreateIntersectionWithPlane(
-		wire.BrepBodyRef{BodyIndex: &bi}, []float64{0, 0, midZ}, []float64{0, 0, 1})
+		wire.BrepBodyRef{BodyIndex: &bi}, plane.origin, plane.normal)
 	if err != nil {
-		return nil, Stock{}, fmt.Errorf("section body %d at z=%g: %w", bodyIndex, midZ, err)
+		return nil, Stock{}, fmt.Errorf("section body %d at %s plane: %w", bodyIndex, plane.source, err)
 	}
 	boundary := largestContour(section.Wires)
 	if len(boundary) < 3 {

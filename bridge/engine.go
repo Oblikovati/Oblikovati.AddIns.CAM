@@ -25,11 +25,12 @@ type Engine struct {
 	host HostCaller
 	api  *client.Client
 
-	mu        sync.Mutex
-	running   bool   // a job is in flight (coalesces overlapping command triggers)
-	postName  string // active post processor ("linuxcnc" | "grbl")
-	plungFeed float64
-	lastJob   *Job // most recently generated job (for the operations browser + Save)
+	mu            sync.Mutex
+	running       bool   // a job is in flight (coalesces overlapping command triggers)
+	postName      string // active post processor ("linuxcnc" | "grbl")
+	plungFeed     float64
+	lastJob       *Job   // most recently generated job (for the operations browser + Save)
+	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
