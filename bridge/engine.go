@@ -26,9 +26,11 @@ type Engine struct {
 	api  *client.Client
 
 	mu            sync.Mutex
-	running       bool   // a job is in flight (coalesces overlapping command triggers)
-	postName      string // active post processor ("linuxcnc" | "grbl")
-	plungFeed     float64
+	running       bool    // a job is in flight (coalesces overlapping command triggers)
+	postName      string  // active post processor ("linuxcnc" | "grbl" | "fanuc")
+	plungFeed     float64 // plunge (vertical) feed; the cutting feed is 3× this
+	spindleSpeed  float64 // active spindle speed (rev/min), set by the feeds & speeds calculator
+	material      string  // selected workpiece material (drives the feeds & speeds calculator)
 	lastJob       *Job    // most recently generated job (for the operations browser + Save)
 	lastGCode     string  // most recently posted G-code (for export to a file)
 	lastEstimate  float64 // estimated cycle time (minutes) of the last posted job
@@ -42,17 +44,17 @@ type Engine struct {
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
 func NewEngine(host HostCaller) *Engine {
-	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, cut: defaultCutSettings(), library: DefaultToolLibrary(), surfacer: oclSurfacer{}}
+	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, spindleSpeed: defaultSpindleSpeed, material: defaultMaterial, cut: defaultCutSettings(), library: DefaultToolLibrary(), surfacer: oclSurfacer{}}
 }
 
 // activeEndmill is the primary milling tool (T1), built from the panel's tool-diameter and feed
 // fields. It is always present at index 0 of a job's tool list.
 func (e *Engine) activeEndmill() ToolController {
 	e.mu.Lock()
-	feed, dia := e.plungFeed, e.cut.ToolDiameter
+	feed, dia, rpm := e.plungFeed, e.cut.ToolDiameter, e.spindleSpeed
 	e.mu.Unlock()
 	return ToolController{
-		Label: "End mill", ToolNumber: 1, SpindleSpeed: 5000, SpindleDir: "Forward",
+		Label: "End mill", ToolNumber: 1, SpindleSpeed: rpm, SpindleDir: "Forward",
 		VertFeed: feed, HorizFeed: feed * 3, Tool: ToolBit{Name: "End mill", ShapeType: "endmill", Diameter: dia},
 	}
 }
@@ -66,8 +68,14 @@ func (e *Engine) jobTools() []ToolController {
 	return append([]ToolController{e.activeEndmill()}, lib...)
 }
 
-// defaultPlungeFeed is the default drilling plunge feed (mm/min) until the panel overrides it.
-const defaultPlungeFeed = 100.0
+// defaultPlungeFeed is the default drilling plunge feed (mm/min) until the panel overrides it,
+// and defaultSpindleSpeed the default spindle speed (rev/min) until a material is chosen.
+const (
+	defaultPlungeFeed   = 100.0
+	defaultSpindleSpeed = 5000.0
+	feedsFluteCount     = 2           // assumed end-mill flute count for the feeds & speeds calculator
+	defaultMaterial     = "aluminium" // selected workpiece material until the panel changes it
+)
 
 // SetPost selects the post processor ("linuxcnc" | "grbl" | "fanuc"); an empty/unknown name
 // leaves the current one. Returns the engine for chaining. Stand-in for the panel's post dropdown.

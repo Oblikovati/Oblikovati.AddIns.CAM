@@ -9,6 +9,7 @@ import (
 	"oblikovati.org/api/client"
 	"oblikovati.org/api/types"
 	"oblikovati.org/api/wire"
+	"oblikovati.org/cam/bridge/feeds"
 )
 
 // CAMPanelID is the stable dockable-window id the CAM add-in owns.
@@ -19,7 +20,7 @@ const CAMPanelID = "com.oblikovati.cam.panel"
 // (applyPanelEdit).
 func (e *Engine) ShowPanel() (wire.OKResult, error) {
 	e.mu.Lock()
-	postName, feed, cut, body := e.postName, e.plungFeed, e.cut, e.targetBody
+	postName, feed, cut, body, material := e.postName, e.plungFeed, e.cut, e.targetBody, e.material
 	e.mu.Unlock()
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID:      CAMPanelID,
@@ -31,6 +32,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl", "fanuc"}, postName),
 			client.PanelTextBox("body", "Body index", strconv.Itoa(body)),
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(feed)),
+			client.PanelDropdown("material", "Material (feeds & speeds)", feeds.Materials(), material),
 			client.PanelTextBox("tool_dia", "Tool ⌀ (mm)", num(cut.ToolDiameter)),
 			client.PanelTextBox("step_down", "Step-down (mm)", num(cut.StepDown)),
 			client.PanelTextBox("step_over", "Step-over (×⌀)", num(cut.StepOver)),
@@ -71,6 +73,19 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 	})
 }
 
+// applyMaterialFeedsLocked recomputes the plunge feed and spindle speed from the selected
+// material and tool diameter via the feeds & speeds calculator. The cutting feed is 3× the
+// plunge, so the plunge is set to a third of the recommended cutting feed. The caller must hold
+// e.mu; an unknown material / bad tool leaves the current feeds unchanged.
+func (e *Engine) applyMaterialFeedsLocked() {
+	rec, err := feeds.Recommend(e.material, e.cut.ToolDiameter, feedsFluteCount)
+	if err != nil {
+		return
+	}
+	e.spindleSpeed = float64(rec.RPM)
+	e.plungFeed = rec.FeedRate / 3
+}
+
 // applyPanelEdit writes one edited panel value back into the engine, keyed by control id.
 func (e *Engine) applyPanelEdit(controlID, value string) {
 	e.mu.Lock()
@@ -86,9 +101,15 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		}
 	case "plunge_feed":
 		e.plungFeed = panelNum(value, e.plungFeed)
+	case "material":
+		if _, ok := feeds.Lookup(value); ok {
+			e.material = strings.ToLower(strings.TrimSpace(value))
+			e.applyMaterialFeedsLocked()
+		}
 	case "tool_dia":
 		if d := panelNum(value, e.cut.ToolDiameter); d > 0 {
 			e.cut.ToolDiameter = d
+			e.applyMaterialFeedsLocked() // a new diameter changes the recommended RPM/feed
 		}
 	case "step_down":
 		e.cut.StepDown = panelNum(value, e.cut.StepDown)
