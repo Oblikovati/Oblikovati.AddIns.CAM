@@ -61,6 +61,8 @@ const (
 	GenerateHelixCommandID    = "CAM.GenerateHelix"    // helical bore
 	GenerateMillFaceCommandID = "CAM.GenerateMillFace" // face milling
 	GenerateEngraveCommandID  = "CAM.GenerateEngrave"  // engraving
+	PreviewProfileCommandID   = "CAM.PreviewProfile"   // transient toolpath preview (not committed)
+	ClearPreviewCommandID     = "CAM.ClearPreview"     // remove the transient toolpath preview
 	ShowOperationsCommandID   = "CAM.ShowOperations"   // open the operations browser
 	SaveJobCommandID          = "CAM.SaveJob"          // persist the job into the document
 	LoadJobCommandID          = "CAM.LoadJob"          // load the job from the document
@@ -74,6 +76,8 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateHelixCommandID, "Generate Helix Job", "Bore the part's holes with a helix (for holes wider than the tool)."},
 	{GenerateMillFaceCommandID, "Generate Face Job", "Face the top of the stock over the part's outline."},
 	{GenerateEngraveCommandID, "Generate Engrave Job", "Engrave the part's outline on the tool centre."},
+	{PreviewProfileCommandID, "Preview Profile", "Show the profile toolpath as a live overlay without committing or posting it."},
+	{ClearPreviewCommandID, "Clear Preview", "Remove the live toolpath preview overlay."},
 	{ShowOperationsCommandID, "Show Operations", "Open the CAM operations browser for the last generated job."},
 	{SaveJobCommandID, "Save CAM Job", "Persist the CAM job into the active document."},
 	{LoadJobCommandID, "Load CAM Job", "Load the CAM job stored in the active document."},
@@ -149,6 +153,10 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunMillFaceJobOnHost(0) })
 	case GenerateEngraveCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunEngraveJobOnHost(0) })
+	case PreviewProfileCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.PreviewProfileOnHost(0) })
+	case ClearPreviewCommandID:
+		e.launchRun(e.clearPreviewAction)
 	case ShowOperationsCommandID:
 		e.launchRun(e.showOperationsAction)
 	case SaveJobCommandID:

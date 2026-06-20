@@ -43,6 +43,7 @@ func (e *Engine) finishMillJob(job *Job, boundary geom2d.Polygon, verb string) (
 		return nil, err
 	}
 	overlayID, _ := e.pushContourOverlay(boundary, job.Stock.TopZ())
+	_ = e.clearToolpathPreview() // the committed overlay replaces any transient preview
 	lines := countLines(gcodeText)
 	e.mu.Lock()
 	source := e.sectionSource

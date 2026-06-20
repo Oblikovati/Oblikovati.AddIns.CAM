@@ -38,6 +38,8 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("face", "Face", GenerateMillFaceCommandID),
 			client.PanelButton("engrave", "Engrave", GenerateEngraveCommandID),
 			client.PanelSeparator(),
+			client.PanelButton("preview", "Preview profile", PreviewProfileCommandID),
+			client.PanelButton("clearpreview", "Clear preview", ClearPreviewCommandID),
 			client.PanelButton("ops", "Operations…", ShowOperationsCommandID),
 		},
 	})
