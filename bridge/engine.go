@@ -30,6 +30,7 @@ type Engine struct {
 	postName      string // active post processor ("linuxcnc" | "grbl")
 	plungFeed     float64
 	lastJob       *Job   // most recently generated job (for the operations browser + Save)
+	lastGCode     string // most recently posted G-code (for export to a file)
 	editingOp     int    // index of the operation shown in the operation editor
 	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
 	cut           cutSettings
@@ -105,6 +106,7 @@ const (
 	RemoveToolCommandID        = "CAM.RemoveTool"        // remove the last library tool
 	SaveJobCommandID           = "CAM.SaveJob"           // persist the job into the document
 	LoadJobCommandID           = "CAM.LoadJob"           // load the job from the document
+	SaveGCodeCommandID         = "CAM.SaveGCode"         // export the posted program to a file
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -134,6 +136,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{RemoveToolCommandID, "Remove Tool", "Remove the last tool added to the library."},
 	{SaveJobCommandID, "Save CAM Job", "Persist the CAM job into the active document."},
 	{LoadJobCommandID, "Load CAM Job", "Load the CAM job stored in the active document."},
+	{SaveGCodeCommandID, "Save G-code", "Export the last posted program to a .nc file."},
 }
 
 // RegisterCommands registers the CAM commands so each is invokable like a ribbon click. The
@@ -192,6 +195,8 @@ func (e *Engine) Notify(ev []byte) {
 				e.handleOpEditorEdit(p.ControlId, p.Value)
 			}
 		}
+	case wire.EventFileDialogChosen:
+		e.handleFileChosen(ev)
 	}
 }
 
@@ -249,6 +254,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.saveJobAction)
 	case LoadJobCommandID:
 		e.launchRun(e.loadJobAction)
+	case SaveGCodeCommandID:
+		e.launchRun(e.saveGCodeAction)
 	}
 }
 
@@ -325,7 +332,11 @@ func (e *Engine) GenerateGCode(job *Job) (string, error) {
 	job.PostProcessor = e.postName
 	e.lastJob = job
 	e.mu.Unlock()
-	return post.Export(job.PostProcessor, PostObjects(results), "--no-show-editor")
+	gcodeText, err := post.Export(job.PostProcessor, PostObjects(results), "--no-show-editor")
+	if err == nil {
+		e.rememberGCode(gcodeText)
+	}
+	return gcodeText, err
 }
 
 // countLines counts the newline-terminated lines in the G-code.

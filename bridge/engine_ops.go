@@ -82,6 +82,7 @@ func (e *Engine) postPreviewResult(job *Job, verb string) (*JobResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	e.rememberGCode(gcodeText)
 	lines := countLines(gcodeText)
 	return &JobResult{
 		GCode: gcodeText, GCodeLines: lines, OverlayID: overlayID,

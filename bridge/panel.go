@@ -50,6 +50,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("tools", "Tools…", ShowToolsCommandID),
 			client.PanelButton("ops", "Operations…", ShowOperationsCommandID),
 			client.PanelButton("editop", "Edit Op…", EditOperationCommandID),
+			client.PanelButton("savegcode", "Save G-code…", SaveGCodeCommandID),
 		},
 	})
 }

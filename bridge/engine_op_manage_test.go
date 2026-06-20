@@ -61,3 +61,20 @@ func TestMutateNoJob(t *testing.T) {
 		t.Error("toggling with no job must error")
 	}
 }
+
+// TestMoveOpBoundaries are no-ops at the ends, and the editor action opens.
+func TestMoveOpBoundaries(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.lastJob = twoOpJob()
+	e.editingOp = 0
+	if _, err := e.moveOpUpAction(); err != nil { // already first
+		t.Fatalf("moveOpUp at first: %v", err)
+	}
+	e.editingOp = len(e.lastJob.Operations) - 1
+	if _, err := e.moveOpDownAction(); err != nil { // already last
+		t.Fatalf("moveOpDown at last: %v", err)
+	}
+	if _, err := e.showOperationEditorAction(); err != nil {
+		t.Fatalf("showOperationEditorAction: %v", err)
+	}
+}
