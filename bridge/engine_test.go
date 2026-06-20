@@ -295,6 +295,20 @@ func TestEngineRunCounterboreJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunCountersinkJob runs the countersink flow and checks it cuts a conical recess.
+func TestEngineRunCountersinkJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunCountersinkJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunCountersinkJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "countersank") {
+		t.Errorf("summary = %q, want it to mention countersank", res.Summary)
+	}
+	if !strings.Contains(res.GCode, "G1") {
+		t.Error("countersink should emit a cutting spiral")
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}

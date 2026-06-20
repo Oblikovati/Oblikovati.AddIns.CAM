@@ -373,6 +373,29 @@ func (op *CounterboreOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Countersink ---
+
+// Parameters lists the editable countersink parameters.
+func (op *CountersinkOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("diameter", "Rim ⌀ (mm)", op.Diameter),
+		numberParam("toolAngle", "Tool angle (°)", op.ToolAngle),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one countersink parameter edit.
+func (op *CountersinkOp) SetParameter(id, value string) bool {
+	switch id {
+	case "diameter":
+		op.Diameter = panelNum(value, op.Diameter)
+	case "toolAngle":
+		op.ToolAngle = panelNum(value, op.ToolAngle)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Surface ---
 
 // Parameters lists the editable 3D-surface parameters.
