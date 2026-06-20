@@ -28,7 +28,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 		Visible: true,
 		Controls: []wire.PanelControlSpec{
 			client.PanelLabel("hdr", "— CAM job —"),
-			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl"}, postName),
+			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl", "fanuc"}, postName),
 			client.PanelTextBox("body", "Body index", strconv.Itoa(body)),
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(feed)),
 			client.PanelTextBox("tool_dia", "Tool ⌀ (mm)", num(cut.ToolDiameter)),
@@ -77,7 +77,7 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 	defer e.mu.Unlock()
 	switch controlID {
 	case "post":
-		if v := strings.TrimSpace(value); v == "linuxcnc" || v == "grbl" {
+		if v := strings.TrimSpace(value); v == "linuxcnc" || v == "grbl" || v == "fanuc" {
 			e.postName = v
 		}
 	case "body":

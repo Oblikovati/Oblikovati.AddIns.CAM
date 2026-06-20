@@ -13,16 +13,18 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 )
 
-// Export renders objects with the named post processor ("linuxcnc" | "grbl"), erroring on
-// an unknown name (the message lists the supported posts).
+// Export renders objects with the named post processor ("linuxcnc" | "grbl" | "fanuc"), erroring
+// on an unknown name (the message lists the supported posts).
 func Export(name string, objects []Object, argstring string) (string, error) {
 	switch name {
 	case "linuxcnc", "":
 		return ExportLinuxCNC(objects, argstring), nil
 	case "grbl":
 		return ExportGRBL(objects, argstring), nil
+	case "fanuc":
+		return ExportFanuc(objects, argstring), nil
 	default:
-		return "", fmt.Errorf("unknown post processor %q (supported: linuxcnc, grbl)", name)
+		return "", fmt.Errorf("unknown post processor %q (supported: linuxcnc, grbl, fanuc)", name)
 	}
 }
 
