@@ -30,7 +30,7 @@ func (e *Engine) detectHolesAndStock(bodyIndex int) ([]DrillTarget, Stock, error
 	if err != nil {
 		return nil, Stock{}, err
 	}
-	return holes, StockFromRangeBox(rbox.Min, rbox.Max), nil
+	return holes, e.stockFor(rbox.Min, rbox.Max), nil
 }
 
 // buildDrillingJob reads the body's topology + extent over the API and assembles a drilling

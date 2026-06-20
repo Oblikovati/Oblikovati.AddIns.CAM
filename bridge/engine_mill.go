@@ -130,7 +130,7 @@ func (e *Engine) contourAndStock(bodyIndex int) (geom2d.Polygon, Stock, error) {
 	if len(rbox.Min) < 3 || len(rbox.Max) < 3 {
 		return nil, Stock{}, fmt.Errorf("body %d has no extent", bodyIndex)
 	}
-	stock := StockFromRangeBox(rbox.Min, rbox.Max)
+	stock := e.stockFor(rbox.Min, rbox.Max)
 	plane, err := e.sectionPlaneFor(bodyIndex, rbox)
 	if err != nil {
 		return nil, Stock{}, err

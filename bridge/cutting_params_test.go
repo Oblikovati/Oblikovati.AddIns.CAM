@@ -69,3 +69,22 @@ func TestProfileJobReflectsParams(t *testing.T) {
 		t.Errorf("profile final depth = %g, want 5 (10 mm top − 5 mm cut depth)", op.FinalDepth)
 	}
 }
+
+// TestStockMargins grows the tight billet by the configured margins.
+func TestStockMargins(t *testing.T) {
+	c := cutSettings{StockXYMargin: 2, StockTopMargin: 3}
+	s := c.grow(Stock{Min: vec(0, 0, 0), Max: vec(10, 6, 4)})
+	if s.Min.X != -2 || s.Max.X != 12 || s.Max.Y != 8 || s.Max.Z != 7 || s.Min.Z != 0 {
+		t.Errorf("grown stock = %+v, want XY±2 / top+3 / bottom unchanged", s)
+	}
+}
+
+// TestPanelEditsStock routes the stock-margin panel fields.
+func TestPanelEditsStock(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.applyPanelEdit("stock_xy", "2.5")
+	e.applyPanelEdit("stock_top", "4")
+	if g := e.cutting(); g.StockXYMargin != 2.5 || g.StockTopMargin != 4 {
+		t.Errorf("stock margins after edits = %+v", g)
+	}
+}
