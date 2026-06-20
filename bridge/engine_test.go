@@ -189,6 +189,25 @@ func TestEngineRunAdaptiveJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunRestJob runs the rest-machining flow and checks it clears fewer rings than the
+// full pocket flow over the same body (it only cleans the wall band).
+func TestEngineRunRestJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunRestJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunRestJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "rest-cleared") {
+		t.Errorf("summary = %q, want it to mention rest-cleared", res.Summary)
+	}
+	pocket, err := NewEngine(&recordingHost{}).SetPost("grbl").RunPocketJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunPocketJobOnHost: %v", err)
+	}
+	if r, p := strings.Count(res.GCode, "G1 Z"), strings.Count(pocket.GCode, "G1 Z"); r >= p {
+		t.Errorf("rest should cut fewer rings than the full pocket: rest=%d pocket=%d", r, p)
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}

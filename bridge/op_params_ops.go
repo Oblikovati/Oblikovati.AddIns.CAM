@@ -85,6 +85,35 @@ func (op *AdaptiveOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Rest ---
+
+// Parameters lists the editable rest-machining parameters.
+func (op *RestOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("prevTool", "Previous tool ⌀ (mm)", op.PrevToolDiameter),
+		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
+		numberParam("stepDown", "Step-down (mm)", op.StepDown),
+		boolParam("climb", "Climb", op.Climb),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one rest-machining parameter edit.
+func (op *RestOp) SetParameter(id, value string) bool {
+	switch id {
+	case "prevTool":
+		op.PrevToolDiameter = panelNum(value, op.PrevToolDiameter)
+	case "stepOver":
+		op.StepOver = panelNum(value, op.StepOver)
+	case "stepDown":
+		op.StepDown = panelNum(value, op.StepDown)
+	case "climb":
+		op.Climb = parseBool(value)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Drilling ---
 
 // Parameters lists the editable drilling parameters.
