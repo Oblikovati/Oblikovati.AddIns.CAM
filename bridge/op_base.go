@@ -36,6 +36,7 @@ type Operation interface {
 	SetActive(bool)           // enable/disable the operation
 	ToolControllerIndex() int // index into Job.Tools
 	Features() FeatureFlag    // the property groups this op uses
+	Clone() Operation         // a deep copy (for duplicating an operation)
 	Execute(job *Job) (gcode.Path, error)
 }
 
