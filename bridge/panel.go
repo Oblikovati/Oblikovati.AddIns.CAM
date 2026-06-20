@@ -37,6 +37,8 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelTextBox("cut_depth", "Cut depth (mm, 0=thru)", num(cut.CutDepth)),
 			client.PanelTextBox("stock_xy", "Stock margin XY (mm)", num(cut.StockXYMargin)),
 			client.PanelTextBox("stock_top", "Stock margin top (mm)", num(cut.StockTopMargin)),
+			client.PanelTextBox("clearance", "Clearance above (mm)", num(cut.ClearanceAbove)),
+			client.PanelTextBox("retract", "Retract above (mm)", num(cut.RetractAbove)),
 			client.PanelSeparator(),
 			client.PanelButton("drill", "Drilling", GenerateJobCommandID),
 			client.PanelButton("profile", "Profile", GenerateProfileCommandID),
@@ -89,6 +91,10 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		e.cut.StockXYMargin = panelNum(value, e.cut.StockXYMargin)
 	case "stock_top":
 		e.cut.StockTopMargin = panelNum(value, e.cut.StockTopMargin)
+	case "clearance":
+		e.cut.ClearanceAbove = panelNum(value, e.cut.ClearanceAbove)
+	case "retract":
+		e.cut.RetractAbove = panelNum(value, e.cut.RetractAbove)
 	}
 }
 

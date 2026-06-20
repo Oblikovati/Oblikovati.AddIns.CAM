@@ -48,7 +48,7 @@ func (e *Engine) buildDrillingJob(bodyIndex int) (*Job, []DrillTarget, error) {
 	job.ModelBodies = []int{bodyIndex}
 	job.Tools = e.jobTools()
 	job.Operations = []Operation{&DrillingOp{
-		OpBase: drillEnvelope(stock, indexForShape(job.Tools, "drill")),
+		OpBase: e.drillEnvelope(stock, indexForShape(job.Tools, "drill")),
 		Holes:  holes,
 	}}
 	return job, holes, nil
@@ -56,13 +56,14 @@ func (e *Engine) buildDrillingJob(bodyIndex int) (*Job, []DrillTarget, error) {
 
 // drillEnvelope builds the depth/height envelope for a drilling operation framed to the stock
 // (rapid clearance + canned-cycle R plane above the top, drilling from the top through the
-// bottom), on the given tool controller.
-func drillEnvelope(stock Stock, toolController int) OpBase {
+// bottom), on the given tool controller, using the configured clearance/retract heights.
+func (e *Engine) drillEnvelope(stock Stock, toolController int) OpBase {
+	cut := e.cutting()
 	return OpBase{
 		OpLabel: "Drilling", IsActive: true, ToolController: toolController,
-		ClearanceHeight: stock.TopZ() + drillClearanceAbove,
-		SafeHeight:      stock.TopZ() + drillRetractAbove,
-		RetractHeight:   stock.TopZ() + drillRetractAbove,
+		ClearanceHeight: cut.clearanceZ(stock.TopZ()),
+		SafeHeight:      cut.retractZ(stock.TopZ()),
+		RetractHeight:   cut.retractZ(stock.TopZ()),
 		StartDepth:      stock.TopZ(),
 		FinalDepth:      stock.BottomZ(),
 	}
