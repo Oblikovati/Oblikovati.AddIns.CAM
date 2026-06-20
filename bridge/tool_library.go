@@ -16,9 +16,9 @@ type ToolLibrary struct {
 func DefaultToolLibrary() ToolLibrary {
 	return ToolLibrary{Tools: []ToolController{
 		{Label: "Drill 5mm", ToolNumber: 2, SpindleSpeed: 2000, SpindleDir: "Forward",
-			VertFeed: 100, HorizFeed: 100, Tool: ToolBit{Name: "Drill 5mm", ShapeType: "drill", Diameter: 5}},
+			VertFeed: 100, HorizFeed: 100, Tool: ToolBit{Name: "Drill 5mm", ShapeType: "drill", Diameter: 5, Flutes: 2}},
 		{Label: "Ball-nose 6mm", ToolNumber: 3, SpindleSpeed: 6000, SpindleDir: "Forward",
-			VertFeed: 90, HorizFeed: 270, Tool: ToolBit{Name: "Ball-nose 6mm", ShapeType: "ballend", Diameter: 6}},
+			VertFeed: 90, HorizFeed: 270, Tool: ToolBit{Name: "Ball-nose 6mm", ShapeType: "ballend", Diameter: 6, Flutes: 2}},
 	}}
 }
 

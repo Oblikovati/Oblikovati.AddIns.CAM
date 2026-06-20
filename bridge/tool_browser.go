@@ -85,12 +85,12 @@ func newTool(shape string) ToolController {
 	switch shape {
 	case "drill":
 		return ToolController{Label: "Drill 3mm", SpindleSpeed: 2500, SpindleDir: "Forward",
-			VertFeed: 90, HorizFeed: 90, Tool: ToolBit{Name: "Drill 3mm", ShapeType: "drill", Diameter: 3}}
+			VertFeed: 90, HorizFeed: 90, Tool: ToolBit{Name: "Drill 3mm", ShapeType: "drill", Diameter: 3, Flutes: 2}}
 	case "ballend":
 		return ToolController{Label: "Ball-nose 3mm", SpindleSpeed: 8000, SpindleDir: "Forward",
-			VertFeed: 80, HorizFeed: 240, Tool: ToolBit{Name: "Ball-nose 3mm", ShapeType: "ballend", Diameter: 3}}
+			VertFeed: 80, HorizFeed: 240, Tool: ToolBit{Name: "Ball-nose 3mm", ShapeType: "ballend", Diameter: 3, Flutes: 2}}
 	default: // endmill
 		return ToolController{Label: "End mill 4mm", SpindleSpeed: 7000, SpindleDir: "Forward",
-			VertFeed: 90, HorizFeed: 270, Tool: ToolBit{Name: "End mill 4mm", ShapeType: "endmill", Diameter: 4}}
+			VertFeed: 90, HorizFeed: 270, Tool: ToolBit{Name: "End mill 4mm", ShapeType: "endmill", Diameter: 4, Flutes: 4}}
 	}
 }
