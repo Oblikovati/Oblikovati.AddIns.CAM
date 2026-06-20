@@ -87,6 +87,8 @@ func operationKind(op Operation) string {
 		return "Slot"
 	case *ProbeOp:
 		return "Probe"
+	case *ToolLengthProbeOp:
+		return "Tool Probe"
 	case *HelixOp:
 		return "Helix"
 	case *ThreadMillOp:

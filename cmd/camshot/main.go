@@ -103,6 +103,8 @@ func shots() []shot {
 		{"probe", &bridge.ProbeOp{OpBase: deepEnv("Probe"), ProbeFeed: 50, Points: cornerProbe()}},
 		{"boreprobe", &bridge.ProbeOp{OpBase: deepEnv("Bore Probe"), ProbeFeed: 50, Points: boreProbe()}},
 		{"bossprobe", &bridge.ProbeOp{OpBase: deepEnv("Boss Probe"), ProbeFeed: 50, Points: bossProbe()}},
+		// tool-length probing is a single-point Z measurement at the tool-setter — it has no
+		// top-down toolpath shape, so it is validated by tests rather than a gallery image.
 		{"helix", &bridge.HelixOp{OpBase: deepEnv("Helix"), HoleRadius: 8, Pitch: 1.5, Direction: gen.HelixCW, Holes: boreHole()}},
 		{"threadmill", &bridge.ThreadMillOp{OpBase: deepEnv("Thread"), MajorDiameter: 16, Pitch: 1.5, Internal: true, Climb: true, Holes: boreHole()}},
 		{"counterbore", &bridge.CounterboreOp{OpBase: deepEnv("Counterbore"), Diameter: 14, Depth: 4, Pitch: 1, Holes: boreHole()}},

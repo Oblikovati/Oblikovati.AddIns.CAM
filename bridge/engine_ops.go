@@ -138,6 +138,29 @@ func boreProbePoints(holes []DrillTarget) []gen.ProbePoint {
 	return pts
 }
 
+// Default tool-setter position (machine coordinates, mm) the engine seeds a tool-length probe
+// with; the operator adjusts these to their machine in the operation editor.
+const (
+	toolSetterX   = -50.0
+	toolSetterY   = -50.0
+	toolSetterTop = 25.0
+)
+
+// RunToolLengthProbeJobOnHost measures the active tool against the tool-setter and sets its
+// length offset.
+func (e *Engine) RunToolLengthProbeJobOnHost(bodyIndex int) (*JobResult, error) {
+	_, stock, err := e.detectHolesAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&ToolLengthProbeOp{
+		OpBase:  e.millEnvelope("Tool Probe", stock),
+		SetterX: toolSetterX, SetterY: toolSetterY, SetterTop: toolSetterTop, ToolNumber: 1,
+	}}
+	return e.postPreviewResult(job, "measured the tool length against the setter")
+}
+
 // RunBossProbeJobOnHost finds the part footprint's centre by probing its outline walls inward
 // from four sides — the outward-in counterpart of bore probing.
 func (e *Engine) RunBossProbeJobOnHost(bodyIndex int) (*JobResult, error) {
