@@ -47,6 +47,56 @@ func TestProbeEmitsG38(t *testing.T) {
 	}
 }
 
+// TestProbeSetsWorkOffset checks each touch that names an axis emits a G10 L20 to zero that axis
+// in the chosen work coordinate system.
+func TestProbeSetsWorkOffset(t *testing.T) {
+	pts := []ProbePoint{
+		{Approach: gcode.Vector3{X: 5, Y: 5, Z: 2}, Target: gcode.Vector3{X: 5, Y: 5, Z: -5}, SetAxis: "Z"},
+		{Approach: gcode.Vector3{X: -5, Y: 5, Z: -2}, Target: gcode.Vector3{X: 3, Y: 5, Z: -2}, SetAxis: "X"},
+	}
+	cmds, err := GenerateProbe(pts, ProbeParams{ClearanceZ: 15, ProbeFeed: 50, WorkOffset: 2})
+	if err != nil {
+		t.Fatalf("GenerateProbe: %v", err)
+	}
+	var sets []gcode.Command
+	for _, c := range cmds {
+		if c.Name == "G10" {
+			sets = append(sets, c)
+		}
+	}
+	if len(sets) != 2 {
+		t.Fatalf("got %d G10 sets, want 2", len(sets))
+	}
+	if sets[0].Params["L"] != 20 || sets[0].Params["P"] != 2 {
+		t.Errorf("G10 should be L20 P2, got %+v", sets[0].Params)
+	}
+	if _, ok := sets[0].Params["Z"]; !ok {
+		t.Errorf("first set should zero Z, got %+v", sets[0].Params)
+	}
+	if _, ok := sets[1].Params["X"]; !ok {
+		t.Errorf("second set should zero X, got %+v", sets[1].Params)
+	}
+}
+
+// TestProbeNoOffsetWhenDisabled checks WorkOffset=0 (or an unset axis) emits no G10.
+func TestProbeNoOffsetWhenDisabled(t *testing.T) {
+	pts := []ProbePoint{{Approach: gcode.Vector3{X: 0, Y: 0, Z: 2}, Target: gcode.Vector3{X: 0, Y: 0, Z: -5}, SetAxis: "Z"}}
+	cmds, _ := GenerateProbe(pts, ProbeParams{ProbeFeed: 50, WorkOffset: 0})
+	for _, c := range cmds {
+		if c.Name == "G10" {
+			t.Errorf("WorkOffset 0 should emit no G10, found %+v", c.Params)
+		}
+	}
+	// a point with no SetAxis also emits no G10 even when the offset is enabled.
+	noAxis := []ProbePoint{{Approach: gcode.Vector3{X: 0, Y: 0, Z: 2}, Target: gcode.Vector3{X: 0, Y: 0, Z: -5}}}
+	cmds2, _ := GenerateProbe(noAxis, ProbeParams{ProbeFeed: 50, WorkOffset: 1})
+	for _, c := range cmds2 {
+		if c.Name == "G10" {
+			t.Errorf("a touch with no SetAxis should emit no G10, found %+v", c.Params)
+		}
+	}
+}
+
 // TestProbeErrors covers the degenerate feed / empty / no-direction cases.
 func TestProbeErrors(t *testing.T) {
 	if _, err := GenerateProbe(cornerProbe(), ProbeParams{ProbeFeed: 0}); err == nil {
