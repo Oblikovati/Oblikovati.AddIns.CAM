@@ -88,6 +88,38 @@ func TestProbeOpRoundTrip(t *testing.T) {
 	}
 }
 
+// TestBoreProbePoints checks the engine builds four outward wall probes per hole, all starting
+// from the hole centre at mid depth.
+func TestBoreProbePoints(t *testing.T) {
+	holes := []DrillTarget{{X: 10, Y: 20, Top: 0, Bottom: -10}}
+	pts := boreProbePoints(holes)
+	if len(pts) != 4 {
+		t.Fatalf("got %d probe points for one hole, want 4", len(pts))
+	}
+	for _, p := range pts {
+		if p.Approach.X != 10 || p.Approach.Y != 20 || p.Approach.Z != -5 {
+			t.Errorf("bore probe should approach from the hole centre (10,20,-5), got %+v", p.Approach)
+		}
+	}
+	// the four targets must spread to +X, −X, +Y, −Y of the centre.
+	dirs := map[string]bool{}
+	for _, p := range pts {
+		switch {
+		case p.Target.X > 10:
+			dirs["+X"] = true
+		case p.Target.X < 10:
+			dirs["-X"] = true
+		case p.Target.Y > 20:
+			dirs["+Y"] = true
+		case p.Target.Y < 20:
+			dirs["-Y"] = true
+		}
+	}
+	if len(dirs) != 4 {
+		t.Errorf("bore probe should cover all four directions, got %v", dirs)
+	}
+}
+
 // TestCornerProbePoints checks the engine builds a Z touch-off plus two edge probes from the
 // stock bounds.
 func TestCornerProbePoints(t *testing.T) {

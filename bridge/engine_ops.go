@@ -98,6 +98,45 @@ func (e *Engine) RunCountersinkJobOnHost(bodyIndex int) (*JobResult, error) {
 	return e.postPreviewResult(job, fmt.Sprintf("countersank %d hole(s)", len(holes)))
 }
 
+// boreProbeReach is how far (mm) a bore probe travels outward from the hole centre before
+// erroring if it never reaches a wall.
+const boreProbeReach = 25.0
+
+// RunBoreProbeJobOnHost finds each detected hole's centre by probing its wall in four directions.
+func (e *Engine) RunBoreProbeJobOnHost(bodyIndex int) (*JobResult, error) {
+	holes, stock, err := e.detectHolesAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	if len(holes) == 0 {
+		return nil, fmt.Errorf("bore probing found no holes to centre on body %d", bodyIndex)
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&ProbeOp{
+		OpBase: e.millEnvelope("Bore Probe", stock),
+		Points: boreProbePoints(holes),
+	}}
+	return e.postPreviewResult(job, fmt.Sprintf("bore-probed %d hole(s)", len(holes)))
+}
+
+// boreProbePoints builds a four-touch centre cycle for each hole: from the hole centre at mid
+// depth, probe outward to the wall toward +X, −X, +Y, and −Y (the wall trip points bisect to the
+// true centre). The probe retracts to clearance and re-approaches the centre between touches.
+func boreProbePoints(holes []DrillTarget) []gen.ProbePoint {
+	var pts []gen.ProbePoint
+	for _, h := range sortedHoles(holes) {
+		midZ := (h.Top + h.Bottom) / 2
+		centre := gcode.Vector3{X: h.X, Y: h.Y, Z: midZ}
+		for _, d := range [][2]float64{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+			pts = append(pts, gen.ProbePoint{
+				Approach: centre,
+				Target:   gcode.Vector3{X: h.X + d[0]*boreProbeReach, Y: h.Y + d[1]*boreProbeReach, Z: midZ},
+			})
+		}
+	}
+	return pts
+}
+
 // RunProbeJobOnHost probes the stock's top and two edges to find the work origin.
 func (e *Engine) RunProbeJobOnHost(bodyIndex int) (*JobResult, error) {
 	_, stock, err := e.detectHolesAndStock(bodyIndex)
