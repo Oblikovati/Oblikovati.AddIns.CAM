@@ -347,6 +347,32 @@ func (op *ThreadMillOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Counterbore ---
+
+// Parameters lists the editable counterbore parameters.
+func (op *CounterboreOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("diameter", "Recess ⌀ (mm)", op.Diameter),
+		numberParam("depth", "Recess depth (mm)", op.Depth),
+		numberParam("pitch", "Pitch (mm/turn)", op.Pitch),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one counterbore parameter edit.
+func (op *CounterboreOp) SetParameter(id, value string) bool {
+	switch id {
+	case "diameter":
+		op.Diameter = panelNum(value, op.Diameter)
+	case "depth":
+		op.Depth = panelNum(value, op.Depth)
+	case "pitch":
+		op.Pitch = panelNum(value, op.Pitch)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Surface ---
 
 // Parameters lists the editable 3D-surface parameters.

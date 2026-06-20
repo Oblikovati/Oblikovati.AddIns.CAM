@@ -280,6 +280,21 @@ func TestEngineRunProbeJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunCounterboreJob runs the counterbore flow and checks it spot-faces the holes with
+// helical arcs.
+func TestEngineRunCounterboreJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunCounterboreJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunCounterboreJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "counterbored") {
+		t.Errorf("summary = %q, want it to mention counterbored", res.Summary)
+	}
+	if arcs := strings.Count(res.GCode, "G2") + strings.Count(res.GCode, "G3"); arcs == 0 {
+		t.Error("counterbore should emit helical arc moves")
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}

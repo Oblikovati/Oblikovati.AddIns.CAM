@@ -31,6 +31,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `probe.png` | Probing: G38.2 touch moves finding the stock top and two edges (magenta). |
 | `helix.png` | Helix bore: the tool-centre orbit for a hole wider than the tool. |
 | `threadmill.png` | Thread milling: the thread orbit plus the lead-in/out arc easing on/off the thread. |
+| `counterbore.png` | Counterbore / spot-face: concentric helical passes clearing a flat-bottom recess at the hole top. |
 | `surface.png` | 3D surface finish: parallel zig-zag passes; the depth shade (orange high → blue low) shows the surface. |
 | `waterline.png` | 3D waterline finish: nested constant-Z contour loops down the surface. |
 
