@@ -99,6 +99,9 @@ const (
 	MoveOpUpCommandID          = "CAM.MoveOperationUp"   // move the selected operation earlier
 	MoveOpDownCommandID        = "CAM.MoveOperationDown" // move the selected operation later
 	DeleteOpCommandID          = "CAM.DeleteOperation"   // remove the selected operation
+	AddTabsCommandID           = "CAM.AddTabs"           // add holding tabs to the selected operation
+	AddDogboneCommandID        = "CAM.AddDogbone"        // add dogbone relief to the selected operation
+	ClearDressupsCommandID     = "CAM.ClearDressups"     // remove the selected operation's dressups
 	ShowToolsCommandID         = "CAM.ShowTools"         // open the tool-library browser
 	AddEndmillCommandID        = "CAM.AddEndmill"        // add an end mill to the library
 	AddDrillCommandID          = "CAM.AddDrill"          // add a drill to the library
@@ -129,6 +132,9 @@ var camCommands = []struct{ id, name, tip string }{
 	{MoveOpUpCommandID, "Move Operation Up", "Run the selected operation earlier in the program."},
 	{MoveOpDownCommandID, "Move Operation Down", "Run the selected operation later in the program."},
 	{DeleteOpCommandID, "Delete Operation", "Remove the selected operation from the job."},
+	{AddTabsCommandID, "Add Holding Tabs", "Add holding tabs to the selected operation."},
+	{AddDogboneCommandID, "Add Dogbone", "Add dogbone corner relief to the selected operation."},
+	{ClearDressupsCommandID, "Clear Dressups", "Remove the selected operation's dressups."},
 	{ShowToolsCommandID, "Show Tool Library", "Open the CAM tool-library browser."},
 	{AddEndmillCommandID, "Add End Mill", "Add an end mill to the tool library."},
 	{AddDrillCommandID, "Add Drill", "Add a drill to the tool library."},
@@ -234,6 +240,12 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.moveOpDownAction)
 	case DeleteOpCommandID:
 		e.launchRun(e.deleteOpAction)
+	case AddTabsCommandID:
+		e.launchRun(e.addTabsAction)
+	case AddDogboneCommandID:
+		e.launchRun(e.addDogboneAction)
+	case ClearDressupsCommandID:
+		e.launchRun(e.clearDressupsAction)
 	case ShowToolsCommandID:
 		e.launchRun(e.showToolLibraryAction)
 	case AddEndmillCommandID:

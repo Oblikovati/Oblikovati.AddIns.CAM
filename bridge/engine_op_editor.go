@@ -52,7 +52,7 @@ func (e *Engine) editorSpec(job *Job, idx int) wire.DockableWindowSpec {
 	controls := []wire.PanelControlSpec{
 		client.PanelLabel("hdr", "— Edit operation —"),
 		client.PanelDropdown("edit_op", "Operation", labels, labels[idx]),
-		client.PanelLabel("state", "Active: "+boolWord(op.Active())),
+		client.PanelLabel("state", "Active: "+boolWord(op.Active())+dressupSummary(op)),
 		client.PanelSeparator(),
 	}
 	controls = append(controls, opParamControls(op)...)
@@ -62,6 +62,10 @@ func (e *Engine) editorSpec(job *Job, idx int) wire.DockableWindowSpec {
 		client.PanelButton("up", "Move Up", MoveOpUpCommandID),
 		client.PanelButton("down", "Move Down", MoveOpDownCommandID),
 		client.PanelButton("del", "Delete", DeleteOpCommandID),
+		client.PanelSeparator(),
+		client.PanelButton("tabs", "Add Holding Tabs", AddTabsCommandID),
+		client.PanelButton("dogbone", "Add Dogbone", AddDogboneCommandID),
+		client.PanelButton("cleardr", "Clear Dressups", ClearDressupsCommandID),
 		client.PanelSeparator(),
 		client.PanelButton("regen", "Regenerate + Post", RegenerateCommandID),
 	)
@@ -88,6 +92,14 @@ func paramControl(p OpParam) wire.PanelControlSpec {
 		return client.PanelDropdown(p.ID, p.Label, p.Choices, p.Value)
 	}
 	return client.PanelTextBox(p.ID, p.Label, p.Value)
+}
+
+// dressupSummary appends a " · N dressup(s)" note when the operation carries any.
+func dressupSummary(op Operation) string {
+	if h, ok := op.(dressupHolder); ok && h.DressupCount() > 0 {
+		return fmt.Sprintf("  ·  %d dressup(s)", h.DressupCount())
+	}
+	return ""
 }
 
 // opChoices labels each operation "N: Label" for the editor dropdown.

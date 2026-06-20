@@ -84,6 +84,23 @@ func (b *OpBase) Active() bool { return b.IsActive }
 // SetActive implements Operation.
 func (b *OpBase) SetActive(v bool) { b.IsActive = v }
 
+// AppendDressup adds a toolpath dressup to the operation's chain.
+func (b *OpBase) AppendDressup(d Dressup) { b.Dressups = append(b.Dressups, d) }
+
+// ClearDressups removes all dressups from the operation.
+func (b *OpBase) ClearDressups() { b.Dressups = nil }
+
+// DressupCount reports how many dressups the operation carries.
+func (b *OpBase) DressupCount() int { return len(b.Dressups) }
+
+// dressupHolder is the subset of an operation used to manage its dressup chain (every operation
+// satisfies it via OpBase).
+type dressupHolder interface {
+	AppendDressup(Dressup)
+	ClearDressups()
+	DressupCount() int
+}
+
 // ToolControllerIndex implements Operation.
 func (b *OpBase) ToolControllerIndex() int { return b.ToolController }
 
