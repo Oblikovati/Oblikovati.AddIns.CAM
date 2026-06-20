@@ -35,6 +35,9 @@ func (e *Engine) showToolLibrary(tools []ToolController) (wire.OKResult, error) 
 		client.PanelButton("add_dr", "Add Drill", AddDrillCommandID),
 		client.PanelButton("add_bn", "Add Ball-nose", AddBallnoseCommandID),
 		client.PanelButton("rm", "Remove Tool", RemoveToolCommandID),
+		client.PanelSeparator(),
+		client.PanelButton("export", "Export Library…", ExportToolsCommandID),
+		client.PanelButton("import", "Import Library…", ImportToolsCommandID),
 	)
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID: ToolsBrowserID, Title: "CAM Tools", Dock: types.DockLeft, Visible: true, Controls: controls,

@@ -38,22 +38,31 @@ func (e *Engine) saveGCodeAction() (*JobResult, error) {
 	return &JobResult{Summary: "CAM: choose where to save the G-code…"}, nil
 }
 
-// handleFileChosen writes the last posted program to the path the user picked in the G-code
-// save dialog. The write + its status report run off the session goroutine.
+// handleFileChosen dispatches a file-dialog choice to the matching CAM file action (G-code
+// export, tool-library export/import). Each action runs off the session goroutine.
 func (e *Engine) handleFileChosen(ev []byte) {
-	if path, ok := gcodeSavePath(ev); ok {
+	id, path, ok := chosenFile(ev)
+	if !ok {
+		return
+	}
+	switch id {
+	case GCodeDialogID:
 		go e.writeGCode(path)
+	case ToolsExportDialogID:
+		go e.exportTools(path)
+	case ToolsImportDialogID:
+		go e.importTools(path)
 	}
 }
 
-// gcodeSavePath extracts the chosen save path from a file-dialog event, reporting false when
-// the event is not the G-code dialog's, was cancelled, or carries no path.
-func gcodeSavePath(ev []byte) (string, bool) {
+// chosenFile extracts the dialog id and chosen path from a file-dialog event, reporting false
+// when it was cancelled or carries no path.
+func chosenFile(ev []byte) (id, path string, ok bool) {
 	var chosen wire.FileDialogChosenEvent
-	if json.Unmarshal(ev, &chosen) != nil || chosen.ID != GCodeDialogID || chosen.Cancelled || len(chosen.Paths) == 0 {
-		return "", false
+	if json.Unmarshal(ev, &chosen) != nil || chosen.Cancelled || len(chosen.Paths) == 0 {
+		return "", "", false
 	}
-	return chosen.Paths[0], true
+	return chosen.ID, chosen.Paths[0], true
 }
 
 // writeGCode writes the last posted program to path and reports the outcome on the status bar.

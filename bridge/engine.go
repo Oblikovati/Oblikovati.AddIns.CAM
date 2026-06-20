@@ -107,6 +107,8 @@ const (
 	AddDrillCommandID          = "CAM.AddDrill"          // add a drill to the library
 	AddBallnoseCommandID       = "CAM.AddBallnose"       // add a ball-nose to the library
 	RemoveToolCommandID        = "CAM.RemoveTool"        // remove the last library tool
+	ExportToolsCommandID       = "CAM.ExportTools"       // export the tool library to a file
+	ImportToolsCommandID       = "CAM.ImportTools"       // import a tool library from a file
 	SaveJobCommandID           = "CAM.SaveJob"           // persist the job into the document
 	LoadJobCommandID           = "CAM.LoadJob"           // load the job from the document
 	SaveGCodeCommandID         = "CAM.SaveGCode"         // export the posted program to a file
@@ -140,6 +142,8 @@ var camCommands = []struct{ id, name, tip string }{
 	{AddDrillCommandID, "Add Drill", "Add a drill to the tool library."},
 	{AddBallnoseCommandID, "Add Ball-nose", "Add a ball-nose cutter to the tool library."},
 	{RemoveToolCommandID, "Remove Tool", "Remove the last tool added to the library."},
+	{ExportToolsCommandID, "Export Tool Library", "Save the tool library to a JSON file."},
+	{ImportToolsCommandID, "Import Tool Library", "Load a tool library from a JSON file."},
 	{SaveJobCommandID, "Save CAM Job", "Persist the CAM job into the active document."},
 	{LoadJobCommandID, "Load CAM Job", "Load the CAM job stored in the active document."},
 	{SaveGCodeCommandID, "Save G-code", "Export the last posted program to a .nc file."},
@@ -256,6 +260,10 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.addToolAction("ballend") })
 	case RemoveToolCommandID:
 		e.launchRun(e.removeToolAction)
+	case ExportToolsCommandID:
+		e.launchRun(e.exportToolsAction)
+	case ImportToolsCommandID:
+		e.launchRun(e.importToolsAction)
 	case PreviewProfileCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.PreviewProfileOnHost(0) })
 	case ClearPreviewCommandID:

@@ -33,22 +33,19 @@ func TestSaveGCodeOpensDialog(t *testing.T) {
 	}
 }
 
-// TestGCodeSavePath accepts only this dialog's non-cancelled events with a path.
-func TestGCodeSavePath(t *testing.T) {
+// TestChosenFile parses the dialog id + path from a file-dialog event.
+func TestChosenFile(t *testing.T) {
 	mk := func(id string, cancelled bool, paths ...string) []byte {
 		b, _ := json.Marshal(wire.FileDialogChosenEvent{Type: wire.EventFileDialogChosen, ID: id, Cancelled: cancelled, Paths: paths})
 		return b
 	}
-	if p, ok := gcodeSavePath(mk(GCodeDialogID, false, "/tmp/a.nc")); !ok || p != "/tmp/a.nc" {
-		t.Errorf("valid event should yield its path, got (%q,%v)", p, ok)
+	if id, p, ok := chosenFile(mk(GCodeDialogID, false, "/tmp/a.nc")); !ok || p != "/tmp/a.nc" || id != GCodeDialogID {
+		t.Errorf("valid event should yield its id+path, got (%q,%q,%v)", id, p, ok)
 	}
-	if _, ok := gcodeSavePath(mk("other.dialog", false, "/tmp/a.nc")); ok {
-		t.Error("a different dialog's event must be ignored")
-	}
-	if _, ok := gcodeSavePath(mk(GCodeDialogID, true, "/tmp/a.nc")); ok {
+	if _, _, ok := chosenFile(mk(GCodeDialogID, true, "/tmp/a.nc")); ok {
 		t.Error("a cancelled event must be ignored")
 	}
-	if _, ok := gcodeSavePath(mk(GCodeDialogID, false)); ok {
+	if _, _, ok := chosenFile(mk(GCodeDialogID, false)); ok {
 		t.Error("an event with no path must be ignored")
 	}
 }
