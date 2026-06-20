@@ -90,6 +90,22 @@ func TestFacetsToTriangles(t *testing.T) {
 	}
 }
 
+// TestFacetsDropDegenerate filters slivers (zero-area facets) the drop-cutter would abort on.
+func TestFacetsDropDegenerate(t *testing.T) {
+	f := wire.FacetSetResult{
+		// two facets: one real triangle, one degenerate (two coincident corners).
+		VertexCoordinates: []float64{0, 0, 0, 1, 0, 0, 0, 1, 0},
+		VertexIndices:     []int{0, 1, 2, 0, 1, 1},
+		IndexCountPerFace: []int{3, 3},
+	}
+	if tris := facetsToTriangles(f); len(tris) != 1 {
+		t.Errorf("degenerate facet must be dropped: got %d triangles, want 1", len(tris))
+	}
+	if degenerateTriangle([3]float64{0, 0, 0}, [3]float64{1, 0, 0}, [3]float64{2, 0, 0}) == false {
+		t.Error("collinear (zero-area) triangle must be flagged degenerate")
+	}
+}
+
 // TestScanLinesCoverExtent steps scan lines across the stock X extent.
 func TestScanLinesCoverExtent(t *testing.T) {
 	stock := Stock{Min: vec(0, 0, 0), Max: vec(10, 6, 2)}

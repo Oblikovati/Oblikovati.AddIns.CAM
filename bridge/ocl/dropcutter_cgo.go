@@ -8,7 +8,10 @@ package ocl
 // cgo links the C++ standard library automatically because this package contains C++ (.cpp)
 // sources, so LDFLAGS need not name it (which would be libstdc++ on Linux/MinGW but libc++ on
 // macOS) — keeping the build portable across the CI matrix.
-#cgo CXXFLAGS: -std=c++14 -O2 -include cassert -I${SRCDIR}/shim
+// -DNDEBUG compiles out OpenCAMLib's internal assert()s: a bad input (e.g. a degenerate
+// triangle) must degrade gracefully, never abort() the whole host process. cassert is still
+// force-included so the (now no-op) assert macro is declared.
+#cgo CXXFLAGS: -std=c++14 -O2 -DNDEBUG -include cassert -I${SRCDIR}/shim
 #include <stdlib.h>
 #include "wrapper.h"
 */

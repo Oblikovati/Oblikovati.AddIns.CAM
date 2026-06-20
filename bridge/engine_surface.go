@@ -84,14 +84,42 @@ func facetsToTriangles(f wire.FacetSetResult) []ocl.Triangle {
 	pos := 0
 	for _, c := range counts {
 		if c >= 3 && pos+c <= len(f.VertexIndices) {
-			a := f.VertexIndices[pos]
+			a := pt(f.VertexIndices[pos])
 			for k := 1; k+1 < c; k++ { // triangle fan
-				tris = append(tris, ocl.Triangle{A: pt(a), B: pt(f.VertexIndices[pos+k]), C: pt(f.VertexIndices[pos+k+1])})
+				b, cc := pt(f.VertexIndices[pos+k]), pt(f.VertexIndices[pos+k+1])
+				if !degenerateTriangle(a, b, cc) {
+					tris = append(tris, ocl.Triangle{A: a, B: b, C: cc})
+				}
 			}
 		}
 		pos += c
 	}
 	return tris
+}
+
+// degenerateTriangle reports whether a facet has a zero-length edge or is collinear (zero
+// area). The drop-cutter library rejects such triangles, so they are dropped here rather than
+// handed to it — tessellation routinely emits a few slivers.
+func degenerateTriangle(a, b, c [3]float64) bool {
+	const eps = 1e-7 // mm
+	ab, ac := sub3(b, a), sub3(c, a)
+	cr := cross3(ab, ac)
+	area2 := cr[0]*cr[0] + cr[1]*cr[1] + cr[2]*cr[2]
+	return dist2(a, b) < eps || dist2(b, c) < eps || dist2(a, c) < eps || area2 < eps
+}
+
+// sub3 returns a − b.
+func sub3(a, b [3]float64) [3]float64 { return [3]float64{a[0] - b[0], a[1] - b[1], a[2] - b[2]} }
+
+// cross3 returns a × b.
+func cross3(a, b [3]float64) [3]float64 {
+	return [3]float64{a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]}
+}
+
+// dist2 returns the squared distance between a and b.
+func dist2(a, b [3]float64) float64 {
+	d := sub3(a, b)
+	return d[0]*d[0] + d[1]*d[1] + d[2]*d[2]
 }
 
 // triCounts returns n threes — the per-face index counts for a flat triangle list.
