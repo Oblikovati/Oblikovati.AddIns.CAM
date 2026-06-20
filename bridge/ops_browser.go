@@ -73,6 +73,8 @@ func operationKind(op Operation) string {
 		return "Adaptive"
 	case *RestOp:
 		return "Rest"
+	case *TrochoidalOp:
+		return "Trochoidal"
 	case *MillFaceOp:
 		return "Face"
 	case *EngraveOp:

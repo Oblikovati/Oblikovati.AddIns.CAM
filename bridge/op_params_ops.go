@@ -114,6 +114,35 @@ func (op *RestOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Trochoidal ---
+
+// Parameters lists the editable trochoidal parameters.
+func (op *TrochoidalOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("loopRadius", "Loop radius (mm)", op.LoopRadius),
+		numberParam("advance", "Advance (mm)", op.Advance),
+		choiceParam("side", "Side", op.Side, gen.SideOutside, gen.SideInside, gen.SideOn),
+		numberParam("stepDown", "Step-down (mm)", op.StepDown),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one trochoidal parameter edit.
+func (op *TrochoidalOp) SetParameter(id, value string) bool {
+	switch id {
+	case "loopRadius":
+		op.LoopRadius = panelNum(value, op.LoopRadius)
+	case "advance":
+		op.Advance = panelNum(value, op.Advance)
+	case "side":
+		op.Side = value
+	case "stepDown":
+		op.StepDown = panelNum(value, op.StepDown)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Drilling ---
 
 // Parameters lists the editable drilling parameters.

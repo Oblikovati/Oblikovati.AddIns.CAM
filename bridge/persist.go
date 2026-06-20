@@ -119,6 +119,10 @@ type opDoc struct {
 	Width     float64 `json:"width,omitempty"`
 	ToolAngle float64 `json:"toolAngle,omitempty"`
 
+	// Trochoidal
+	LoopRadius float64 `json:"loopRadius,omitempty"`
+	Advance    float64 `json:"advance,omitempty"`
+
 	Dressups []dressupDoc `json:"dressups,omitempty"`
 }
 
@@ -252,6 +256,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("rest", o.OpBase)
 		d.PrevToolDiameter, d.StepOver, d.Climb, d.StepDown = o.PrevToolDiameter, o.StepOver, o.Climb, o.StepDown
 		return d, nil
+	case *TrochoidalOp:
+		d := baseDoc("trochoidal", o.OpBase)
+		d.LoopRadius, d.Advance, d.Side, d.StepDown = o.LoopRadius, o.Advance, o.Side, o.StepDown
+		return d, nil
 	case *MillFaceOp:
 		d := baseDoc("millface", o.OpBase)
 		d.StepOver, d.StepDown = o.StepOver, o.StepDown
@@ -298,6 +306,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &AdaptiveOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "rest":
 		return &RestOp{OpBase: opBaseFrom(d), PrevToolDiameter: d.PrevToolDiameter, StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
+	case "trochoidal":
+		return &TrochoidalOp{OpBase: opBaseFrom(d), LoopRadius: d.LoopRadius, Advance: d.Advance, Side: d.Side, StepDown: d.StepDown}, nil
 	case "millface":
 		return &MillFaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown}, nil
 	case "engrave":

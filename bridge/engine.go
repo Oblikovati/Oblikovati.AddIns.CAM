@@ -88,6 +88,7 @@ const (
 	GeneratePocketCommandID     = "CAM.GeneratePocket"     // area-clearing pocket
 	GenerateAdaptiveCommandID   = "CAM.GenerateAdaptive"   // high-speed adaptive clearing
 	GenerateRestCommandID       = "CAM.GenerateRest"       // rest machining (wall band a larger tool missed)
+	GenerateTrochoidalCommandID = "CAM.GenerateTrochoidal" // trochoidal contour milling
 	GenerateHelixCommandID      = "CAM.GenerateHelix"      // helical bore
 	GenerateThreadMillCommandID = "CAM.GenerateThreadMill" // thread milling
 	GenerateMillFaceCommandID   = "CAM.GenerateMillFace"   // face milling
@@ -130,6 +131,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{GeneratePocketCommandID, "Generate Pocket Job", "Clear the part's outline region with concentric passes, and post it to G-code."},
 	{GenerateAdaptiveCommandID, "Generate Adaptive Job", "Clear the part's outline region with a high-speed low-engagement spiral, and post it to G-code."},
 	{GenerateRestCommandID, "Generate Rest Job", "Clear only the wall stock a previous larger tool left behind, and post it to G-code."},
+	{GenerateTrochoidalCommandID, "Generate Trochoidal Job", "Mill the part's outline with overlapping trochoidal loops (low engagement), and post it to G-code."},
 	{GenerateHelixCommandID, "Generate Helix Job", "Bore the part's holes with a helix (for holes wider than the tool)."},
 	{GenerateThreadMillCommandID, "Generate Thread Job", "Thread-mill the part's holes by helical interpolation."},
 	{GenerateMillFaceCommandID, "Generate Face Job", "Face the top of the stock over the part's outline."},
@@ -241,6 +243,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunAdaptiveJobOnHost(body) })
 	case GenerateRestCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunRestJobOnHost(body) })
+	case GenerateTrochoidalCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunTrochoidalJobOnHost(body) })
 	case GenerateHelixCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunHelixJobOnHost(body) })
 	case GenerateThreadMillCommandID:

@@ -237,6 +237,21 @@ func TestEngineRunChamferJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunTrochoidalJob runs the trochoidal flow and checks it mills the outline with arc
+// loops.
+func TestEngineRunTrochoidalJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunTrochoidalJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunTrochoidalJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "trochoidally milled") {
+		t.Errorf("summary = %q, want it to mention trochoidally milled", res.Summary)
+	}
+	if arcs := strings.Count(res.GCode, "G2") + strings.Count(res.GCode, "G3"); arcs < 10 {
+		t.Errorf("trochoidal should emit many loop arcs, got %d", arcs)
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}
