@@ -15,25 +15,34 @@ const (
 	drillRetractAbove   = 2.0
 )
 
+// detectHolesAndStock reads the body's topology + extent over the API, returning its
+// cylindrical-hole drill targets and stock. Shared by the drilling and helix jobs.
+func (e *Engine) detectHolesAndStock(bodyIndex int) ([]DrillTarget, Stock, error) {
+	refs, err := e.api.Model().ReferenceKeys()
+	if err != nil {
+		return nil, Stock{}, fmt.Errorf("read reference keys: %w", err)
+	}
+	rbox, err := e.api.Body().RangeBox(wire.BodyRangeBoxArgs{BodyIndex: bodyIndex, Precise: true})
+	if err != nil {
+		return nil, Stock{}, fmt.Errorf("read range box of body %d: %w", bodyIndex, err)
+	}
+	holes, err := DetectDrillTargets(refs, rbox, bodyIndex)
+	if err != nil {
+		return nil, Stock{}, err
+	}
+	return holes, StockFromRangeBox(rbox.Min, rbox.Max), nil
+}
+
 // buildDrillingJob reads the body's topology + extent over the API and assembles a drilling
 // job: stock from the range box, one drill tool controller, and a Drilling operation over
 // the detected holes with depths framed to the stock. Returns the job and the detected
 // holes (for the viewport overlay).
 func (e *Engine) buildDrillingJob(bodyIndex int) (*Job, []DrillTarget, error) {
-	refs, err := e.api.Model().ReferenceKeys()
-	if err != nil {
-		return nil, nil, fmt.Errorf("read reference keys: %w", err)
-	}
-	rbox, err := e.api.Body().RangeBox(wire.BodyRangeBoxArgs{BodyIndex: bodyIndex, Precise: true})
-	if err != nil {
-		return nil, nil, fmt.Errorf("read range box of body %d: %w", bodyIndex, err)
-	}
-	holes, err := DetectDrillTargets(refs, rbox, bodyIndex)
+	holes, stock, err := e.detectHolesAndStock(bodyIndex)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	stock := StockFromRangeBox(rbox.Min, rbox.Max)
 	job := NewJob()
 	job.Stock = stock
 	job.ModelBodies = []int{bodyIndex}

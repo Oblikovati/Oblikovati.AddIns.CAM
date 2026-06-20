@@ -1,0 +1,220 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+package bridge
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"oblikovati.org/api/types"
+)
+
+// CAMAttributeSet is the document attribute-set namespace the CAM add-in persists its job
+// into (the add-in id), and CAMJobAttribute the attribute name holding the serialised job.
+const (
+	CAMAttributeSet = "com.oblikovati.cam"
+	CAMJobAttribute = "job"
+)
+
+// jobDoc is the serialisable form of a Job: the tools, post config, and the operation
+// configurations (parameters only — the driving geometry is re-resolved from the part on
+// load, mirroring how a recompute re-reads selections). Operations are a tagged union via
+// opDoc.Kind.
+type jobDoc struct {
+	GeometryTolerance float64          `json:"geometryTolerance"`
+	PostProcessor     string           `json:"postProcessor"`
+	Tools             []ToolController `json:"tools"`
+	Operations        []opDoc          `json:"operations"`
+}
+
+// opDoc is the tagged, flattened serialisation of one operation. Only the fields relevant to
+// Kind are populated; the rest stay at their zero value (omitempty keeps the JSON compact).
+type opDoc struct {
+	Kind            string  `json:"kind"`
+	Label           string  `json:"label"`
+	Active          bool    `json:"active"`
+	ToolController  int     `json:"toolController"`
+	ClearanceHeight float64 `json:"clearanceHeight,omitempty"`
+	SafeHeight      float64 `json:"safeHeight,omitempty"`
+	RetractHeight   float64 `json:"retractHeight,omitempty"`
+	StartDepth      float64 `json:"startDepth,omitempty"`
+	FinalDepth      float64 `json:"finalDepth,omitempty"`
+
+	// Drilling
+	DwellTime   float64 `json:"dwellTime,omitempty"`
+	PeckDepth   float64 `json:"peckDepth,omitempty"`
+	ChipBreak   bool    `json:"chipBreak,omitempty"`
+	FeedRetract bool    `json:"feedRetract,omitempty"`
+	Repeat      int     `json:"repeat,omitempty"`
+
+	// Profile / Engrave / Pocket / MillFace
+	Side        string  `json:"side,omitempty"`
+	OffsetExtra float64 `json:"offsetExtra,omitempty"`
+	Climb       bool    `json:"climb,omitempty"`
+	StepDown    float64 `json:"stepDown,omitempty"`
+	StepOver    float64 `json:"stepOver,omitempty"`
+
+	// Helix
+	HoleRadius float64 `json:"holeRadius,omitempty"`
+	Pitch      float64 `json:"pitch,omitempty"`
+	Direction  string  `json:"direction,omitempty"`
+}
+
+// MarshalJob serialises a job's configuration to JSON (excluding resolved geometry).
+func MarshalJob(job *Job) (string, error) {
+	doc := jobDoc{GeometryTolerance: job.GeometryTolerance, PostProcessor: job.PostProcessor, Tools: job.Tools}
+	for _, op := range job.Operations {
+		d, err := toOpDoc(op)
+		if err != nil {
+			return "", err
+		}
+		doc.Operations = append(doc.Operations, d)
+	}
+	b, err := json.Marshal(doc)
+	if err != nil {
+		return "", fmt.Errorf("marshal job: %w", err)
+	}
+	return string(b), nil
+}
+
+// UnmarshalJob rebuilds a job's configuration from JSON. The reconstructed operations carry
+// their parameters but no geometry (Holes/Boundary) — the engine re-resolves that from the
+// part before running them.
+func UnmarshalJob(s string) (*Job, error) {
+	var doc jobDoc
+	if err := json.Unmarshal([]byte(s), &doc); err != nil {
+		return nil, fmt.Errorf("unmarshal job: %w", err)
+	}
+	job := NewJob()
+	job.GeometryTolerance = doc.GeometryTolerance
+	job.PostProcessor = doc.PostProcessor
+	job.Tools = doc.Tools
+	for _, d := range doc.Operations {
+		op, err := fromOpDoc(d)
+		if err != nil {
+			return nil, err
+		}
+		job.Operations = append(job.Operations, op)
+	}
+	return job, nil
+}
+
+// baseDoc copies an operation's common envelope fields into an opDoc.
+func baseDoc(kind string, b OpBase) opDoc {
+	return opDoc{
+		Kind: kind, Label: b.OpLabel, Active: b.IsActive, ToolController: b.ToolController,
+		ClearanceHeight: b.ClearanceHeight, SafeHeight: b.SafeHeight, RetractHeight: b.RetractHeight,
+		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth,
+	}
+}
+
+// opBaseFrom rebuilds the common envelope from an opDoc.
+func opBaseFrom(d opDoc) OpBase {
+	return OpBase{
+		OpLabel: d.Label, IsActive: d.Active, ToolController: d.ToolController,
+		ClearanceHeight: d.ClearanceHeight, SafeHeight: d.SafeHeight, RetractHeight: d.RetractHeight,
+		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth,
+	}
+}
+
+// toOpDoc converts an operation to its tagged serialisation.
+func toOpDoc(op Operation) (opDoc, error) {
+	switch o := op.(type) {
+	case *DrillingOp:
+		d := baseDoc("drilling", o.OpBase)
+		d.DwellTime, d.PeckDepth, d.ChipBreak, d.FeedRetract, d.Repeat = o.DwellTime, o.PeckDepth, o.ChipBreak, o.FeedRetract, o.Repeat
+		return d, nil
+	case *ProfileOp:
+		d := baseDoc("profile", o.OpBase)
+		d.Side, d.OffsetExtra, d.Climb, d.StepDown = o.Side, o.OffsetExtra, o.Climb, o.StepDown
+		return d, nil
+	case *PocketOp:
+		d := baseDoc("pocket", o.OpBase)
+		d.StepOver, d.Climb, d.StepDown = o.StepOver, o.Climb, o.StepDown
+		return d, nil
+	case *MillFaceOp:
+		d := baseDoc("millface", o.OpBase)
+		d.StepOver, d.StepDown = o.StepOver, o.StepDown
+		return d, nil
+	case *EngraveOp:
+		d := baseDoc("engrave", o.OpBase)
+		d.Climb, d.StepDown = o.Climb, o.StepDown
+		return d, nil
+	case *HelixOp:
+		d := baseDoc("helix", o.OpBase)
+		d.HoleRadius, d.Pitch, d.Direction = o.HoleRadius, o.Pitch, o.Direction
+		return d, nil
+	default:
+		return opDoc{}, fmt.Errorf("cannot serialise operation of type %T", op)
+	}
+}
+
+// fromOpDoc reconstructs an operation (without geometry) from its tagged serialisation.
+func fromOpDoc(d opDoc) (Operation, error) {
+	switch d.Kind {
+	case "drilling":
+		return &DrillingOp{OpBase: opBaseFrom(d), DwellTime: d.DwellTime, PeckDepth: d.PeckDepth, ChipBreak: d.ChipBreak, FeedRetract: d.FeedRetract, Repeat: d.Repeat}, nil
+	case "profile":
+		return &ProfileOp{OpBase: opBaseFrom(d), Side: d.Side, OffsetExtra: d.OffsetExtra, Climb: d.Climb, StepDown: d.StepDown}, nil
+	case "pocket":
+		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
+	case "millface":
+		return &MillFaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown}, nil
+	case "engrave":
+		return &EngraveOp{OpBase: opBaseFrom(d), Climb: d.Climb, StepDown: d.StepDown}, nil
+	case "helix":
+		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
+	default:
+		return nil, fmt.Errorf("unknown operation kind %q", d.Kind)
+	}
+}
+
+// SaveJob persists a job into the active document's CAM attribute set. The job survives the
+// .obk save/load through the host's attribute store.
+func (e *Engine) SaveJob(job *Job) error {
+	docID, err := e.activeDocumentID()
+	if err != nil {
+		return err
+	}
+	payload, err := MarshalJob(job)
+	if err != nil {
+		return err
+	}
+	_, err = e.api.Attributes().Set(docID, CAMAttributeSet, CAMJobAttribute, types.StringVariant(payload))
+	return err
+}
+
+// LoadJob reads the persisted job back from the active document, or (nil, nil) when none is
+// stored.
+func (e *Engine) LoadJob() (*Job, error) {
+	docID, err := e.activeDocumentID()
+	if err != nil {
+		return nil, err
+	}
+	res, err := e.api.Attributes().Get(docID, CAMAttributeSet, CAMJobAttribute)
+	if err != nil {
+		return nil, err
+	}
+	if !res.Found {
+		return nil, nil
+	}
+	payload, ok := res.Attribute.Value.Str()
+	if !ok {
+		return nil, fmt.Errorf("CAM job attribute is not a string value")
+	}
+	return UnmarshalJob(payload)
+}
+
+// activeDocumentID returns the id of the active document, erroring when none is open.
+func (e *Engine) activeDocumentID() (uint64, error) {
+	list, err := e.api.Documents().List()
+	if err != nil {
+		return 0, err
+	}
+	for _, d := range list.Documents {
+		if d.Active {
+			return d.ID, nil
+		}
+	}
+	return 0, fmt.Errorf("no active document to store the CAM job in")
+}

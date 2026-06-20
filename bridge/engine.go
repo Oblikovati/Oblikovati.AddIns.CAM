@@ -29,6 +29,7 @@ type Engine struct {
 	running   bool   // a job is in flight (coalesces overlapping command triggers)
 	postName  string // active post processor ("linuxcnc" | "grbl")
 	plungFeed float64
+	lastJob   *Job // most recently generated job (for the operations browser + Save)
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
@@ -53,9 +54,15 @@ func (e *Engine) SetPost(name string) *Engine {
 // The CAM commands the add-in registers; firing one (a ribbon click or the MCP bridge's
 // execute_command) generates the corresponding toolpath for the active part.
 const (
-	GenerateJobCommandID     = "CAM.GenerateJob"     // drilling (kept stable for M1 callers)
-	GenerateProfileCommandID = "CAM.GenerateProfile" // contour profile
-	GeneratePocketCommandID  = "CAM.GeneratePocket"  // area-clearing pocket
+	GenerateJobCommandID      = "CAM.GenerateJob"      // drilling (kept stable for M1 callers)
+	GenerateProfileCommandID  = "CAM.GenerateProfile"  // contour profile
+	GeneratePocketCommandID   = "CAM.GeneratePocket"   // area-clearing pocket
+	GenerateHelixCommandID    = "CAM.GenerateHelix"    // helical bore
+	GenerateMillFaceCommandID = "CAM.GenerateMillFace" // face milling
+	GenerateEngraveCommandID  = "CAM.GenerateEngrave"  // engraving
+	ShowOperationsCommandID   = "CAM.ShowOperations"   // open the operations browser
+	SaveJobCommandID          = "CAM.SaveJob"          // persist the job into the document
+	LoadJobCommandID          = "CAM.LoadJob"          // load the job from the document
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -63,6 +70,12 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateJobCommandID, "Generate Drilling Job", "Detect the part's holes, generate a drilling toolpath, and post it to G-code."},
 	{GenerateProfileCommandID, "Generate Profile Job", "Contour the part's outline with tool compensation, and post it to G-code."},
 	{GeneratePocketCommandID, "Generate Pocket Job", "Clear the part's outline region with concentric passes, and post it to G-code."},
+	{GenerateHelixCommandID, "Generate Helix Job", "Bore the part's holes with a helix (for holes wider than the tool)."},
+	{GenerateMillFaceCommandID, "Generate Face Job", "Face the top of the stock over the part's outline."},
+	{GenerateEngraveCommandID, "Generate Engrave Job", "Engrave the part's outline on the tool centre."},
+	{ShowOperationsCommandID, "Show Operations", "Open the CAM operations browser for the last generated job."},
+	{SaveJobCommandID, "Save CAM Job", "Persist the CAM job into the active document."},
+	{LoadJobCommandID, "Load CAM Job", "Load the CAM job stored in the active document."},
 }
 
 // RegisterCommands registers the CAM commands so each is invokable like a ribbon click. The
@@ -129,6 +142,18 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunProfileJobOnHost(0) })
 	case GeneratePocketCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunPocketJobOnHost(0) })
+	case GenerateHelixCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunHelixJobOnHost(0) })
+	case GenerateMillFaceCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunMillFaceJobOnHost(0) })
+	case GenerateEngraveCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunEngraveJobOnHost(0) })
+	case ShowOperationsCommandID:
+		e.launchRun(e.showOperationsAction)
+	case SaveJobCommandID:
+		e.launchRun(e.saveJobAction)
+	case LoadJobCommandID:
+		e.launchRun(e.loadJobAction)
 	}
 }
 
@@ -203,6 +228,7 @@ func (e *Engine) GenerateGCode(job *Job) (string, error) {
 	}
 	e.mu.Lock()
 	job.PostProcessor = e.postName
+	e.lastJob = job
 	e.mu.Unlock()
 	return post.Export(job.PostProcessor, PostObjects(results), "--no-show-editor")
 }

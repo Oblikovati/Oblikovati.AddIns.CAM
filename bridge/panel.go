@@ -31,9 +31,14 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl"}, postName),
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", strconv.FormatFloat(feed, 'g', -1, 64)),
 			client.PanelSeparator(),
-			client.PanelButton("drill", "Generate Drilling Job", GenerateJobCommandID),
-			client.PanelButton("profile", "Generate Profile Job", GenerateProfileCommandID),
-			client.PanelButton("pocket", "Generate Pocket Job", GeneratePocketCommandID),
+			client.PanelButton("drill", "Drilling", GenerateJobCommandID),
+			client.PanelButton("profile", "Profile", GenerateProfileCommandID),
+			client.PanelButton("pocket", "Pocket", GeneratePocketCommandID),
+			client.PanelButton("helix", "Helix bore", GenerateHelixCommandID),
+			client.PanelButton("face", "Face", GenerateMillFaceCommandID),
+			client.PanelButton("engrave", "Engrave", GenerateEngraveCommandID),
+			client.PanelSeparator(),
+			client.PanelButton("ops", "Operations…", ShowOperationsCommandID),
 		},
 	})
 }
