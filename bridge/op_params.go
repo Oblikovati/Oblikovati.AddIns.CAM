@@ -55,6 +55,7 @@ func parseBool(value string) bool { return value == "yes" }
 // milling/drilling operation.
 func depthParams(b OpBase) []OpParam {
 	return []OpParam{
+		{ID: "label", Label: "Name", Value: b.OpLabel, Kind: "text"},
 		numberParam("startDepth", "Start depth (mm)", b.StartDepth),
 		numberParam("finalDepth", "Final depth (mm)", b.FinalDepth),
 		numberParam("clearance", "Clearance (mm)", b.ClearanceHeight),
@@ -65,6 +66,10 @@ func depthParams(b OpBase) []OpParam {
 // setDepthParam applies one common depth/height/coolant edit, reporting whether it matched.
 func setDepthParam(b *OpBase, id, value string) bool {
 	switch id {
+	case "label":
+		if value != "" {
+			b.OpLabel = value
+		}
 	case "startDepth":
 		b.StartDepth = panelNum(value, b.StartDepth)
 	case "finalDepth":
