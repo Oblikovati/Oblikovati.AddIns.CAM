@@ -30,6 +30,7 @@ type Engine struct {
 	postName      string // active post processor ("linuxcnc" | "grbl")
 	plungFeed     float64
 	lastJob       *Job   // most recently generated job (for the operations browser + Save)
+	editingOp     int    // index of the operation shown in the operation editor
 	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
 	cut           cutSettings
 	library       ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
@@ -91,6 +92,8 @@ const (
 	PreviewProfileCommandID    = "CAM.PreviewProfile"    // transient toolpath preview (not committed)
 	ClearPreviewCommandID      = "CAM.ClearPreview"      // remove the transient toolpath preview
 	ShowOperationsCommandID    = "CAM.ShowOperations"    // open the operations browser
+	EditOperationCommandID     = "CAM.EditOperation"     // open the operation editor
+	RegenerateCommandID        = "CAM.RegenerateJob"     // re-run + re-post the edited job
 	ShowToolsCommandID         = "CAM.ShowTools"         // open the tool-library browser
 	AddEndmillCommandID        = "CAM.AddEndmill"        // add an end mill to the library
 	AddDrillCommandID          = "CAM.AddDrill"          // add a drill to the library
@@ -114,6 +117,8 @@ var camCommands = []struct{ id, name, tip string }{
 	{PreviewProfileCommandID, "Preview Profile", "Show the profile toolpath as a live overlay without committing or posting it."},
 	{ClearPreviewCommandID, "Clear Preview", "Remove the live toolpath preview overlay."},
 	{ShowOperationsCommandID, "Show Operations", "Open the CAM operations browser for the last generated job."},
+	{EditOperationCommandID, "Edit Operation", "Open the operation editor to change a generated operation's parameters."},
+	{RegenerateCommandID, "Regenerate Job", "Re-run and re-post the job after editing its operations."},
 	{ShowToolsCommandID, "Show Tool Library", "Open the CAM tool-library browser."},
 	{AddEndmillCommandID, "Add End Mill", "Add an end mill to the tool library."},
 	{AddDrillCommandID, "Add Drill", "Add a drill to the tool library."},
@@ -171,8 +176,13 @@ func (e *Engine) Notify(ev []byte) {
 			ControlId string `json:"controlId"`
 			Value     string `json:"value"`
 		}
-		if json.Unmarshal(ev, &p) == nil && p.WindowId == CAMPanelID {
-			e.applyPanelEdit(p.ControlId, p.Value)
+		if json.Unmarshal(ev, &p) == nil {
+			switch p.WindowId {
+			case CAMPanelID:
+				e.applyPanelEdit(p.ControlId, p.Value)
+			case OpEditorID:
+				e.handleOpEditorEdit(p.ControlId, p.Value)
+			}
 		}
 	}
 }
@@ -199,6 +209,10 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunWaterlineJobOnHost(0) })
 	case GenerateAllCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunAllJobsOnHost(0) })
+	case EditOperationCommandID:
+		e.launchRun(e.showOperationEditorAction)
+	case RegenerateCommandID:
+		e.launchRun(e.regenerateAction)
 	case ShowToolsCommandID:
 		e.launchRun(e.showToolLibraryAction)
 	case AddEndmillCommandID:

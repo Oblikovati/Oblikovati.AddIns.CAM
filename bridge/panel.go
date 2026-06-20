@@ -49,6 +49,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("clearpreview", "Clear preview", ClearPreviewCommandID),
 			client.PanelButton("tools", "Tools…", ShowToolsCommandID),
 			client.PanelButton("ops", "Operations…", ShowOperationsCommandID),
+			client.PanelButton("editop", "Edit Op…", EditOperationCommandID),
 		},
 	})
 }
