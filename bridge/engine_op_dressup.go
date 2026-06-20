@@ -24,6 +24,11 @@ func (e *Engine) addRampAction() (*JobResult, error) {
 	return e.addDressup(NewRampDressup(defaultRampLength, defaultRampAngle), "ramp entry")
 }
 
+// addLeadInOutAction adds a tangential lead-in/lead-out dressup to the selected operation.
+func (e *Engine) addLeadInOutAction() (*JobResult, error) {
+	return e.addDressup(NewLeadInOutDressup(defaultLeadRadius, dressup.SideLeft), "lead in/out")
+}
+
 // Defaults for dressups added from the editor (mm / radians).
 const (
 	defaultTabCount   = 4
@@ -32,6 +37,7 @@ const (
 	defaultBoneLength = 2.0
 	defaultRampLength = 4.0
 	defaultRampAngle  = math.Pi / 12 // 15°
+	defaultLeadRadius = 2.0
 )
 
 // addDressup appends a dressup to the editor's selected operation, refreshing the windows.

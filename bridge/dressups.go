@@ -52,6 +52,24 @@ func NewRampDressup(length, angle float64) RampDressup {
 	return RampDressup{Params: dressup.RampParams{Length: length, Angle: angle}}
 }
 
+// LeadInOutDressup eases the tool into and out of each cut with tangential arcs (FreeCAD's
+// LeadInOut dressup).
+type LeadInOutDressup struct{ Params dressup.LeadInOutParams }
+
+// Apply implements Dressup.
+func (d LeadInOutDressup) Apply(path gcode.Path) gcode.Path {
+	return dressup.ApplyLeadInOut(path, d.Params)
+}
+
+// Name implements Dressup.
+func (d LeadInOutDressup) Name() string { return "Lead In/Out" }
+
+// NewLeadInOutDressup builds a lead-in/out dressup with the given lead arc radius (mm) on the
+// given side (dressup.SideLeft | dressup.SideRight).
+func NewLeadInOutDressup(radius float64, side string) LeadInOutDressup {
+	return LeadInOutDressup{Params: dressup.LeadInOutParams{Radius: radius, Side: side}}
+}
+
 // NewTagsDressup builds a holding-tabs dressup with count tabs of the given width/height (mm).
 func NewTagsDressup(count int, width, height float64) TagsDressup {
 	return TagsDressup{Params: dressup.TagParams{Count: count, Width: width, Height: height}}
