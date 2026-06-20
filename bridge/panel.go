@@ -46,6 +46,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("adaptive", "Adaptive", GenerateAdaptiveCommandID),
 			client.PanelButton("rest", "Rest", GenerateRestCommandID),
 			client.PanelButton("helix", "Helix bore", GenerateHelixCommandID),
+			client.PanelButton("thread", "Thread mill", GenerateThreadMillCommandID),
 			client.PanelButton("face", "Face", GenerateMillFaceCommandID),
 			client.PanelButton("engrave", "Engrave", GenerateEngraveCommandID),
 			client.PanelButton("surface", "3D Surface", GenerateSurfaceCommandID),

@@ -24,3 +24,5 @@ point, **grey** = the driving part boundary.
 | `dressup-ramp.png` | Ramp entry: the straight plunge replaced by an angled descent. |
 | `dressup-leadinout.png` | Lead in/out: plunge relocated off the contour, tangential arc entry/exit. |
 | `drilling.png` | Drilling: canned-cycle points at each detected hole. |
+| `helix.png` | Helix bore: the tool-centre orbit for a hole wider than the tool. |
+| `threadmill.png` | Thread milling: the thread orbit plus the lead-in/out arc easing on/off the thread. |

@@ -211,6 +211,35 @@ func (op *HelixOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- Thread mill ---
+
+// Parameters lists the editable thread-milling parameters.
+func (op *ThreadMillOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("majorDia", "Major ⌀ (mm)", op.MajorDiameter),
+		numberParam("pitch", "Pitch (mm/turn)", op.Pitch),
+		boolParam("internal", "Internal", op.Internal),
+		boolParam("climb", "Climb", op.Climb),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one thread-milling parameter edit.
+func (op *ThreadMillOp) SetParameter(id, value string) bool {
+	switch id {
+	case "majorDia":
+		op.MajorDiameter = panelNum(value, op.MajorDiameter)
+	case "pitch":
+		op.Pitch = panelNum(value, op.Pitch)
+	case "internal":
+		op.Internal = parseBool(value)
+	case "climb":
+		op.Climb = parseBool(value)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Surface ---
 
 // Parameters lists the editable 3D-surface parameters.

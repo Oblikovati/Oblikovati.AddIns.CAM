@@ -104,6 +104,10 @@ type opDoc struct {
 	Pitch      float64 `json:"pitch,omitempty"`
 	Direction  string  `json:"direction,omitempty"`
 
+	// Thread mill
+	MajorDiameter float64 `json:"majorDiameter,omitempty"`
+	Internal      bool    `json:"internal,omitempty"`
+
 	// Surface / Waterline (3D finishing) — geometry is re-resolved from the part mesh, not persisted.
 	Sampling float64 `json:"sampling,omitempty"`
 	Zigzag   bool    `json:"zigzag,omitempty"`
@@ -256,6 +260,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("helix", o.OpBase)
 		d.HoleRadius, d.Pitch, d.Direction = o.HoleRadius, o.Pitch, o.Direction
 		return d, nil
+	case *ThreadMillOp:
+		d := baseDoc("threadmill", o.OpBase)
+		d.MajorDiameter, d.Pitch, d.Internal, d.Climb = o.MajorDiameter, o.Pitch, o.Internal, o.Climb
+		return d, nil
 	case *SurfaceOp:
 		d := baseDoc("surface", o.OpBase)
 		d.StepOver, d.Sampling, d.Zigzag = o.StepOver, o.Sampling, o.Zigzag
@@ -288,6 +296,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &EngraveOp{OpBase: opBaseFrom(d), Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "helix":
 		return &HelixOp{OpBase: opBaseFrom(d), HoleRadius: d.HoleRadius, Pitch: d.Pitch, Direction: d.Direction}, nil
+	case "threadmill":
+		return &ThreadMillOp{OpBase: opBaseFrom(d), MajorDiameter: d.MajorDiameter, Pitch: d.Pitch, Internal: d.Internal, Climb: d.Climb}, nil
 	case "surface":
 		return &SurfaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Sampling: d.Sampling, Zigzag: d.Zigzag}, nil
 	case "waterline":

@@ -79,6 +79,8 @@ func operationKind(op Operation) string {
 		return "Engrave"
 	case *HelixOp:
 		return "Helix"
+	case *ThreadMillOp:
+		return "Thread"
 	case *SurfaceOp:
 		return "Surface"
 	case *WaterlineOp:

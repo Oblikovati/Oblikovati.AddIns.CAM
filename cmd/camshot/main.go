@@ -15,6 +15,7 @@ import (
 
 	"oblikovati.org/cam/bridge"
 	"oblikovati.org/cam/bridge/dressup"
+	"oblikovati.org/cam/bridge/gen"
 	"oblikovati.org/cam/bridge/geom2d"
 	"oblikovati.org/cam/bridge/plot"
 )
@@ -67,7 +68,21 @@ func shots() []shot {
 		{"dressup-ramp", profileOp([]bridge.Dressup{bridge.NewRampDressup(4, 0.26)})},
 		{"dressup-leadinout", profileOp([]bridge.Dressup{bridge.NewLeadInOutDressup(2, dressup.SideLeft)})},
 		{"drilling", &bridge.DrillingOp{OpBase: millEnv("Drilling"), Holes: holes()}},
+		{"helix", &bridge.HelixOp{OpBase: deepEnv("Helix"), HoleRadius: 8, Pitch: 1.5, Direction: gen.HelixCW, Holes: boreHole()}},
+		{"threadmill", &bridge.ThreadMillOp{OpBase: deepEnv("Thread"), MajorDiameter: 16, Pitch: 1.5, Internal: true, Climb: true, Holes: boreHole()}},
 	}
+}
+
+// boreHole is a single central bored/tapped hole (mm) for the helix and thread-mill shots.
+func boreHole() []bridge.DrillTarget {
+	return []bridge.DrillTarget{{X: 0, Y: 0, Top: 0, Bottom: -8}}
+}
+
+// deepEnv is the envelope for the hole-boring ops (clearance above the stock top).
+func deepEnv(label string) bridge.OpBase {
+	e := millEnv(label)
+	e.ClearanceHeight = 15
+	return e
 }
 
 // profileOp builds an outside-contour profile over the sample part carrying the given dressups.
