@@ -14,7 +14,4 @@ module oblikovati.org/cam
 
 go 1.24.0
 
-require (
-	oblikovati.org v0.0.0
-	oblikovati.org/api v0.76.1
-)
+require oblikovati.org/api v0.77.0
