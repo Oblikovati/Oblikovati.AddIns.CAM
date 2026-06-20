@@ -56,6 +56,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("face", "Face", GenerateMillFaceCommandID),
 			client.PanelButton("engrave", "Engrave", GenerateEngraveCommandID),
 			client.PanelButton("chamfer", "Chamfer", GenerateChamferCommandID),
+			client.PanelButton("vcarve", "V-Carve", GenerateVCarveCommandID),
 			client.PanelButton("surface", "3D Surface", GenerateSurfaceCommandID),
 			client.PanelButton("waterline", "Waterline", GenerateWaterlineCommandID),
 			client.PanelButton("all", "Generate All", GenerateAllCommandID),

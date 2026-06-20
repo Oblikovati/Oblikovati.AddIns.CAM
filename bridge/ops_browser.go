@@ -81,6 +81,8 @@ func operationKind(op Operation) string {
 		return "Engrave"
 	case *ChamferOp:
 		return "Chamfer"
+	case *VCarveOp:
+		return "V-Carve"
 	case *SlotOp:
 		return "Slot"
 	case *ProbeOp:

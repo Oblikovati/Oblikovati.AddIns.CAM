@@ -68,6 +68,7 @@ func shots() []shot {
 		{"millface", &bridge.MillFaceOp{OpBase: millEnv("Face"), StepOver: 0.6, Boundary: part()}},
 		{"engrave", &bridge.EngraveOp{OpBase: millEnv("Engrave"), Climb: true, Boundary: part()}},
 		{"chamfer", &bridge.ChamferOp{OpBase: millEnv("Chamfer"), Width: 1.5, ToolAngle: 90, Side: gen.SideOutside, Climb: true, Boundary: part()}},
+		{"vcarve", &bridge.VCarveOp{OpBase: millEnv("V-Carve"), ToolAngle: 90, StepOver: 0.4, Boundary: part()}},
 		{"dressup-tabs", profileOp([]bridge.Dressup{bridge.NewTagsDressup(4, 3, 1)})},
 		{"dressup-dogbone", profileOp([]bridge.Dressup{bridge.NewDogboneDressup(dressup.StyleDogbone, 2, 0.785, dressup.SideBoth)})},
 		{"dressup-ramp", profileOp([]bridge.Dressup{bridge.NewRampDressup(4, 0.26)})},
@@ -191,6 +192,8 @@ func boundaryOf(op bridge.Operation) geom2d.Polygon {
 	case *bridge.EngraveOp:
 		return o.Boundary
 	case *bridge.ChamferOp:
+		return o.Boundary
+	case *bridge.VCarveOp:
 		return o.Boundary
 	default:
 		return nil

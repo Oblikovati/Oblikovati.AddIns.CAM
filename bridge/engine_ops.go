@@ -214,6 +214,22 @@ func (e *Engine) RunChamferJobOnHost(bodyIndex int) (*JobResult, error) {
 	return e.postPreviewResult(job, "chamfered the top edge")
 }
 
+// vcarveAngle is the default V-bit included angle (degrees) for the V-carve demo.
+const vcarveAngle = 90.0
+
+// RunVCarveJobOnHost V-carves the part's outline region with a V-bit.
+func (e *Engine) RunVCarveJobOnHost(bodyIndex int) (*JobResult, error) {
+	boundary, stock, err := e.contourAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	env := e.millEnvelope("V-Carve", stock)
+	env.StartDepth = stock.TopZ()
+	job.Operations = []Operation{&VCarveOp{OpBase: env, ToolAngle: vcarveAngle, Boundary: boundary}}
+	return e.postPreviewResult(job, "v-carved the outline region")
+}
+
 // postPreviewResult runs the job, remembers it (for the operations browser + Save), pushes a
 // two-colour toolpath preview (cuts green, rapids grey), and posts the G-code.
 func (e *Engine) postPreviewResult(job *Job, verb string) (*JobResult, error) {
