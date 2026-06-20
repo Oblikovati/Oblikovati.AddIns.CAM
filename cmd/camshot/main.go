@@ -112,6 +112,7 @@ func shots() []shot {
 		{"dressup-tabs", profileOp([]bridge.Dressup{bridge.NewTagsDressup(4, 3, 1)})},
 		{"dressup-dogbone", profileOp([]bridge.Dressup{bridge.NewDogboneDressup(dressup.StyleDogbone, 2, 0.785, dressup.SideBoth)})},
 		{"dressup-ramp", profileOp([]bridge.Dressup{bridge.NewRampDressup(4, 0.26)})},
+		{"dressup-helicalramp", profileOp([]bridge.Dressup{bridge.NewHelicalRampDressup(3, 1)})},
 		{"dressup-leadinout", profileOp([]bridge.Dressup{bridge.NewLeadInOutDressup(2, dressup.SideLeft)})},
 		{"drilling", &bridge.DrillingOp{OpBase: millEnv("Drilling"), Holes: holes()}},
 		{"probe", &bridge.ProbeOp{OpBase: deepEnv("Probe"), ProbeFeed: 50, Points: cornerProbe()}},

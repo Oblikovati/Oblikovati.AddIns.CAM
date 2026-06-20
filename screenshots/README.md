@@ -32,6 +32,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `dressup-tabs.png` | Holding tabs lifting the tool over the boundary. |
 | `dressup-dogbone.png` | Dogbone corner relief: 45° bones at the corners. |
 | `dressup-ramp.png` | Ramp entry: the straight plunge replaced by an angled descent. |
+| `dressup-helicalramp.png` | Helical ramp entry: the straight plunge replaced by a helix on a circle tangent to the first cut (the entry circle bored at the start). |
 | `dressup-leadinout.png` | Lead in/out: plunge relocated off the contour, tangential arc entry/exit. |
 | `drilling.png` | Drilling: canned-cycle points at each detected hole. |
 | `probe.png` | Probing: G38.2 touch moves finding the stock top and two edges (magenta). |

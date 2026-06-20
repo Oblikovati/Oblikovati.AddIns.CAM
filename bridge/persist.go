@@ -230,6 +230,8 @@ func dressupDocs(ds []Dressup) []dressupDoc {
 			out = append(out, dressupDoc{Kind: "ramp", Length: x.Params.Length, MinAngle: x.Params.Angle})
 		case LeadInOutDressup:
 			out = append(out, dressupDoc{Kind: "leadinout", Length: x.Params.Radius, Side: x.Params.Side})
+		case HelicalRampDressup:
+			out = append(out, dressupDoc{Kind: "helicalramp", Length: x.Params.Radius, Height: x.Params.Pitch})
 		}
 	}
 	return out
@@ -248,6 +250,8 @@ func dressupsFrom(docs []dressupDoc) []Dressup {
 			out = append(out, NewRampDressup(d.Length, d.MinAngle))
 		case "leadinout":
 			out = append(out, NewLeadInOutDressup(d.Length, d.Side))
+		case "helicalramp":
+			out = append(out, NewHelicalRampDressup(d.Length, d.Height))
 		}
 	}
 	return out
