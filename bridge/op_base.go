@@ -54,6 +54,8 @@ type OpBase struct {
 	RetractHeight   float64 // canned-cycle R plane (mm)
 	StartDepth      float64 // top of cut (mm)
 	FinalDepth      float64 // bottom of cut (mm)
+
+	Dressups []Dressup // toolpath post-processes applied after framing (tabs, dogbone, …)
 }
 
 // Label implements Operation.
@@ -86,5 +88,14 @@ func (b *OpBase) frame(cutting []gcode.Command) gcode.Path {
 	cmds = append(cmds, gcode.NewCommand("("+b.OpLabel+")", nil))
 	cmds = append(cmds, cutting...)
 	cmds = append(cmds, gcode.NewCommand("G0", map[string]float64{"Z": b.ClearanceHeight}))
-	return gcode.NewPath(cmds)
+	return b.applyDressups(gcode.NewPath(cmds))
+}
+
+// applyDressups runs the op's dressup chain over a framed path in order. With no dressups it
+// returns the path unchanged, so every op gains dressup support at no cost.
+func (b *OpBase) applyDressups(path gcode.Path) gcode.Path {
+	for _, d := range b.Dressups {
+		path = d.Apply(path)
+	}
+	return path
 }

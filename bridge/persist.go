@@ -58,6 +58,21 @@ type opDoc struct {
 	HoleRadius float64 `json:"holeRadius,omitempty"`
 	Pitch      float64 `json:"pitch,omitempty"`
 	Direction  string  `json:"direction,omitempty"`
+
+	Dressups []dressupDoc `json:"dressups,omitempty"`
+}
+
+// dressupDoc is the tagged serialisation of one toolpath dressup; only the fields for Kind
+// are populated.
+type dressupDoc struct {
+	Kind     string  `json:"kind"`
+	Count    int     `json:"count,omitempty"`
+	Width    float64 `json:"width,omitempty"`
+	Height   float64 `json:"height,omitempty"`
+	Style    string  `json:"style,omitempty"`
+	Length   float64 `json:"length,omitempty"`
+	MinAngle float64 `json:"minAngle,omitempty"`
+	Side     string  `json:"side,omitempty"`
 }
 
 // MarshalJob serialises a job's configuration to JSON (excluding resolved geometry).
@@ -99,22 +114,51 @@ func UnmarshalJob(s string) (*Job, error) {
 	return job, nil
 }
 
-// baseDoc copies an operation's common envelope fields into an opDoc.
+// baseDoc copies an operation's common envelope fields (including its dressup chain) into an
+// opDoc.
 func baseDoc(kind string, b OpBase) opDoc {
 	return opDoc{
 		Kind: kind, Label: b.OpLabel, Active: b.IsActive, ToolController: b.ToolController,
 		ClearanceHeight: b.ClearanceHeight, SafeHeight: b.SafeHeight, RetractHeight: b.RetractHeight,
-		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth,
+		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth, Dressups: dressupDocs(b.Dressups),
 	}
 }
 
-// opBaseFrom rebuilds the common envelope from an opDoc.
+// opBaseFrom rebuilds the common envelope (including dressups) from an opDoc.
 func opBaseFrom(d opDoc) OpBase {
 	return OpBase{
 		OpLabel: d.Label, IsActive: d.Active, ToolController: d.ToolController,
 		ClearanceHeight: d.ClearanceHeight, SafeHeight: d.SafeHeight, RetractHeight: d.RetractHeight,
-		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth,
+		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth, Dressups: dressupsFrom(d.Dressups),
 	}
+}
+
+// dressupDocs serialises a dressup chain to its tagged form.
+func dressupDocs(ds []Dressup) []dressupDoc {
+	var out []dressupDoc
+	for _, d := range ds {
+		switch x := d.(type) {
+		case TagsDressup:
+			out = append(out, dressupDoc{Kind: "tags", Count: x.Params.Count, Width: x.Params.Width, Height: x.Params.Height})
+		case DogboneDressup:
+			out = append(out, dressupDoc{Kind: "dogbone", Style: x.Params.Style, Length: x.Params.Length, MinAngle: x.Params.MinAngle, Side: x.Params.Side})
+		}
+	}
+	return out
+}
+
+// dressupsFrom rebuilds a dressup chain from its tagged serialisation, skipping unknown kinds.
+func dressupsFrom(docs []dressupDoc) []Dressup {
+	var out []Dressup
+	for _, d := range docs {
+		switch d.Kind {
+		case "tags":
+			out = append(out, NewTagsDressup(d.Count, d.Width, d.Height))
+		case "dogbone":
+			out = append(out, NewDogboneDressup(d.Style, d.Length, d.MinAngle, d.Side))
+		}
+	}
+	return out
 }
 
 // toOpDoc converts an operation to its tagged serialisation.
