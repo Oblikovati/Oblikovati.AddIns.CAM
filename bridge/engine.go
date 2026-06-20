@@ -69,10 +69,10 @@ func (e *Engine) jobTools() []ToolController {
 // defaultPlungeFeed is the default drilling plunge feed (mm/min) until the panel overrides it.
 const defaultPlungeFeed = 100.0
 
-// SetPost selects the post processor ("linuxcnc" | "grbl"); an empty/unknown name leaves the
-// current one. Returns the engine for chaining. Stand-in for the panel's post dropdown.
+// SetPost selects the post processor ("linuxcnc" | "grbl" | "fanuc"); an empty/unknown name
+// leaves the current one. Returns the engine for chaining. Stand-in for the panel's post dropdown.
 func (e *Engine) SetPost(name string) *Engine {
-	if name == "linuxcnc" || name == "grbl" {
+	if name == "linuxcnc" || name == "grbl" || name == "fanuc" {
 		e.mu.Lock()
 		e.postName = name
 		e.mu.Unlock()

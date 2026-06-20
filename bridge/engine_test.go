@@ -338,6 +338,20 @@ func TestEngineRunVCarveJob(t *testing.T) {
 	}
 }
 
+// TestEngineFanucPost checks the panel can select the Fanuc post and a job posts in its dialect
+// (tape wrapper + O-number program header).
+func TestEngineFanucPost(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.applyPanelEdit("post", "fanuc")
+	res, err := e.RunProfileJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunProfileJobOnHost: %v", err)
+	}
+	if !strings.HasPrefix(res.GCode, "%\n") || !strings.Contains(res.GCode, "O0001") || !strings.Contains(res.GCode, "M30") {
+		t.Errorf("expected Fanuc-dialect output (%% / O-number / M30), got:\n%s", res.GCode)
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}
