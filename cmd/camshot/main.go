@@ -72,6 +72,16 @@ func holePoly() geom2d.Polygon {
 	return geom2d.Polygon{{X: 22, Y: 22}, {X: 32, Y: 22}, {X: 32, Y: 32}, {X: 22, Y: 32}}
 }
 
+// squarePoly returns a CCW square [0,s]×[0,s] (mm).
+func squarePoly(s float64) geom2d.Polygon {
+	return geom2d.Polygon{{X: 0, Y: 0}, {X: s, Y: 0}, {X: s, Y: s}, {X: 0, Y: s}}
+}
+
+// islandPoly is a central square island (mm) the pocket clearing must route around.
+func islandPoly() geom2d.Polygon {
+	return geom2d.Polygon{{X: 15, Y: 15}, {X: 25, Y: 15}, {X: 25, Y: 25}, {X: 15, Y: 25}}
+}
+
 // shot is one labelled gallery entry: an operation and the boundary it renders over.
 type shot struct {
 	name string
@@ -87,6 +97,7 @@ func shots() []shot {
 	return []shot{
 		{"profile", profileOp(nil)},
 		{"pocket", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: part()}},
+		{"pocket-island", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: squarePoly(40), Islands: []geom2d.Polygon{islandPoly()}}},
 		{"adaptive", &bridge.AdaptiveOp{OpBase: millEnv("Adaptive"), Climb: true, Boundary: part()}},
 		{"rest", &bridge.RestOp{OpBase: millEnv("Rest"), PrevToolDiameter: 16, StepOver: 0.5, Climb: true, Boundary: part()}},
 		{"trochoidal", &bridge.TrochoidalOp{OpBase: millEnv("Trochoidal"), LoopRadius: 3, Advance: 2.5, Side: gen.SideOutside, Boundary: part()}},

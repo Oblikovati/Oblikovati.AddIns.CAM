@@ -128,9 +128,10 @@ func (e *Engine) buildProfileJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 	return job, contours[0], nil
 }
 
-// buildPocketJob assembles an area-clearing pocket job over the body's silhouette region.
+// buildPocketJob assembles an area-clearing pocket job over the body's silhouette region, routing
+// the clearing around any inner holes/islands the section reveals.
 func (e *Engine) buildPocketJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
-	boundary, stock, err := e.contourAndStock(bodyIndex)
+	contours, stock, err := e.sectionContours(bodyIndex)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -141,9 +142,10 @@ func (e *Engine) buildPocketJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 		StepOver: cut.StepOver,
 		Climb:    true,
 		StepDown: cut.StepDown,
-		Boundary: boundary,
+		Boundary: contours[0],
+		Islands:  contours[1:],
 	}}
-	return job, boundary, nil
+	return job, contours[0], nil
 }
 
 // buildAdaptiveJob assembles a high-speed adaptive clearing job over the body's silhouette region.

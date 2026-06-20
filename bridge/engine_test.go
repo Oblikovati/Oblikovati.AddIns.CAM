@@ -467,6 +467,29 @@ func TestEngineFanucPost(t *testing.T) {
 	}
 }
 
+// TestEnginePocketRoutesAroundIsland checks a pocket over a plate with a hole passes the inner
+// contour to the pocket op as an island, so the clearing routes around it.
+func TestEnginePocketRoutesAroundIsland(t *testing.T) {
+	h := &recordingHost{sectionWires: []wire.WirePolyline{
+		{Points: []float64{0, 0, 0.5, 4, 0, 0.5, 4, 4, 0.5, 0, 4, 0.5, 0, 0, 0.5}, Closed: true},
+		{Points: []float64{1.5, 1.5, 0.5, 2.5, 1.5, 0.5, 2.5, 2.5, 0.5, 1.5, 2.5, 0.5, 1.5, 1.5, 0.5}, Closed: true},
+	}}
+	job, _, err := NewEngine(h).SetPost("grbl").buildPocketJob(0)
+	if err != nil {
+		t.Fatalf("buildPocketJob: %v", err)
+	}
+	op, ok := job.Operations[0].(*PocketOp)
+	if !ok {
+		t.Fatalf("first op is not a pocket: %T", job.Operations[0])
+	}
+	if len(op.Islands) != 1 {
+		t.Fatalf("pocket should carry the hole as 1 island, got %d", len(op.Islands))
+	}
+	if op.Islands[0].Area() >= op.Boundary.Area() {
+		t.Errorf("the island should be smaller than the pocket boundary")
+	}
+}
+
 // TestEngineProfileMachinesHoles checks profiling contours the outer outline plus each inner
 // hole — one ProfileOp per contour, the holes cut inside.
 func TestEngineProfileMachinesHoles(t *testing.T) {

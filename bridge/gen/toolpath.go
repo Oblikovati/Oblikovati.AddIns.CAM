@@ -58,6 +58,26 @@ func walkLoop(loop geom2d.Polygon, z float64, feeds Feeds) []gcode.Command {
 	return cmds
 }
 
+// walkOpenPath emits the moves to cut one open polyline at depth z: rapid to the clearance
+// plane, rapid over the first point, plunge to z, then feed along the path. Unlike walkLoop it
+// does not close back to the start — it is the move set for a ring arc that has been clipped
+// around an island.
+func walkOpenPath(path []geom2d.Point2, z float64, feeds Feeds) []gcode.Command {
+	if len(path) < 2 {
+		return nil
+	}
+	cmds := []gcode.Command{
+		gcode.NewCommand("G0", map[string]float64{"Z": feeds.ClearanceZ}),
+		gcode.NewCommand("G0", map[string]float64{"X": path[0].X, "Y": path[0].Y}),
+		gcode.NewCommand("G0", map[string]float64{"Z": feeds.SafeZ}),
+		gcode.NewCommand("G1", map[string]float64{"Z": z, "F": feeds.Vert}),
+	}
+	for _, pt := range path[1:] {
+		cmds = append(cmds, gcode.NewCommand("G1", map[string]float64{"X": pt.X, "Y": pt.Y, "F": feeds.Horiz}))
+	}
+	return append(cmds, gcode.NewCommand("G0", map[string]float64{"Z": feeds.ClearanceZ}))
+}
+
 // orient returns the loop wound for the requested cut direction: CCW for climb milling on an
 // outside contour, CW for conventional. (Reversing a loop swaps climb/conventional.)
 func orient(loop geom2d.Polygon, climb bool) geom2d.Polygon {
