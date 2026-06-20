@@ -51,16 +51,18 @@ func boolWord(b bool) string {
 // parseBool reads a yes/no dropdown value.
 func parseBool(value string) bool { return value == "yes" }
 
-// depthParams are the start/final-depth rows common to every milling/drilling operation.
+// depthParams are the start/final-depth, clearance, and coolant rows common to every
+// milling/drilling operation.
 func depthParams(b OpBase) []OpParam {
 	return []OpParam{
 		numberParam("startDepth", "Start depth (mm)", b.StartDepth),
 		numberParam("finalDepth", "Final depth (mm)", b.FinalDepth),
 		numberParam("clearance", "Clearance (mm)", b.ClearanceHeight),
+		choiceParam("coolant", "Coolant", b.CoolantMode(), CoolantNone, CoolantFlood, CoolantMist),
 	}
 }
 
-// setDepthParam applies one common depth/height edit, reporting whether it matched.
+// setDepthParam applies one common depth/height/coolant edit, reporting whether it matched.
 func setDepthParam(b *OpBase, id, value string) bool {
 	switch id {
 	case "startDepth":
@@ -69,6 +71,8 @@ func setDepthParam(b *OpBase, id, value string) bool {
 		b.FinalDepth = panelNum(value, b.FinalDepth)
 	case "clearance":
 		b.ClearanceHeight = panelNum(value, b.ClearanceHeight)
+	case "coolant":
+		b.Coolant = value
 	default:
 		return false
 	}

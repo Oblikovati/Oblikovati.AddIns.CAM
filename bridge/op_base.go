@@ -55,9 +55,25 @@ type OpBase struct {
 	RetractHeight   float64 // canned-cycle R plane (mm)
 	StartDepth      float64 // top of cut (mm)
 	FinalDepth      float64 // bottom of cut (mm)
+	Coolant         string  // "none" | "flood" | "mist"
 
 	Dressups []Dressup // toolpath post-processes applied after framing (tabs, dogbone, …)
 }
+
+// CoolantMode returns the operation's coolant mode, defaulting an unset value to "none".
+func (b *OpBase) CoolantMode() string {
+	if b.Coolant == "" {
+		return CoolantNone
+	}
+	return b.Coolant
+}
+
+// Coolant modes emitted around an operation (flood = M8, mist = M7, off = M9).
+const (
+	CoolantNone  = "none"
+	CoolantFlood = "flood"
+	CoolantMist  = "mist"
+)
 
 // Label implements Operation.
 func (b *OpBase) Label() string { return b.OpLabel }
