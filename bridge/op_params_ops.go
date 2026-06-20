@@ -318,6 +318,29 @@ func (op *ChamferOp) SetParameter(id, value string) bool {
 	return true
 }
 
+// --- V-carve ---
+
+// Parameters lists the editable V-carve parameters.
+func (op *VCarveOp) Parameters() []OpParam {
+	return append([]OpParam{
+		numberParam("toolAngle", "Tool angle (°)", op.ToolAngle),
+		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one V-carve parameter edit.
+func (op *VCarveOp) SetParameter(id, value string) bool {
+	switch id {
+	case "toolAngle":
+		op.ToolAngle = panelNum(value, op.ToolAngle)
+	case "stepOver":
+		op.StepOver = panelNum(value, op.StepOver)
+	default:
+		return setDepthParam(&op.OpBase, id, value)
+	}
+	return true
+}
+
 // --- Thread mill ---
 
 // Parameters lists the editable thread-milling parameters.
