@@ -385,6 +385,20 @@ func TestPanelMaterialFeeds(t *testing.T) {
 	}
 }
 
+// TestEngineMarlinPost checks the panel can select the Marlin post and a job posts in its dialect
+// (semicolon comments + metric/absolute preamble, no tape wrapper).
+func TestEngineMarlinPost(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.applyPanelEdit("post", "marlin")
+	res, err := e.RunProfileJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunProfileJobOnHost: %v", err)
+	}
+	if !strings.HasPrefix(res.GCode, "; Exported by Oblikovati\n") || !strings.Contains(res.GCode, "\nG90\n") || !strings.Contains(res.GCode, "\nM5\n") {
+		t.Errorf("expected Marlin-dialect output (; comments / G90 / M5):\n%s", res.GCode)
+	}
+}
+
 // TestEngineFanucPost checks the panel can select the Fanuc post and a job posts in its dialect
 // (tape wrapper + O-number program header).
 func TestEngineFanucPost(t *testing.T) {

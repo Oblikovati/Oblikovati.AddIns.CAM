@@ -78,10 +78,10 @@ const (
 	defaultMaterial     = "aluminium" // selected workpiece material until the panel changes it
 )
 
-// SetPost selects the post processor ("linuxcnc" | "grbl" | "fanuc"); an empty/unknown name
-// leaves the current one. Returns the engine for chaining. Stand-in for the panel's post dropdown.
+// SetPost selects the post processor ("linuxcnc" | "grbl" | "fanuc" | "marlin"); an empty/unknown
+// name leaves the current one. Returns the engine for chaining. Stand-in for the panel's post dropdown.
 func (e *Engine) SetPost(name string) *Engine {
-	if name == "linuxcnc" || name == "grbl" || name == "fanuc" {
+	if name == "linuxcnc" || name == "grbl" || name == "fanuc" || name == "marlin" {
 		e.mu.Lock()
 		e.postName = name
 		e.mu.Unlock()
