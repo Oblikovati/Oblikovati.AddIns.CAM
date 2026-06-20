@@ -11,10 +11,12 @@ import (
 
 // Defaults for the milestone-3 demo run methods.
 const (
-	helixHoleRadius = 8.0 // mm — bored-hole radius for the helix demo
-	helixPitch      = 1.5 // mm/turn
-	faceDepth       = 1.0 // mm — facing depth off the stock top
-	engraveDepth    = 0.5 // mm — engraving depth off the stock top
+	helixHoleRadius = 8.0  // mm — bored-hole radius for the helix demo
+	helixPitch      = 1.5  // mm/turn
+	threadMajorDia  = 10.0 // mm — nominal thread diameter for the thread-mill demo
+	threadPitch     = 1.5  // mm — thread lead per turn
+	faceDepth       = 1.0  // mm — facing depth off the stock top
+	engraveDepth    = 0.5  // mm — engraving depth off the stock top
 )
 
 // RapidOverlayID is the client-graphics id for the rapid-move (grey) overlay, drawn beside
@@ -34,6 +36,21 @@ func (e *Engine) RunHelixJobOnHost(bodyIndex int) (*JobResult, error) {
 		Holes: holes,
 	}}
 	return e.postPreviewResult(job, fmt.Sprintf("bored %d hole(s) by helix", len(holes)))
+}
+
+// RunThreadMillJobOnHost cuts a thread into each of the part's holes by helical interpolation.
+func (e *Engine) RunThreadMillJobOnHost(bodyIndex int) (*JobResult, error) {
+	holes, stock, err := e.detectHolesAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&ThreadMillOp{
+		OpBase:        e.millEnvelope("Thread", stock),
+		MajorDiameter: threadMajorDia, Pitch: threadPitch, Internal: true, Climb: true,
+		Holes: holes,
+	}}
+	return e.postPreviewResult(job, fmt.Sprintf("thread-milled %d hole(s)", len(holes)))
 }
 
 // RunMillFaceJobOnHost faces the top of the stock over the part's outline.

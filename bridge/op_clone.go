@@ -22,7 +22,12 @@ func (op *RestOp) Clone() Operation     { cp := *op; cp.OpBase = op.cloned(" cop
 func (op *MillFaceOp) Clone() Operation { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *EngraveOp) Clone() Operation  { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *HelixOp) Clone() Operation    { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
-func (op *SurfaceOp) Clone() Operation  { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
+func (op *ThreadMillOp) Clone() Operation {
+	cp := *op
+	cp.OpBase = op.cloned(" copy")
+	return &cp
+}
+func (op *SurfaceOp) Clone() Operation { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *WaterlineOp) Clone() Operation {
 	cp := *op
 	cp.OpBase = op.cloned(" copy")

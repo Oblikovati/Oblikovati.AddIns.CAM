@@ -208,6 +208,21 @@ func TestEngineRunRestJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunThreadMillJob runs the thread-milling flow and checks it threads the detected
+// holes with helical arcs.
+func TestEngineRunThreadMillJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunThreadMillJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunThreadMillJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "thread-milled") {
+		t.Errorf("summary = %q, want it to mention thread-milled", res.Summary)
+	}
+	if arcs := strings.Count(res.GCode, "G3") + strings.Count(res.GCode, "G2"); arcs == 0 {
+		t.Error("thread milling should emit helical arc moves")
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}
