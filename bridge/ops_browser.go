@@ -75,6 +75,8 @@ func operationKind(op Operation) string {
 		return "Engrave"
 	case *HelixOp:
 		return "Helix"
+	case *SurfaceOp:
+		return "Surface"
 	default:
 		return "Operation"
 	}

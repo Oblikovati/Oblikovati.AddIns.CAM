@@ -37,6 +37,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelButton("helix", "Helix bore", GenerateHelixCommandID),
 			client.PanelButton("face", "Face", GenerateMillFaceCommandID),
 			client.PanelButton("engrave", "Engrave", GenerateEngraveCommandID),
+			client.PanelButton("surface", "3D Surface", GenerateSurfaceCommandID),
 			client.PanelSeparator(),
 			client.PanelButton("preview", "Preview profile", PreviewProfileCommandID),
 			client.PanelButton("clearpreview", "Clear preview", ClearPreviewCommandID),

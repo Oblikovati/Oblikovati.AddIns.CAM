@@ -31,11 +31,12 @@ type Engine struct {
 	plungFeed     float64
 	lastJob       *Job   // most recently generated job (for the operations browser + Save)
 	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
+	surfacer      Surfacer
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
 func NewEngine(host HostCaller) *Engine {
-	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed}
+	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, surfacer: oclSurfacer{}}
 }
 
 // defaultPlungeFeed is the default drilling plunge feed (mm/min) until the panel overrides it.
@@ -61,6 +62,7 @@ const (
 	GenerateHelixCommandID    = "CAM.GenerateHelix"    // helical bore
 	GenerateMillFaceCommandID = "CAM.GenerateMillFace" // face milling
 	GenerateEngraveCommandID  = "CAM.GenerateEngrave"  // engraving
+	GenerateSurfaceCommandID  = "CAM.GenerateSurface"  // 3D surface finishing (drop-cutter)
 	PreviewProfileCommandID   = "CAM.PreviewProfile"   // transient toolpath preview (not committed)
 	ClearPreviewCommandID     = "CAM.ClearPreview"     // remove the transient toolpath preview
 	ShowOperationsCommandID   = "CAM.ShowOperations"   // open the operations browser
@@ -76,6 +78,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateHelixCommandID, "Generate Helix Job", "Bore the part's holes with a helix (for holes wider than the tool)."},
 	{GenerateMillFaceCommandID, "Generate Face Job", "Face the top of the stock over the part's outline."},
 	{GenerateEngraveCommandID, "Generate Engrave Job", "Engrave the part's outline on the tool centre."},
+	{GenerateSurfaceCommandID, "Generate Surface Job", "Finish the part's 3D surface with a ball-nose end mill (parallel drop-cutter passes)."},
 	{PreviewProfileCommandID, "Preview Profile", "Show the profile toolpath as a live overlay without committing or posting it."},
 	{ClearPreviewCommandID, "Clear Preview", "Remove the live toolpath preview overlay."},
 	{ShowOperationsCommandID, "Show Operations", "Open the CAM operations browser for the last generated job."},
@@ -153,6 +156,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunMillFaceJobOnHost(0) })
 	case GenerateEngraveCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunEngraveJobOnHost(0) })
+	case GenerateSurfaceCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunSurface3DJobOnHost(0) })
 	case PreviewProfileCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.PreviewProfileOnHost(0) })
 	case ClearPreviewCommandID:
