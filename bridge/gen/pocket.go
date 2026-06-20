@@ -11,9 +11,10 @@ import (
 
 // PocketParams configure an area-clearing (pocket) pass.
 type PocketParams struct {
-	ToolRadius float64 // mm
-	StepOver   float64 // fraction of the tool diameter to step between rings (0..1); 0 → 0.5
-	Climb      bool    // climb vs conventional
+	ToolRadius float64          // mm
+	StepOver   float64          // fraction of the tool diameter to step between rings (0..1); 0 → 0.5
+	Climb      bool             // climb vs conventional
+	Islands    []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
 }
 
 // defaultStepOver is the ring step (fraction of tool diameter) used when StepOver is unset.
@@ -33,14 +34,59 @@ func GeneratePocket(boundary geom2d.Polygon, levels []float64, feeds Feeds, p Po
 	if len(rings) == 0 {
 		return nil, fmt.Errorf("pocket: tool radius %g is too large to enter the region (area %g)", p.ToolRadius, boundary.Area())
 	}
+	keepouts := grownIslands(p.Islands, p.ToolRadius)
 
 	var cmds []gcode.Command
 	for _, z := range levels {
 		for _, ring := range rings {
-			cmds = append(cmds, walkLoop(orient(ring, p.Climb), z, feeds)...)
+			oriented := orient(ring, p.Climb)
+			if len(keepouts) == 0 {
+				cmds = append(cmds, walkLoop(oriented, z, feeds)...)
+				continue
+			}
+			for _, run := range clipRingAroundIslands(oriented, keepouts) {
+				cmds = append(cmds, walkOpenPath(run, z, feeds)...)
+			}
 		}
 	}
 	return cmds, nil
+}
+
+// grownIslands offsets each island outward by the tool radius, so the tool centre — clearing
+// rings route around these — stays clear of the island walls. Islands that fail to offset are
+// dropped.
+func grownIslands(islands []geom2d.Polygon, toolRadius float64) []geom2d.Polygon {
+	var out []geom2d.Polygon
+	for _, isl := range islands {
+		if len(isl) < 3 {
+			continue
+		}
+		if grown, ok := geom2d.Offset(isl.EnsureCCW(), toolRadius); ok {
+			out = append(out, grown)
+		}
+	}
+	return out
+}
+
+// clipRingAroundIslands clips a clearing ring (a closed loop) so it routes around every island,
+// returning the arc runs that lie outside all of them. A ring clear of the islands comes back as
+// the whole loop.
+func clipRingAroundIslands(ring geom2d.Polygon, keepouts []geom2d.Polygon) [][]geom2d.Point2 {
+	runs := [][]geom2d.Point2{closeLoop(ring)}
+	for _, isl := range keepouts {
+		var next [][]geom2d.Point2
+		for _, run := range runs {
+			next = append(next, geom2d.ClipOutside(run, isl)...)
+		}
+		runs = next
+	}
+	return runs
+}
+
+// closeLoop returns the polygon's points with the first repeated at the end, so it clips as a
+// closed path.
+func closeLoop(poly geom2d.Polygon) []geom2d.Point2 {
+	return append(append([]geom2d.Point2{}, poly...), poly[0])
 }
 
 // stepDistance is the spacing between concentric rings in millimetres (step-over fraction ×
