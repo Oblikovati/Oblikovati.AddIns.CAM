@@ -1,0 +1,14 @@
+{
+  "id": "com.oblikovati.cam",
+  "displayName": "Oblikovati CAM",
+  "version": "0.1.0",
+  "description": "Computer-aided manufacturing for Oblikovati: defines a machining Job over a part (stock, tools, operations), generates toolpaths (milestone 1: drilling canned cycles) and posts them to machine G-code (GRBL, LinuxCNC).",
+  "capabilities": [
+    "commands",
+    "documents",
+    "model",
+    "body",
+    "clientGraphics",
+    "attributes"
+  ]
+}
