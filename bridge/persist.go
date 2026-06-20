@@ -112,6 +112,9 @@ type opDoc struct {
 	Sampling float64 `json:"sampling,omitempty"`
 	Zigzag   bool    `json:"zigzag,omitempty"`
 
+	// Face milling
+	Spiral bool `json:"spiral,omitempty"`
+
 	// Rest
 	PrevToolDiameter float64 `json:"prevToolDiameter,omitempty"`
 
@@ -279,7 +282,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 		return d, nil
 	case *MillFaceOp:
 		d := baseDoc("millface", o.OpBase)
-		d.StepOver, d.StepDown = o.StepOver, o.StepDown
+		d.StepOver, d.StepDown, d.Spiral = o.StepOver, o.StepDown, o.Spiral
 		return d, nil
 	case *EngraveOp:
 		d := baseDoc("engrave", o.OpBase)
@@ -354,7 +357,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "trochoidal":
 		return &TrochoidalOp{OpBase: opBaseFrom(d), LoopRadius: d.LoopRadius, Advance: d.Advance, Side: d.Side, StepDown: d.StepDown}, nil
 	case "millface":
-		return &MillFaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown}, nil
+		return &MillFaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown, Spiral: d.Spiral}, nil
 	case "engrave":
 		return &EngraveOp{OpBase: opBaseFrom(d), Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "chamfer":

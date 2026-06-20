@@ -14,8 +14,9 @@ import (
 // pattern, stepping down in Z. Ports the role of FreeCAD's Path/Op/MillFace.
 type MillFaceOp struct {
 	OpBase
-	StepOver float64        // raster row spacing as a fraction of the tool diameter (0..1)
+	StepOver float64        // pass spacing as a fraction of the tool diameter (0..1)
 	StepDown float64        // max Z step per pass (mm)
+	Spiral   bool           // clear with a continuous inward spiral instead of a back-and-forth raster
 	Boundary geom2d.Polygon // region to face (mm)
 }
 
@@ -37,6 +38,7 @@ func (op *MillFaceOp) Execute(job *Job) (gcode.Path, error) {
 	cmds, err := gen.GenerateMillFace(op.Boundary, gen.DepthLevels(op.StartDepth, op.FinalDepth, op.StepDown), feeds, gen.MillFaceParams{
 		ToolRadius: tc.Tool.Diameter / 2,
 		StepOver:   op.StepOver,
+		Spiral:     op.Spiral,
 	})
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("face operation %q: %w", op.OpLabel, err)

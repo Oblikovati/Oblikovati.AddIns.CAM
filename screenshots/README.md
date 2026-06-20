@@ -25,6 +25,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `trochoidal.png` | Trochoidal milling: overlapping circular loops marching along the contour (low engagement). |
 | `slot.png` | Slot / groove milling: a channel of a set width centred on the contour (passes straddle both sides). |
 | `millface.png` | Facing: raster rows over the region. |
+| `millface-spiral.png` | Facing (spiral pattern): one continuous inward spiral over the region, constant climb direction and a single plunge. |
 | `engrave.png` | Engraving: the contour run on the tool centre (no compensation). |
 | `chamfer.png` | Chamfer / edge-break: a single bevel pass offset by the chamfer width at the angle-derived depth. |
 | `vcarve.png` | V-carve: nested contours deepening inward (the depth shade traces the V valley toward the spine). |

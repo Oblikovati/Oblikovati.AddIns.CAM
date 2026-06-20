@@ -12,7 +12,8 @@ import (
 // MillFaceParams configure a face-milling (facing) pass.
 type MillFaceParams struct {
 	ToolRadius float64 // mm
-	StepOver   float64 // fraction of the tool diameter between raster rows (0..1); 0 → 0.5
+	StepOver   float64 // fraction of the tool diameter between passes (0..1); 0 → 0.5
+	Spiral     bool    // clear with a continuous inward spiral instead of a back-and-forth raster
 }
 
 // GenerateMillFace clears the top of the stock over the boundary's bounding region with a
@@ -29,13 +30,46 @@ func GenerateMillFace(boundary geom2d.Polygon, levels []float64, feeds Feeds, p 
 	if x1 <= x0 || y1 <= y0 {
 		return nil, fmt.Errorf("face milling: tool radius %g too large for the region (%g×%g)", p.ToolRadius, maxX-minX, maxY-minY)
 	}
-	rows := passLines(y0, y1, stepDistanceFrac(p.StepOver, p.ToolRadius))
+	spacing := stepDistanceFrac(p.StepOver, p.ToolRadius)
 
 	var cmds []gcode.Command
+	if p.Spiral {
+		rings := faceSpiralRings(insetRect(x0, y0, x1, y1), spacing)
+		for _, z := range levels {
+			cmds = append(cmds, walkSpiral(rings, z, feeds, true)...)
+		}
+		return cmds, nil
+	}
+	rows := passLines(y0, y1, spacing)
 	for _, z := range levels {
 		cmds = append(cmds, rasterLevel(x0, x1, rows, z, feeds)...)
 	}
 	return cmds, nil
+}
+
+// insetRect builds the CCW rectangle the facing passes stay within (the region inset by the tool
+// radius), used as the outer ring of the spiral facing pattern.
+func insetRect(x0, y0, x1, y1 float64) geom2d.Polygon {
+	return geom2d.Polygon{{X: x0, Y: y0}, {X: x1, Y: y0}, {X: x1, Y: y1}, {X: x0, Y: y1}}
+}
+
+// faceSpiralRings builds the concentric facing rings for the spiral pattern: the inset rectangle,
+// then itself offset inward by the spacing each time until an offset collapses at the centre. The
+// rings are linked into one continuous stay-down spiral by walkSpiral, so the cut keeps a
+// consistent climb direction and constant engagement — a cleaner facing finish than the zigzag.
+func faceSpiralRings(rect geom2d.Polygon, spacing float64) []geom2d.Polygon {
+	rings := []geom2d.Polygon{rect.EnsureCCW()}
+	if spacing <= 0 {
+		return rings
+	}
+	for d := spacing; ; d += spacing {
+		ring, ok := geom2d.Offset(rect, -d)
+		if !ok {
+			break
+		}
+		rings = append(rings, ring)
+	}
+	return rings
 }
 
 // rasterLevel emits one depth level's zigzag: rapid in, plunge, then alternate-direction X

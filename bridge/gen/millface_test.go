@@ -43,6 +43,48 @@ func TestMillFaceRaster(t *testing.T) {
 	}
 }
 
+// TestMillFaceSpiral checks the spiral facing pattern plunges only once per level (a continuous
+// stay-down spiral, unlike the raster which also plunges once but links its rows differently),
+// keeps every cut within the radius-inset band, and clears more than a single ring.
+func TestMillFaceSpiral(t *testing.T) {
+	cmds, err := GenerateMillFace(square(20), []float64{0}, testFeeds, MillFaceParams{ToolRadius: 2, StepOver: 0.5, Spiral: true})
+	if err != nil {
+		t.Fatalf("GenerateMillFace spiral: %v", err)
+	}
+	if countPlunges(cmds) != 1 {
+		t.Errorf("a spiral level should plunge exactly once, got %d", countPlunges(cmds))
+	}
+	for _, c := range cmds {
+		if c.Name != "G1" {
+			continue
+		}
+		if x, ok := c.Params["X"]; ok && (x < 2-1e-9 || x > 18+1e-9) {
+			t.Errorf("spiral cut X=%g outside inset band [2,18]", x)
+		}
+		if y, ok := c.Params["Y"]; ok && (y < 2-1e-9 || y > 18+1e-9) {
+			t.Errorf("spiral cut Y=%g outside inset band [2,18]", y)
+		}
+	}
+	if countCutMoves(cmds) < 8 {
+		t.Errorf("the spiral should lay down several concentric rings, got %d cut moves", countCutMoves(cmds))
+	}
+}
+
+// TestFaceSpiralRings checks the spiral rings begin with the inset rectangle and march inward.
+func TestFaceSpiralRings(t *testing.T) {
+	rect := insetRect(2, 2, 18, 18)
+	rings := faceSpiralRings(rect, 3)
+	if len(rings) < 2 {
+		t.Fatalf("a 16×16 region at 3mm spacing should yield several rings, got %d", len(rings))
+	}
+	if rings[0].Area() <= rings[1].Area() {
+		t.Errorf("rings must shrink inward: outer area %g, next %g", rings[0].Area(), rings[1].Area())
+	}
+	if rings := faceSpiralRings(rect, 0); len(rings) != 1 {
+		t.Errorf("a non-positive spacing should yield just the outer ring, got %d", len(rings))
+	}
+}
+
 // TestPassLines covers the spacing and the single-row fallback.
 func TestPassLines(t *testing.T) {
 	if rows := passLines(0, 1, 5); len(rows) != 1 || rows[0] != 0.5 {
