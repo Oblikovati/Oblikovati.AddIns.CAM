@@ -11,6 +11,7 @@ type ToolBit struct {
 	ShapeType         string  // "drill" | "endmill" | "ballend" | … (informational in M1)
 	Diameter          float64 // cutting diameter (mm)
 	CuttingEdgeHeight float64 // flute / usable cutting length (mm)
+	Flutes            int     // number of cutting edges (drives the feeds & speeds feed)
 }
 
 // ToolController binds a ToolBit to its machining parameters — the spindle and feed/rapid

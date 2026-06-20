@@ -368,6 +368,21 @@ func TestPanelMaterialFeeds(t *testing.T) {
 	if after := e.activeEndmill().SpindleSpeed; after != before {
 		t.Errorf("unknown material should not change the spindle (%g → %g)", before, after)
 	}
+
+	// more flutes → a faster feed at the same RPM (feed = RPM · flutes · chipload).
+	e.applyPanelEdit("material", "aluminium")
+	two := e.activeEndmill()
+	e.applyPanelEdit("flutes", "4")
+	four := e.activeEndmill()
+	if four.Tool.Flutes != 4 {
+		t.Errorf("flute count not applied to the tool: %d", four.Tool.Flutes)
+	}
+	if four.SpindleSpeed != two.SpindleSpeed {
+		t.Errorf("flute count should not change the RPM (%g → %g)", two.SpindleSpeed, four.SpindleSpeed)
+	}
+	if four.HorizFeed <= two.HorizFeed {
+		t.Errorf("4 flutes should feed faster than 2 (%g vs %g)", four.HorizFeed, two.HorizFeed)
+	}
 }
 
 // TestEngineFanucPost checks the panel can select the Fanuc post and a job posts in its dialect

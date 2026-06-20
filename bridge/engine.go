@@ -31,6 +31,7 @@ type Engine struct {
 	plungFeed     float64 // plunge (vertical) feed; the cutting feed is 3× this
 	spindleSpeed  float64 // active spindle speed (rev/min), set by the feeds & speeds calculator
 	material      string  // selected workpiece material (drives the feeds & speeds calculator)
+	flutes        int     // flute count of the primary end mill (drives the feeds & speeds feed)
 	lastJob       *Job    // most recently generated job (for the operations browser + Save)
 	lastGCode     string  // most recently posted G-code (for export to a file)
 	lastEstimate  float64 // estimated cycle time (minutes) of the last posted job
@@ -44,18 +45,18 @@ type Engine struct {
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
 func NewEngine(host HostCaller) *Engine {
-	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, spindleSpeed: defaultSpindleSpeed, material: defaultMaterial, cut: defaultCutSettings(), library: DefaultToolLibrary(), surfacer: oclSurfacer{}}
+	return &Engine{host: host, api: client.New(host), postName: "linuxcnc", plungFeed: defaultPlungeFeed, spindleSpeed: defaultSpindleSpeed, material: defaultMaterial, flutes: feedsFluteCount, cut: defaultCutSettings(), library: DefaultToolLibrary(), surfacer: oclSurfacer{}}
 }
 
 // activeEndmill is the primary milling tool (T1), built from the panel's tool-diameter and feed
 // fields. It is always present at index 0 of a job's tool list.
 func (e *Engine) activeEndmill() ToolController {
 	e.mu.Lock()
-	feed, dia, rpm := e.plungFeed, e.cut.ToolDiameter, e.spindleSpeed
+	feed, dia, rpm, flutes := e.plungFeed, e.cut.ToolDiameter, e.spindleSpeed, e.flutes
 	e.mu.Unlock()
 	return ToolController{
 		Label: "End mill", ToolNumber: 1, SpindleSpeed: rpm, SpindleDir: "Forward",
-		VertFeed: feed, HorizFeed: feed * 3, Tool: ToolBit{Name: "End mill", ShapeType: "endmill", Diameter: dia},
+		VertFeed: feed, HorizFeed: feed * 3, Tool: ToolBit{Name: "End mill", ShapeType: "endmill", Diameter: dia, Flutes: flutes},
 	}
 }
 
@@ -73,7 +74,7 @@ func (e *Engine) jobTools() []ToolController {
 const (
 	defaultPlungeFeed   = 100.0
 	defaultSpindleSpeed = 5000.0
-	feedsFluteCount     = 2           // assumed end-mill flute count for the feeds & speeds calculator
+	feedsFluteCount     = 2           // default end-mill flute count until the panel changes it
 	defaultMaterial     = "aluminium" // selected workpiece material until the panel changes it
 )
 

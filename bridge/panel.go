@@ -20,7 +20,7 @@ const CAMPanelID = "com.oblikovati.cam.panel"
 // (applyPanelEdit).
 func (e *Engine) ShowPanel() (wire.OKResult, error) {
 	e.mu.Lock()
-	postName, feed, cut, body, material := e.postName, e.plungFeed, e.cut, e.targetBody, e.material
+	postName, feed, cut, body, material, flutes := e.postName, e.plungFeed, e.cut, e.targetBody, e.material, e.flutes
 	e.mu.Unlock()
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID:      CAMPanelID,
@@ -34,6 +34,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(feed)),
 			client.PanelDropdown("material", "Material (feeds & speeds)", feeds.Materials(), material),
 			client.PanelTextBox("tool_dia", "Tool ⌀ (mm)", num(cut.ToolDiameter)),
+			client.PanelTextBox("flutes", "Flutes", strconv.Itoa(flutes)),
 			client.PanelTextBox("step_down", "Step-down (mm)", num(cut.StepDown)),
 			client.PanelTextBox("step_over", "Step-over (×⌀)", num(cut.StepOver)),
 			client.PanelTextBox("cut_depth", "Cut depth (mm, 0=thru)", num(cut.CutDepth)),
@@ -78,7 +79,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 // plunge, so the plunge is set to a third of the recommended cutting feed. The caller must hold
 // e.mu; an unknown material / bad tool leaves the current feeds unchanged.
 func (e *Engine) applyMaterialFeedsLocked() {
-	rec, err := feeds.Recommend(e.material, e.cut.ToolDiameter, feedsFluteCount)
+	rec, err := feeds.Recommend(e.material, e.cut.ToolDiameter, e.flutes)
 	if err != nil {
 		return
 	}
@@ -110,6 +111,11 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		if d := panelNum(value, e.cut.ToolDiameter); d > 0 {
 			e.cut.ToolDiameter = d
 			e.applyMaterialFeedsLocked() // a new diameter changes the recommended RPM/feed
+		}
+	case "flutes":
+		if f := int(panelNum(value, float64(e.flutes))); f > 0 {
+			e.flutes = f
+			e.applyMaterialFeedsLocked() // more flutes → a faster feed at the same RPM
 		}
 	case "step_down":
 		e.cut.StepDown = panelNum(value, e.cut.StepDown)
