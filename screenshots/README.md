@@ -39,6 +39,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `helix.png` | Helix bore: the tool-centre orbit for a hole wider than the tool. |
 | `threadmill.png` | Thread milling: the thread orbit plus the lead-in/out arc easing on/off the thread. |
 | `counterbore.png` | Counterbore / spot-face: concentric helical passes clearing a flat-bottom recess at the hole top. |
+| `tapping.png` | Tapping: a synchronised tap cycle (G84) at each detected hole — feed = thread pitch × spindle rpm. |
 | `countersink.png` | Countersink: a conical spiral from the rim down to the centre (the depth shade traces the cone). |
 | `surface.png` | 3D surface finish: parallel zig-zag passes; the depth shade (orange high → blue low) shows the surface. |
 | `waterline.png` | 3D waterline finish: nested constant-Z contour loops down the surface. |

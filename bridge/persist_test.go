@@ -58,6 +58,34 @@ func TestJobMarshalRoundTrip(t *testing.T) {
 	}
 }
 
+// TestTappingOpRoundTrip checks a tapping op preserves its pitch, hand, and dwell across a
+// marshal/unmarshal cycle (the holes are runtime geometry and are not persisted).
+func TestTappingOpRoundTrip(t *testing.T) {
+	job := NewJob()
+	job.PostProcessor = "linuxcnc"
+	job.Operations = []Operation{&TappingOp{
+		OpBase:    OpBase{OpLabel: "Tap M10", IsActive: true},
+		Pitch:     1.5,
+		LeftHand:  true,
+		DwellTime: 0.3,
+	}}
+	payload, err := MarshalJob(job)
+	if err != nil {
+		t.Fatalf("MarshalJob: %v", err)
+	}
+	back, err := UnmarshalJob(payload)
+	if err != nil {
+		t.Fatalf("UnmarshalJob: %v", err)
+	}
+	tap, ok := back.Operations[0].(*TappingOp)
+	if !ok {
+		t.Fatalf("want a *TappingOp, got %T", back.Operations[0])
+	}
+	if tap.Pitch != 1.5 || !tap.LeftHand || tap.DwellTime != 0.3 || tap.OpLabel != "Tap M10" {
+		t.Errorf("tapping op not preserved: %+v", tap)
+	}
+}
+
 // persistHost answers documents.list with one active document and round-trips one stored
 // attribute value through attributes.set / attributes.get.
 type persistHost struct{ stored *types.Variant }
