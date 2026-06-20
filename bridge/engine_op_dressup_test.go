@@ -71,3 +71,31 @@ func maxCutZ(path gcode.Path) float64 {
 	}
 	return top
 }
+
+// TestAddRampDressup adds a ramp-entry dressup and checks it round-trips through persistence.
+func TestAddRampDressup(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.lastJob = twoOpJob()
+	e.editingOp = 0
+	if _, err := e.addRampAction(); err != nil {
+		t.Fatalf("addRampAction: %v", err)
+	}
+	prof := e.lastJob.Operations[0].(*ProfileOp)
+	if len(prof.Dressups) != 1 {
+		t.Fatalf("want 1 dressup, got %d", len(prof.Dressups))
+	}
+	if _, ok := prof.Dressups[0].(RampDressup); !ok {
+		t.Errorf("dressup should be a ramp, got %T", prof.Dressups[0])
+	}
+	// round-trip the job and confirm the ramp survives
+	j := NewJob()
+	j.Operations = []Operation{prof}
+	payload, _ := MarshalJob(j)
+	back, err := UnmarshalJob(payload)
+	if err != nil {
+		t.Fatalf("UnmarshalJob: %v", err)
+	}
+	if r, ok := back.Operations[0].(*ProfileOp).Dressups[0].(RampDressup); !ok || r.Params.Length != defaultRampLength {
+		t.Errorf("ramp dressup did not round-trip: %+v", back.Operations[0])
+	}
+}

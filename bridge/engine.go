@@ -104,6 +104,7 @@ const (
 	DuplicateOpCommandID       = "CAM.DuplicateOperation" // copy the selected operation
 	AddTabsCommandID           = "CAM.AddTabs"            // add holding tabs to the selected operation
 	AddDogboneCommandID        = "CAM.AddDogbone"         // add dogbone relief to the selected operation
+	AddRampCommandID           = "CAM.AddRamp"            // add ramp entry to the selected operation
 	ClearDressupsCommandID     = "CAM.ClearDressups"      // remove the selected operation's dressups
 	ShowToolsCommandID         = "CAM.ShowTools"          // open the tool-library browser
 	AddEndmillCommandID        = "CAM.AddEndmill"         // add an end mill to the library
@@ -140,6 +141,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{DuplicateOpCommandID, "Duplicate Operation", "Insert a copy of the selected operation."},
 	{AddTabsCommandID, "Add Holding Tabs", "Add holding tabs to the selected operation."},
 	{AddDogboneCommandID, "Add Dogbone", "Add dogbone corner relief to the selected operation."},
+	{AddRampCommandID, "Add Ramp Entry", "Replace straight plunges with a ramped descent on the selected operation."},
 	{ClearDressupsCommandID, "Clear Dressups", "Remove the selected operation's dressups."},
 	{ShowToolsCommandID, "Show Tool Library", "Open the CAM tool-library browser."},
 	{AddEndmillCommandID, "Add End Mill", "Add an end mill to the tool library."},
@@ -255,6 +257,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.addTabsAction)
 	case AddDogboneCommandID:
 		e.launchRun(e.addDogboneAction)
+	case AddRampCommandID:
+		e.launchRun(e.addRampAction)
 	case ClearDressupsCommandID:
 		e.launchRun(e.clearDressupsAction)
 	case ShowToolsCommandID:
