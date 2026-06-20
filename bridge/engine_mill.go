@@ -110,9 +110,9 @@ func (e *Engine) millEnvelope(label string, stock Stock) OpBase {
 	cut := e.cutting()
 	return OpBase{
 		OpLabel: label, IsActive: true, ToolController: 0,
-		ClearanceHeight: stock.TopZ() + drillClearanceAbove,
-		SafeHeight:      stock.TopZ() + drillRetractAbove,
-		RetractHeight:   stock.TopZ() + drillRetractAbove,
+		ClearanceHeight: cut.clearanceZ(stock.TopZ()),
+		SafeHeight:      cut.retractZ(stock.TopZ()),
+		RetractHeight:   cut.retractZ(stock.TopZ()),
 		StartDepth:      stock.TopZ(),
 		FinalDepth:      cut.finalDepth(stock.TopZ(), stock.BottomZ()),
 	}

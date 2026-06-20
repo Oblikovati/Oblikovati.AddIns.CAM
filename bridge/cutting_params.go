@@ -13,12 +13,34 @@ type cutSettings struct {
 	CutDepth       float64 // depth below the stock top to cut to (mm); <= 0 means through the stock
 	StockXYMargin  float64 // extra material around the part in X/Y (mm)
 	StockTopMargin float64 // extra material on top of the part (mm)
+	ClearanceAbove float64 // rapid/clearance plane above the stock top (mm)
+	RetractAbove   float64 // feed-in / canned-cycle retract plane above the stock top (mm)
+}
+
+// clearanceZ / retractZ return the rapid and retract planes above a stock top, falling back to
+// the milestone defaults when a margin is non-positive.
+func (c cutSettings) clearanceZ(topZ float64) float64 {
+	return topZ + positiveOr(c.ClearanceAbove, drillClearanceAbove)
+}
+func (c cutSettings) retractZ(topZ float64) float64 {
+	return topZ + positiveOr(c.RetractAbove, drillRetractAbove)
+}
+
+// positiveOr returns v when positive, else the fallback.
+func positiveOr(v, fallback float64) float64 {
+	if v > 0 {
+		return v
+	}
+	return fallback
 }
 
 // defaultCutSettings are the milestone defaults, matched to the original hardcoded values so
 // existing behaviour is unchanged until the user edits a field.
 func defaultCutSettings() cutSettings {
-	return cutSettings{ToolDiameter: millEndmillDia, StepDown: millStepDown, StepOver: 0.5, CutDepth: 0}
+	return cutSettings{
+		ToolDiameter: millEndmillDia, StepDown: millStepDown, StepOver: 0.5, CutDepth: 0,
+		ClearanceAbove: drillClearanceAbove, RetractAbove: drillRetractAbove,
+	}
 }
 
 // cutting returns a snapshot of the current cutting settings (taken under the engine lock so a

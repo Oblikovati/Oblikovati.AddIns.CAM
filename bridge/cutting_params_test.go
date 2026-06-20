@@ -88,3 +88,42 @@ func TestPanelEditsStock(t *testing.T) {
 		t.Errorf("stock margins after edits = %+v", g)
 	}
 }
+
+// TestPanelEditsBody routes the body-index field and the generate commands use it.
+func TestPanelEditsBody(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	if e.body() != 0 {
+		t.Errorf("default body = %d, want 0", e.body())
+	}
+	e.applyPanelEdit("body", "2")
+	if e.body() != 2 {
+		t.Errorf("body after edit = %d, want 2", e.body())
+	}
+	e.applyPanelEdit("body", "-1") // negative rejected
+	if e.body() != 2 {
+		t.Errorf("negative body must be rejected, got %d", e.body())
+	}
+}
+
+// TestClearanceHeights frames the envelope at the configured clearance/retract heights.
+func TestClearanceHeights(t *testing.T) {
+	c := cutSettings{ClearanceAbove: 8, RetractAbove: 3}
+	if c.clearanceZ(10) != 18 || c.retractZ(10) != 13 {
+		t.Errorf("clearance/retract = %g/%g, want 18/13", c.clearanceZ(10), c.retractZ(10))
+	}
+	// non-positive falls back to the milestone defaults
+	if (cutSettings{}).clearanceZ(0) != drillClearanceAbove {
+		t.Error("zero clearance must fall back to the default")
+	}
+}
+
+// TestPanelEditsHeights routes the clearance/retract panel fields and they reach an envelope.
+func TestPanelEditsHeights(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.applyPanelEdit("clearance", "8")
+	e.applyPanelEdit("retract", "3")
+	env := e.millEnvelope("Test", Stock{Min: vec(0, 0, 0), Max: vec(10, 10, 5)})
+	if env.ClearanceHeight != 5+8 || env.SafeHeight != 5+3 {
+		t.Errorf("envelope heights = %g/%g, want 13/8", env.ClearanceHeight, env.SafeHeight)
+	}
+}

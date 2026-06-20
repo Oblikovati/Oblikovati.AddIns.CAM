@@ -19,7 +19,7 @@ const CAMPanelID = "com.oblikovati.cam.panel"
 // (applyPanelEdit).
 func (e *Engine) ShowPanel() (wire.OKResult, error) {
 	e.mu.Lock()
-	postName, feed, cut := e.postName, e.plungFeed, e.cut
+	postName, feed, cut, body := e.postName, e.plungFeed, e.cut, e.targetBody
 	e.mu.Unlock()
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID:      CAMPanelID,
@@ -29,6 +29,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 		Controls: []wire.PanelControlSpec{
 			client.PanelLabel("hdr", "— CAM job —"),
 			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl"}, postName),
+			client.PanelTextBox("body", "Body index", strconv.Itoa(body)),
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(feed)),
 			client.PanelTextBox("tool_dia", "Tool ⌀ (mm)", num(cut.ToolDiameter)),
 			client.PanelTextBox("step_down", "Step-down (mm)", num(cut.StepDown)),
@@ -36,6 +37,8 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelTextBox("cut_depth", "Cut depth (mm, 0=thru)", num(cut.CutDepth)),
 			client.PanelTextBox("stock_xy", "Stock margin XY (mm)", num(cut.StockXYMargin)),
 			client.PanelTextBox("stock_top", "Stock margin top (mm)", num(cut.StockTopMargin)),
+			client.PanelTextBox("clearance", "Clearance above (mm)", num(cut.ClearanceAbove)),
+			client.PanelTextBox("retract", "Retract above (mm)", num(cut.RetractAbove)),
 			client.PanelSeparator(),
 			client.PanelButton("drill", "Drilling", GenerateJobCommandID),
 			client.PanelButton("profile", "Profile", GenerateProfileCommandID),
@@ -66,6 +69,10 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		if v := strings.TrimSpace(value); v == "linuxcnc" || v == "grbl" {
 			e.postName = v
 		}
+	case "body":
+		if b := int(panelNum(value, float64(e.targetBody))); b >= 0 {
+			e.targetBody = b
+		}
 	case "plunge_feed":
 		e.plungFeed = panelNum(value, e.plungFeed)
 	case "tool_dia":
@@ -84,6 +91,10 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		e.cut.StockXYMargin = panelNum(value, e.cut.StockXYMargin)
 	case "stock_top":
 		e.cut.StockTopMargin = panelNum(value, e.cut.StockTopMargin)
+	case "clearance":
+		e.cut.ClearanceAbove = panelNum(value, e.cut.ClearanceAbove)
+	case "retract":
+		e.cut.RetractAbove = panelNum(value, e.cut.RetractAbove)
 	}
 }
 

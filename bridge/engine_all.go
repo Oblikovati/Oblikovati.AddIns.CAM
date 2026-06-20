@@ -30,7 +30,7 @@ func (e *Engine) RunAllJobsOnHost(bodyIndex int) (*JobResult, error) {
 	cut := e.cutting()
 	var ops []Operation
 	if len(holes) > 0 {
-		ops = append(ops, &DrillingOp{OpBase: drillEnvelope(stock, indexForShape(job.Tools, "drill")), Holes: holes})
+		ops = append(ops, &DrillingOp{OpBase: e.drillEnvelope(stock, indexForShape(job.Tools, "drill")), Holes: holes})
 	}
 	ops = append(ops, &ProfileOp{
 		OpBase: e.millEnvelope("Profile", stock), Side: "outside", Climb: true, StepDown: cut.StepDown, Boundary: boundary,
