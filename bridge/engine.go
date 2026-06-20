@@ -29,11 +29,12 @@ type Engine struct {
 	running       bool   // a job is in flight (coalesces overlapping command triggers)
 	postName      string // active post processor ("linuxcnc" | "grbl")
 	plungFeed     float64
-	lastJob       *Job   // most recently generated job (for the operations browser + Save)
-	lastGCode     string // most recently posted G-code (for export to a file)
-	targetBody    int    // index of the body the generate commands machine
-	editingOp     int    // index of the operation shown in the operation editor
-	sectionSource string // how the last contour plane was chosen ("selected face" | "mid-height")
+	lastJob       *Job    // most recently generated job (for the operations browser + Save)
+	lastGCode     string  // most recently posted G-code (for export to a file)
+	lastEstimate  float64 // estimated cycle time (minutes) of the last posted job
+	targetBody    int     // index of the body the generate commands machine
+	editingOp     int     // index of the operation shown in the operation editor
+	sectionSource string  // how the last contour plane was chosen ("selected face" | "mid-height")
 	cut           cutSettings
 	library       ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
 	surfacer      Surfacer
@@ -82,37 +83,38 @@ func (e *Engine) SetPost(name string) *Engine {
 // The CAM commands the add-in registers; firing one (a ribbon click or the MCP bridge's
 // execute_command) generates the corresponding toolpath for the active part.
 const (
-	GenerateJobCommandID       = "CAM.GenerateJob"       // drilling (kept stable for M1 callers)
-	GenerateProfileCommandID   = "CAM.GenerateProfile"   // contour profile
-	GeneratePocketCommandID    = "CAM.GeneratePocket"    // area-clearing pocket
-	GenerateHelixCommandID     = "CAM.GenerateHelix"     // helical bore
-	GenerateMillFaceCommandID  = "CAM.GenerateMillFace"  // face milling
-	GenerateEngraveCommandID   = "CAM.GenerateEngrave"   // engraving
-	GenerateSurfaceCommandID   = "CAM.GenerateSurface"   // 3D surface finishing (parallel drop-cutter)
-	GenerateWaterlineCommandID = "CAM.GenerateWaterline" // 3D waterline (constant-Z) finishing
-	GenerateAllCommandID       = "CAM.GenerateAll"       // one program over several ops + tools
-	PreviewProfileCommandID    = "CAM.PreviewProfile"    // transient toolpath preview (not committed)
-	ClearPreviewCommandID      = "CAM.ClearPreview"      // remove the transient toolpath preview
-	ShowOperationsCommandID    = "CAM.ShowOperations"    // open the operations browser
-	EditOperationCommandID     = "CAM.EditOperation"     // open the operation editor
-	RegenerateCommandID        = "CAM.RegenerateJob"     // re-run + re-post the edited job
-	ToggleOpCommandID          = "CAM.ToggleOperation"   // enable/disable the selected operation
-	MoveOpUpCommandID          = "CAM.MoveOperationUp"   // move the selected operation earlier
-	MoveOpDownCommandID        = "CAM.MoveOperationDown" // move the selected operation later
-	DeleteOpCommandID          = "CAM.DeleteOperation"   // remove the selected operation
-	AddTabsCommandID           = "CAM.AddTabs"           // add holding tabs to the selected operation
-	AddDogboneCommandID        = "CAM.AddDogbone"        // add dogbone relief to the selected operation
-	ClearDressupsCommandID     = "CAM.ClearDressups"     // remove the selected operation's dressups
-	ShowToolsCommandID         = "CAM.ShowTools"         // open the tool-library browser
-	AddEndmillCommandID        = "CAM.AddEndmill"        // add an end mill to the library
-	AddDrillCommandID          = "CAM.AddDrill"          // add a drill to the library
-	AddBallnoseCommandID       = "CAM.AddBallnose"       // add a ball-nose to the library
-	RemoveToolCommandID        = "CAM.RemoveTool"        // remove the last library tool
-	ExportToolsCommandID       = "CAM.ExportTools"       // export the tool library to a file
-	ImportToolsCommandID       = "CAM.ImportTools"       // import a tool library from a file
-	SaveJobCommandID           = "CAM.SaveJob"           // persist the job into the document
-	LoadJobCommandID           = "CAM.LoadJob"           // load the job from the document
-	SaveGCodeCommandID         = "CAM.SaveGCode"         // export the posted program to a file
+	GenerateJobCommandID       = "CAM.GenerateJob"        // drilling (kept stable for M1 callers)
+	GenerateProfileCommandID   = "CAM.GenerateProfile"    // contour profile
+	GeneratePocketCommandID    = "CAM.GeneratePocket"     // area-clearing pocket
+	GenerateHelixCommandID     = "CAM.GenerateHelix"      // helical bore
+	GenerateMillFaceCommandID  = "CAM.GenerateMillFace"   // face milling
+	GenerateEngraveCommandID   = "CAM.GenerateEngrave"    // engraving
+	GenerateSurfaceCommandID   = "CAM.GenerateSurface"    // 3D surface finishing (parallel drop-cutter)
+	GenerateWaterlineCommandID = "CAM.GenerateWaterline"  // 3D waterline (constant-Z) finishing
+	GenerateAllCommandID       = "CAM.GenerateAll"        // one program over several ops + tools
+	PreviewProfileCommandID    = "CAM.PreviewProfile"     // transient toolpath preview (not committed)
+	ClearPreviewCommandID      = "CAM.ClearPreview"       // remove the transient toolpath preview
+	ShowOperationsCommandID    = "CAM.ShowOperations"     // open the operations browser
+	EditOperationCommandID     = "CAM.EditOperation"      // open the operation editor
+	RegenerateCommandID        = "CAM.RegenerateJob"      // re-run + re-post the edited job
+	ToggleOpCommandID          = "CAM.ToggleOperation"    // enable/disable the selected operation
+	MoveOpUpCommandID          = "CAM.MoveOperationUp"    // move the selected operation earlier
+	MoveOpDownCommandID        = "CAM.MoveOperationDown"  // move the selected operation later
+	DeleteOpCommandID          = "CAM.DeleteOperation"    // remove the selected operation
+	DuplicateOpCommandID       = "CAM.DuplicateOperation" // copy the selected operation
+	AddTabsCommandID           = "CAM.AddTabs"            // add holding tabs to the selected operation
+	AddDogboneCommandID        = "CAM.AddDogbone"         // add dogbone relief to the selected operation
+	ClearDressupsCommandID     = "CAM.ClearDressups"      // remove the selected operation's dressups
+	ShowToolsCommandID         = "CAM.ShowTools"          // open the tool-library browser
+	AddEndmillCommandID        = "CAM.AddEndmill"         // add an end mill to the library
+	AddDrillCommandID          = "CAM.AddDrill"           // add a drill to the library
+	AddBallnoseCommandID       = "CAM.AddBallnose"        // add a ball-nose to the library
+	RemoveToolCommandID        = "CAM.RemoveTool"         // remove the last library tool
+	ExportToolsCommandID       = "CAM.ExportTools"        // export the tool library to a file
+	ImportToolsCommandID       = "CAM.ImportTools"        // import a tool library from a file
+	SaveJobCommandID           = "CAM.SaveJob"            // persist the job into the document
+	LoadJobCommandID           = "CAM.LoadJob"            // load the job from the document
+	SaveGCodeCommandID         = "CAM.SaveGCode"          // export the posted program to a file
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -135,6 +137,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{MoveOpUpCommandID, "Move Operation Up", "Run the selected operation earlier in the program."},
 	{MoveOpDownCommandID, "Move Operation Down", "Run the selected operation later in the program."},
 	{DeleteOpCommandID, "Delete Operation", "Remove the selected operation from the job."},
+	{DuplicateOpCommandID, "Duplicate Operation", "Insert a copy of the selected operation."},
 	{AddTabsCommandID, "Add Holding Tabs", "Add holding tabs to the selected operation."},
 	{AddDogboneCommandID, "Add Dogbone", "Add dogbone corner relief to the selected operation."},
 	{ClearDressupsCommandID, "Clear Dressups", "Remove the selected operation's dressups."},
@@ -246,6 +249,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.moveOpDownAction)
 	case DeleteOpCommandID:
 		e.launchRun(e.deleteOpAction)
+	case DuplicateOpCommandID:
+		e.launchRun(e.duplicateOpAction)
 	case AddTabsCommandID:
 		e.launchRun(e.addTabsAction)
 	case AddDogboneCommandID:
@@ -320,11 +325,17 @@ func (e *Engine) reportStatus(msg string) { _, _ = e.api.Status().SetText(msg) }
 
 // JobResult summarizes one generated job.
 type JobResult struct {
-	GCode      string
-	HoleCount  int // drilling only
-	GCodeLines int
-	OverlayID  string
-	Summary    string // human status line
+	GCode            string
+	HoleCount        int // drilling only
+	GCodeLines       int
+	OverlayID        string
+	EstimatedMinutes float64 // estimated cycle time
+	Summary          string  // human status line
+}
+
+// withEstimate appends a "~N.N min" cycle-time note to a summary.
+func withEstimate(summary string, minutes float64) string {
+	return fmt.Sprintf("%s ~%.1f min.", summary, minutes)
 }
 
 // RunDrillingJobOnHost is the end-to-end add-in flow for one body: read its topology and
@@ -341,12 +352,16 @@ func (e *Engine) RunDrillingJobOnHost(bodyIndex int) (*JobResult, error) {
 	}
 	overlayID, _ := e.pushToolpathOverlay(holes) // best-effort viewport preview
 	lines := countLines(gcodeText)
+	e.mu.Lock()
+	estimate := e.lastEstimate
+	e.mu.Unlock()
 	return &JobResult{
-		GCode:      gcodeText,
-		HoleCount:  len(holes),
-		GCodeLines: lines,
-		OverlayID:  overlayID,
-		Summary:    fmt.Sprintf("CAM: drilled %d hole(s), %d G-code lines (%s).", len(holes), lines, e.postName),
+		GCode:            gcodeText,
+		HoleCount:        len(holes),
+		GCodeLines:       lines,
+		OverlayID:        overlayID,
+		EstimatedMinutes: estimate,
+		Summary:          withEstimate(fmt.Sprintf("CAM: drilled %d hole(s), %d G-code lines (%s).", len(holes), lines, e.postName), estimate),
 	}, nil
 }
 
@@ -360,6 +375,7 @@ func (e *Engine) GenerateGCode(job *Job) (string, error) {
 	e.mu.Lock()
 	job.PostProcessor = e.postName
 	e.lastJob = job
+	e.lastEstimate = EstimateMinutes(results)
 	e.mu.Unlock()
 	gcodeText, err := post.Export(job.PostProcessor, PostObjects(results), "--no-show-editor")
 	if err == nil {

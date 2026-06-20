@@ -61,6 +61,7 @@ func (e *Engine) editorSpec(job *Job, idx int) wire.DockableWindowSpec {
 		client.PanelButton("toggle", "Enable / Disable", ToggleOpCommandID),
 		client.PanelButton("up", "Move Up", MoveOpUpCommandID),
 		client.PanelButton("down", "Move Down", MoveOpDownCommandID),
+		client.PanelButton("dup", "Duplicate", DuplicateOpCommandID),
 		client.PanelButton("del", "Delete", DeleteOpCommandID),
 		client.PanelSeparator(),
 		client.PanelButton("tabs", "Add Holding Tabs", AddTabsCommandID),

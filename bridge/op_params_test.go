@@ -81,3 +81,17 @@ func TestParseOpChoice(t *testing.T) {
 		t.Error("parseOpChoice should default to 0")
 	}
 }
+
+// TestRenameOperation edits an operation's name through the parameter interface.
+func TestRenameOperation(t *testing.T) {
+	op := &ProfileOp{OpBase: OpBase{OpLabel: "Profile"}}
+	if findParam(op.Parameters(), "label") != "Profile" {
+		t.Errorf("name param not surfaced: %+v", op.Parameters())
+	}
+	if !op.SetParameter("label", "Roughing") || op.Label() != "Roughing" {
+		t.Errorf("rename failed: %q", op.Label())
+	}
+	if op.SetParameter("label", ""); op.Label() != "Roughing" {
+		t.Errorf("an empty name must be ignored, got %q", op.Label())
+	}
+}

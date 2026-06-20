@@ -38,6 +38,20 @@ func (e *Engine) moveOpDownAction() (*JobResult, error) {
 	})
 }
 
+// duplicateOpAction inserts a copy of the selected operation right after it and selects it.
+func (e *Engine) duplicateOpAction() (*JobResult, error) {
+	return e.mutateSelectedOp(func(job *Job, idx int) string {
+		clone := job.Operations[idx].Clone()
+		next := make([]Operation, 0, len(job.Operations)+1)
+		next = append(next, job.Operations[:idx+1]...)
+		next = append(next, clone)
+		next = append(next, job.Operations[idx+1:]...)
+		job.Operations = next
+		e.editingOp = idx + 1
+		return fmt.Sprintf("CAM: duplicated %q (%d operation(s)).", clone.Label(), len(job.Operations))
+	})
+}
+
 // deleteOpAction removes the selected operation from the job.
 func (e *Engine) deleteOpAction() (*JobResult, error) {
 	return e.mutateSelectedOp(func(job *Job, idx int) string {

@@ -78,3 +78,50 @@ func TestMoveOpBoundaries(t *testing.T) {
 		t.Fatalf("showOperationEditorAction: %v", err)
 	}
 }
+
+// TestDuplicateOp inserts a deep copy after the selected operation and selects it.
+func TestDuplicateOp(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.lastJob = twoOpJob() // [Profile, Pocket]
+	e.editingOp = 0
+	if _, err := e.duplicateOpAction(); err != nil {
+		t.Fatalf("duplicateOpAction: %v", err)
+	}
+	if len(e.lastJob.Operations) != 3 {
+		t.Fatalf("want 3 operations after duplicate, got %d", len(e.lastJob.Operations))
+	}
+	if e.lastJob.Operations[1].Label() != "Profile copy" || e.editingOp != 1 {
+		t.Errorf("copy should sit at index 1 (selected): label=%q editingOp=%d", e.lastJob.Operations[1].Label(), e.editingOp)
+	}
+	// the copy is independent: editing its dressups must not touch the original
+	orig := e.lastJob.Operations[0].(*ProfileOp)
+	dup := e.lastJob.Operations[1].(*ProfileOp)
+	dup.AppendDressup(NewTagsDressup(3, 2, 1))
+	if len(orig.Dressups) != 0 {
+		t.Error("duplicating must not share the dressup slice")
+	}
+}
+
+// TestCloneEveryOp clones each operation type and checks the copy is independent + labelled.
+func TestCloneEveryOp(t *testing.T) {
+	ops := []Operation{
+		&DrillingOp{OpBase: OpBase{OpLabel: "Drilling"}},
+		&ProfileOp{OpBase: OpBase{OpLabel: "Profile"}},
+		&PocketOp{OpBase: OpBase{OpLabel: "Pocket"}},
+		&MillFaceOp{OpBase: OpBase{OpLabel: "Face"}},
+		&EngraveOp{OpBase: OpBase{OpLabel: "Engrave"}},
+		&HelixOp{OpBase: OpBase{OpLabel: "Helix"}},
+		&SurfaceOp{OpBase: OpBase{OpLabel: "Surface"}},
+		&WaterlineOp{OpBase: OpBase{OpLabel: "Waterline"}},
+	}
+	for _, op := range ops {
+		clone := op.Clone()
+		if clone.Label() != op.Label()+" copy" {
+			t.Errorf("%T clone label = %q, want %q", op, clone.Label(), op.Label()+" copy")
+		}
+		clone.SetActive(true)
+		if op.Active() {
+			t.Errorf("%T clone shares state with the original", op)
+		}
+	}
+}

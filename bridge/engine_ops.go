@@ -70,9 +70,11 @@ func (e *Engine) postPreviewResult(job *Job, verb string) (*JobResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	estimate := EstimateMinutes(results)
 	e.mu.Lock()
 	job.PostProcessor = e.postName
 	e.lastJob = job
+	e.lastEstimate = estimate
 	postName := e.postName
 	e.mu.Unlock()
 
@@ -85,8 +87,8 @@ func (e *Engine) postPreviewResult(job *Job, verb string) (*JobResult, error) {
 	e.rememberGCode(gcodeText)
 	lines := countLines(gcodeText)
 	return &JobResult{
-		GCode: gcodeText, GCodeLines: lines, OverlayID: overlayID,
-		Summary: fmt.Sprintf("CAM: %s, %d G-code lines (%s).", verb, lines, postName),
+		GCode: gcodeText, GCodeLines: lines, OverlayID: overlayID, EstimatedMinutes: estimate,
+		Summary: withEstimate(fmt.Sprintf("CAM: %s, %d G-code lines (%s).", verb, lines, postName), estimate),
 	}, nil
 }
 
