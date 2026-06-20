@@ -299,6 +299,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("counterbore", o.OpBase)
 		d.Diameter, d.Depth, d.Pitch = o.Diameter, o.Depth, o.Pitch
 		return d, nil
+	case *CountersinkOp:
+		d := baseDoc("countersink", o.OpBase)
+		d.Diameter, d.ToolAngle = o.Diameter, o.ToolAngle
+		return d, nil
 	case *SurfaceOp:
 		d := baseDoc("surface", o.OpBase)
 		d.StepOver, d.Sampling, d.Zigzag = o.StepOver, o.Sampling, o.Zigzag
@@ -343,6 +347,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &ThreadMillOp{OpBase: opBaseFrom(d), MajorDiameter: d.MajorDiameter, Pitch: d.Pitch, Internal: d.Internal, Climb: d.Climb}, nil
 	case "counterbore":
 		return &CounterboreOp{OpBase: opBaseFrom(d), Diameter: d.Diameter, Depth: d.Depth, Pitch: d.Pitch}, nil
+	case "countersink":
+		return &CountersinkOp{OpBase: opBaseFrom(d), Diameter: d.Diameter, ToolAngle: d.ToolAngle}, nil
 	case "surface":
 		return &SurfaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Sampling: d.Sampling, Zigzag: d.Zigzag}, nil
 	case "waterline":

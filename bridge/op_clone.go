@@ -40,6 +40,11 @@ func (op *CounterboreOp) Clone() Operation {
 	cp.OpBase = op.cloned(" copy")
 	return &cp
 }
+func (op *CountersinkOp) Clone() Operation {
+	cp := *op
+	cp.OpBase = op.cloned(" copy")
+	return &cp
+}
 func (op *SurfaceOp) Clone() Operation { cp := *op; cp.OpBase = op.cloned(" copy"); return &cp }
 func (op *WaterlineOp) Clone() Operation {
 	cp := *op

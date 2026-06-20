@@ -19,6 +19,8 @@ const (
 	cboreDiameter   = 12.0 // mm — counterbore recess diameter
 	cboreDepth      = 4.0  // mm — counterbore recess depth
 	cborePitch      = 1.0  // mm — counterbore helix pitch
+	csinkDiameter   = 10.0 // mm — countersink rim diameter
+	csinkAngle      = 90.0 // deg — countersink tool included angle
 	faceDepth       = 1.0  // mm — facing depth off the stock top
 	engraveDepth    = 0.5  // mm — engraving depth off the stock top
 	chamferWidth    = 1.0  // mm — chamfer/deburr bevel width
@@ -79,6 +81,21 @@ func (e *Engine) RunCounterboreJobOnHost(bodyIndex int) (*JobResult, error) {
 		Holes: holes,
 	}}
 	return e.postPreviewResult(job, fmt.Sprintf("counterbored %d hole(s)", len(holes)))
+}
+
+// RunCountersinkJobOnHost cuts a conical recess at each of the part's hole tops.
+func (e *Engine) RunCountersinkJobOnHost(bodyIndex int) (*JobResult, error) {
+	holes, stock, err := e.detectHolesAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	job.Operations = []Operation{&CountersinkOp{
+		OpBase:   e.millEnvelope("Countersink", stock),
+		Diameter: csinkDiameter, ToolAngle: csinkAngle,
+		Holes: holes,
+	}}
+	return e.postPreviewResult(job, fmt.Sprintf("countersank %d hole(s)", len(holes)))
 }
 
 // RunProbeJobOnHost probes the stock's top and two edges to find the work origin.
