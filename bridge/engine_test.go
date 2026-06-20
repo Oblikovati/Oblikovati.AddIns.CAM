@@ -166,6 +166,29 @@ func TestEngineRunPocketJob(t *testing.T) {
 	}
 }
 
+// TestEngineRunAdaptiveJob runs the high-speed clearing flow and checks it stays down (a single
+// plunge per level), unlike the pocket flow which plunges once per ring.
+func TestEngineRunAdaptiveJob(t *testing.T) {
+	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunAdaptiveJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunAdaptiveJobOnHost: %v", err)
+	}
+	if !strings.Contains(res.Summary, "adaptively cleared") {
+		t.Errorf("summary = %q, want it to mention adaptively cleared", res.Summary)
+	}
+	if cuts := strings.Count(res.GCode, "G1 X"); cuts < 10 {
+		t.Errorf("adaptive should lay down many low-engagement passes, got %d cut moves", cuts)
+	}
+	// staying down: the pocket flow over the same body plunges far more (once per ring per level).
+	pocket, err := NewEngine(&recordingHost{}).SetPost("grbl").RunPocketJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunPocketJobOnHost: %v", err)
+	}
+	if a, p := strings.Count(res.GCode, "G1 Z"), strings.Count(pocket.GCode, "G1 Z"); a >= p {
+		t.Errorf("adaptive should stay down (fewer plunges) vs pocket: adaptive=%d pocket=%d", a, p)
+	}
+}
+
 // TestEngineSectionError surfaces a section failure as a job error.
 func TestEngineSectionError(t *testing.T) {
 	h := &recordingHost{failOn: wire.MethodBrepSectionWithPlane}
