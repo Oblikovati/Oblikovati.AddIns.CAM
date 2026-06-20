@@ -86,6 +86,36 @@ func TestTappingOpRoundTrip(t *testing.T) {
 	}
 }
 
+// TestHelicalRampDressupRoundTrip checks a helical ramp dressup preserves its radius and pitch
+// across a marshal/unmarshal cycle.
+func TestHelicalRampDressupRoundTrip(t *testing.T) {
+	job := NewJob()
+	job.PostProcessor = "linuxcnc"
+	op := &ProfileOp{OpBase: OpBase{OpLabel: "Profile", IsActive: true}}
+	op.Dressups = []Dressup{NewHelicalRampDressup(3.5, 0.8)}
+	job.Operations = []Operation{op}
+
+	payload, err := MarshalJob(job)
+	if err != nil {
+		t.Fatalf("MarshalJob: %v", err)
+	}
+	back, err := UnmarshalJob(payload)
+	if err != nil {
+		t.Fatalf("UnmarshalJob: %v", err)
+	}
+	ds := back.Operations[0].(*ProfileOp).Dressups
+	if len(ds) != 1 {
+		t.Fatalf("want one dressup back, got %d", len(ds))
+	}
+	hr, ok := ds[0].(HelicalRampDressup)
+	if !ok {
+		t.Fatalf("want a HelicalRampDressup, got %T", ds[0])
+	}
+	if hr.Params.Radius != 3.5 || hr.Params.Pitch != 0.8 {
+		t.Errorf("helical ramp not preserved: %+v", hr.Params)
+	}
+}
+
 // persistHost answers documents.list with one active document and round-trips one stored
 // attribute value through attributes.set / attributes.get.
 type persistHost struct{ stored *types.Variant }

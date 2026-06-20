@@ -29,15 +29,22 @@ func (e *Engine) addLeadInOutAction() (*JobResult, error) {
 	return e.addDressup(NewLeadInOutDressup(defaultLeadRadius, dressup.SideLeft), "lead in/out")
 }
 
+// addHelicalRampAction adds a helical ramp-entry dressup to the selected operation.
+func (e *Engine) addHelicalRampAction() (*JobResult, error) {
+	return e.addDressup(NewHelicalRampDressup(defaultHelixRadius, defaultHelixPitch), "helical ramp")
+}
+
 // Defaults for dressups added from the editor (mm / radians).
 const (
-	defaultTabCount   = 4
-	defaultTabWidth   = 3.0
-	defaultTabHeight  = 1.0
-	defaultBoneLength = 2.0
-	defaultRampLength = 4.0
-	defaultRampAngle  = math.Pi / 12 // 15°
-	defaultLeadRadius = 2.0
+	defaultTabCount    = 4
+	defaultTabWidth    = 3.0
+	defaultTabHeight   = 1.0
+	defaultBoneLength  = 2.0
+	defaultRampLength  = 4.0
+	defaultRampAngle   = math.Pi / 12 // 15°
+	defaultLeadRadius  = 2.0
+	defaultHelixRadius = 3.0
+	defaultHelixPitch  = 1.0
 )
 
 // addDressup appends a dressup to the editor's selected operation, refreshing the windows.

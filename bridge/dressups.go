@@ -52,6 +52,24 @@ func NewRampDressup(length, angle float64) RampDressup {
 	return RampDressup{Params: dressup.RampParams{Length: length, Angle: angle}}
 }
 
+// HelicalRampDressup replaces straight plunges with a helical descent on a circle tangent to the
+// first cut — the gentle entry for closed pockets without room for a linear ramp.
+type HelicalRampDressup struct{ Params dressup.HelicalRampParams }
+
+// Apply implements Dressup.
+func (d HelicalRampDressup) Apply(path gcode.Path) gcode.Path {
+	return dressup.ApplyHelicalRamp(path, d.Params)
+}
+
+// Name implements Dressup.
+func (d HelicalRampDressup) Name() string { return "Helical Ramp" }
+
+// NewHelicalRampDressup builds a helical ramp-entry dressup with the given helix radius (mm) and
+// descent pitch (mm per turn).
+func NewHelicalRampDressup(radius, pitch float64) HelicalRampDressup {
+	return HelicalRampDressup{Params: dressup.HelicalRampParams{Radius: radius, Pitch: pitch}}
+}
+
 // LeadInOutDressup eases the tool into and out of each cut with tangential arcs (FreeCAD's
 // LeadInOut dressup).
 type LeadInOutDressup struct{ Params dressup.LeadInOutParams }
