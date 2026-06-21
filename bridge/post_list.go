@@ -23,7 +23,7 @@ func PostObjects(results []OperationResult) []post.Object {
 	}
 	changes := toolChangeAt(results)
 	for i, res := range results {
-		var commands []gcode.Command
+		commands := []gcode.Command{estimateComment(res)}
 		if changes[i] {
 			commands = append(commands, toolChangeBlock(res.Controller)...)
 		}
@@ -36,6 +36,13 @@ func PostObjects(results []OperationResult) []post.Object {
 		objects = append(objects, post.Object{Label: res.Label, Path: gcode.NewPath(commands)})
 	}
 	return objects
+}
+
+// estimateComment is a whole-line comment with the operation's estimated cut time (the toolpath
+// length over the feeds, the same model as the program total), so an operator reading the program
+// sees the per-operation time breakdown and which operation dominates the cycle.
+func estimateComment(res OperationResult) gcode.Command {
+	return gcode.NewCommand(fmt.Sprintf("(%s: est %.1f min)", res.Label, pathMinutes(res.Path, res.Controller)), nil)
 }
 
 // toolChangeAt reports, per operation, whether it needs a fresh tool change: the first operation
