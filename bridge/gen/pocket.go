@@ -17,6 +17,7 @@ type PocketParams struct {
 	Islands         []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
 	FinishAllowance float64          // mm of stock to leave on the walls when roughing; >0 adds a final wall pass
 	Pattern         string           // PocketOffset (default) | PocketZigzag
+	OneWay          bool             // zigzag only: cut every row the same direction (rapid back) instead of back-and-forth
 }
 
 // defaultStepOver is the ring step (fraction of tool diameter) used when StepOver is unset.

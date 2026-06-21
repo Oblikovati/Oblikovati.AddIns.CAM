@@ -102,6 +102,7 @@ type opDoc struct {
 	RoughingPasses  int     `json:"roughingPasses,omitempty"`
 	RoughStep       float64 `json:"roughStep,omitempty"`
 	Pattern         string  `json:"pattern,omitempty"`
+	OneWay          bool    `json:"oneWay,omitempty"`
 
 	// Helix
 	HoleRadius float64 `json:"holeRadius,omitempty"`
@@ -276,7 +277,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 	case *PocketOp:
 		d := baseDoc("pocket", o.OpBase)
 		d.StepOver, d.Climb, d.StepDown, d.FinishAllowance = o.StepOver, o.Climb, o.StepDown, o.FinishAllowance
-		d.Pattern = o.Pattern
+		d.Pattern, d.OneWay = o.Pattern, o.OneWay
 		return d, nil
 	case *AdaptiveOp:
 		d := baseDoc("adaptive", o.OpBase)
@@ -359,7 +360,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "profile":
 		return &ProfileOp{OpBase: opBaseFrom(d), Side: d.Side, OffsetExtra: d.OffsetExtra, Climb: d.Climb, StepDown: d.StepDown, RoughingPasses: d.RoughingPasses, RoughStep: d.RoughStep}, nil
 	case "pocket":
-		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown, FinishAllowance: d.FinishAllowance, Pattern: d.Pattern}, nil
+		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown, FinishAllowance: d.FinishAllowance, Pattern: d.Pattern, OneWay: d.OneWay}, nil
 	case "adaptive":
 		return &AdaptiveOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "rest":

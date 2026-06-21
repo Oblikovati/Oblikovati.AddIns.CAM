@@ -32,7 +32,7 @@ func generateZigzagPocket(boundary geom2d.Polygon, levels []float64, feeds Feeds
 
 	var cmds []gcode.Command
 	for _, z := range levels {
-		cmds = append(cmds, zigzagLevel(inset, keepouts, minX, maxX, rows, z, feeds)...)
+		cmds = append(cmds, zigzagLevel(inset, keepouts, minX, maxX, rows, z, feeds, p.OneWay)...)
 		cmds = append(cmds, walkPocketRings(finishRings, finishKeepouts, z, feeds, p.Climb)...)
 	}
 	return cmds, nil
@@ -54,18 +54,39 @@ func scanRows(inset geom2d.Polygon, spacing float64) []float64 {
 	return rows
 }
 
-// zigzagLevel builds one depth level's runs (boustrophedon-ordered) and walks them, linking
-// consecutive runs at depth where the connecting move stays in the pocket.
-func zigzagLevel(inset geom2d.Polygon, islands []geom2d.Polygon, minX, maxX float64, rows []float64, z float64, feeds Feeds) []gcode.Command {
+// zigzagLevel builds one depth level's runs and walks them. The default back-and-forth (zigzag)
+// alternates row direction and links consecutive rows at depth; oneWay cuts every row in the same
+// direction (consistent climb/conventional for a cleaner finish), rapiding back between rows.
+func zigzagLevel(inset geom2d.Polygon, islands []geom2d.Polygon, minX, maxX float64, rows []float64, z float64, feeds Feeds, oneWay bool) []gcode.Command {
 	var ordered [][]geom2d.Point2
 	for i, y := range rows {
 		runs := rowRuns(inset, islands, minX, maxX, y)
-		if i%2 == 1 {
+		if !oneWay && i%2 == 1 {
 			runs = reverseRuns(runs)
 		}
 		ordered = append(ordered, runs...)
 	}
+	if oneWay {
+		return walkSeparateRuns(ordered, z, feeds)
+	}
 	return walkLinkedRuns(ordered, inset, islands, z, feeds)
+}
+
+// walkSeparateRuns cuts each run as its own plunge-feed-retract pass — the one-direction mode,
+// where the tool rapids back to the start side between rows rather than linking at depth.
+func walkSeparateRuns(runs [][]geom2d.Point2, z float64, feeds Feeds) []gcode.Command {
+	var cmds []gcode.Command
+	for _, run := range runs {
+		if len(run) < 2 {
+			continue
+		}
+		cmds = append(cmds, plungeAt(run[0], z, feeds)...)
+		for _, pt := range run[1:] {
+			cmds = append(cmds, feedMove(pt, feeds.Horiz))
+		}
+		cmds = append(cmds, gcode.NewCommand("G0", map[string]float64{"Z": feeds.ClearanceZ}))
+	}
+	return cmds
 }
 
 // rowRuns clips one scan line at height y to the interior runs clear of every island.
