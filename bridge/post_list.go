@@ -30,6 +30,9 @@ func PostObjects(results []OperationResult) []post.Object {
 		commands = append(commands, coolantOn(res.Coolant)...)
 		commands = append(commands, res.Path.Commands...)
 		commands = append(commands, coolantOff(res.Coolant)...)
+		if res.PauseAfter {
+			commands = append(commands, gcode.NewCommand("M1", nil)) // optional stop — inspect before continuing
+		}
 		objects = append(objects, post.Object{Label: res.Label, Path: gcode.NewPath(commands)})
 	}
 	return objects

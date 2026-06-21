@@ -44,6 +44,22 @@ func TestToolListHeader(t *testing.T) {
 	}
 }
 
+// TestPostObjectsOptionalStop checks an operation flagged PauseAfter ends with an M1 optional
+// stop, and one not flagged does not.
+func TestPostObjectsOptionalStop(t *testing.T) {
+	paused := []OperationResult{{Label: "Rough", Path: NewJobPath("G1 X1"), PauseAfter: true}}
+	names := commandNames(lastObj(PostObjects(paused)).Path.Commands)
+	if names[len(names)-1] != "M1" {
+		t.Errorf("a paused op should end with M1, got %v", names)
+	}
+	plain := []OperationResult{{Label: "Rough", Path: NewJobPath("G1 X1")}}
+	for _, n := range commandNames(lastObj(PostObjects(plain)).Path.Commands) {
+		if n == "M1" {
+			t.Error("an unpaused op should not emit M1")
+		}
+	}
+}
+
 // TestPostSuppressesRedundantToolChange checks consecutive operations on the same tool emit only
 // one tool change, while a tool switch in between emits another.
 func TestPostSuppressesRedundantToolChange(t *testing.T) {

@@ -60,6 +60,7 @@ func depthParams(b OpBase) []OpParam {
 		numberParam("finalDepth", "Final depth (mm)", b.FinalDepth),
 		numberParam("clearance", "Clearance (mm)", b.ClearanceHeight),
 		choiceParam("coolant", "Coolant", b.CoolantMode(), CoolantNone, CoolantFlood, CoolantMist),
+		boolParam("pauseAfter", "Pause after (M1)", b.PauseAfter),
 	}
 }
 
@@ -78,6 +79,8 @@ func setDepthParam(b *OpBase, id, value string) bool {
 		b.ClearanceHeight = panelNum(value, b.ClearanceHeight)
 	case "coolant":
 		b.Coolant = value
+	case "pauseAfter":
+		b.PauseAfter = parseBool(value)
 	default:
 		return false
 	}
