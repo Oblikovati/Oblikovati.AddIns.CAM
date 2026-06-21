@@ -40,7 +40,7 @@ func (op *ChamferOp) Execute(job *Job) (gcode.Path, error) {
 	if len(op.Boundary) < 3 {
 		return gcode.Path{}, fmt.Errorf("chamfer operation %q has no boundary contour", op.OpLabel)
 	}
-	feeds := gen.Feeds{Vert: tc.VertFeed, Horiz: tc.HorizFeed, ClearanceZ: op.ClearanceHeight, SafeZ: op.SafeHeight}
+	feeds := op.feeds(tc)
 	cmds, err := gen.GenerateChamfer(op.Boundary, op.StartDepth, feeds, gen.ChamferParams{
 		Width: op.Width, ToolAngleDeg: op.ToolAngle, Side: op.Side, Climb: op.Climb, Passes: op.Passes,
 	})

@@ -38,7 +38,7 @@ func (op *VCarveOp) Execute(job *Job) (gcode.Path, error) {
 	if len(op.Boundary) < 3 {
 		return gcode.Path{}, fmt.Errorf("v-carve operation %q has no boundary region", op.OpLabel)
 	}
-	feeds := gen.Feeds{Vert: tc.VertFeed, Horiz: tc.HorizFeed, ClearanceZ: op.ClearanceHeight, SafeZ: op.SafeHeight}
+	feeds := op.feeds(tc)
 	cmds, err := gen.GenerateVCarve(op.Boundary, op.StartDepth, feeds, gen.VCarveParams{
 		ToolAngleDeg: op.ToolAngle,
 		ToolDiameter: tc.Tool.Diameter,

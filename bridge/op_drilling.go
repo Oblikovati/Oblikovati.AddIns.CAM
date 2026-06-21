@@ -90,8 +90,8 @@ func (op *DrillingOp) Execute(job *Job) (gcode.Path, error) {
 		if err != nil {
 			return gcode.Path{}, fmt.Errorf("drilling operation %q, hole at (%g,%g): %w", op.OpLabel, h.X, h.Y, err)
 		}
-		// The canned cycle plunges at the tool controller's vertical feed.
-		cmds[0].Params["F"] = tc.VertFeed
+		// The canned cycle plunges at the tool controller's vertical feed (scaled by any override).
+		cmds[0].Params["F"] = tc.VertFeed * op.feedFactor()
 		// Rapid over the hole, then run the cycle.
 		cutting = append(cutting, gcode.NewCommand("G0", map[string]float64{"X": h.X, "Y": h.Y}))
 		cutting = append(cutting, cmds...)

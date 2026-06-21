@@ -51,8 +51,3 @@ func (op *SurfaceOp) Execute(job *Job) (gcode.Path, error) {
 	}
 	return op.frame(cmds), nil
 }
-
-// feeds packs the op's clearance height and the controller's feeds for the generator.
-func (op *SurfaceOp) feeds(tc ToolController) gen.Feeds {
-	return gen.Feeds{Vert: tc.VertFeed, Horiz: tc.HorizFeed, ClearanceZ: op.ClearanceHeight, SafeZ: op.SafeHeight}
-}

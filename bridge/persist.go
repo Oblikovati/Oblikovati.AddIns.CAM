@@ -85,6 +85,7 @@ type opDoc struct {
 	FinalDepth      float64 `json:"finalDepth,omitempty"`
 	Coolant         string  `json:"coolant,omitempty"`
 	PauseAfter      bool    `json:"pauseAfter,omitempty"`
+	FeedScale       float64 `json:"feedScale,omitempty"`
 
 	// Drilling
 	DwellTime   float64 `json:"dwellTime,omitempty"`
@@ -214,7 +215,7 @@ func baseDoc(kind string, b OpBase) opDoc {
 	return opDoc{
 		Kind: kind, Label: b.OpLabel, Active: b.IsActive, ToolController: b.ToolController,
 		ClearanceHeight: b.ClearanceHeight, SafeHeight: b.SafeHeight, RetractHeight: b.RetractHeight,
-		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth, Coolant: b.Coolant, PauseAfter: b.PauseAfter, Dressups: dressupDocs(b.Dressups),
+		StartDepth: b.StartDepth, FinalDepth: b.FinalDepth, Coolant: b.Coolant, PauseAfter: b.PauseAfter, FeedScale: b.FeedScale, Dressups: dressupDocs(b.Dressups),
 	}
 }
 
@@ -223,7 +224,7 @@ func opBaseFrom(d opDoc) OpBase {
 	return OpBase{
 		OpLabel: d.Label, IsActive: d.Active, ToolController: d.ToolController,
 		ClearanceHeight: d.ClearanceHeight, SafeHeight: d.SafeHeight, RetractHeight: d.RetractHeight,
-		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth, Coolant: d.Coolant, PauseAfter: d.PauseAfter, Dressups: dressupsFrom(d.Dressups),
+		StartDepth: d.StartDepth, FinalDepth: d.FinalDepth, Coolant: d.Coolant, PauseAfter: d.PauseAfter, FeedScale: d.FeedScale, Dressups: dressupsFrom(d.Dressups),
 	}
 }
 

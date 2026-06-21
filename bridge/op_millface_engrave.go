@@ -34,7 +34,7 @@ func (op *MillFaceOp) Execute(job *Job) (gcode.Path, error) {
 	if len(op.Boundary) < 3 {
 		return gcode.Path{}, fmt.Errorf("face operation %q has no boundary region", op.OpLabel)
 	}
-	feeds := gen.Feeds{Vert: tc.VertFeed, Horiz: tc.HorizFeed, ClearanceZ: op.ClearanceHeight, SafeZ: op.SafeHeight}
+	feeds := op.feeds(tc)
 	cmds, err := gen.GenerateMillFace(op.Boundary, gen.DepthLevels(op.StartDepth, op.FinalDepth, op.StepDown), feeds, gen.MillFaceParams{
 		ToolRadius: tc.Tool.Diameter / 2,
 		StepOver:   op.StepOver,
@@ -72,7 +72,7 @@ func (op *EngraveOp) Execute(job *Job) (gcode.Path, error) {
 	if len(op.Boundary) < 3 {
 		return gcode.Path{}, fmt.Errorf("engrave operation %q has no boundary contour", op.OpLabel)
 	}
-	feeds := gen.Feeds{Vert: tc.VertFeed, Horiz: tc.HorizFeed, ClearanceZ: op.ClearanceHeight, SafeZ: op.SafeHeight}
+	feeds := op.feeds(tc)
 	cmds, err := gen.GenerateProfile(op.Boundary, gen.DepthLevels(op.StartDepth, op.FinalDepth, op.StepDown), feeds, gen.ProfileParams{
 		ToolRadius: tc.Tool.Diameter / 2,
 		Side:       gen.SideOn,
