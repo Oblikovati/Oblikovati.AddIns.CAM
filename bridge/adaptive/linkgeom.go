@@ -16,6 +16,34 @@ const samePointTolSqrdScaled = 4.0
 // solver's scaleFactor) so the moving average has sub-unit resolution.
 const smoothScale = 1000
 
+// isClosePoint reports whether two points are coincident or within one unit on each axis. Exact
+// port of isClose.
+func isClosePoint(a, b clipper.IntPoint) bool {
+	return absI64(a.X-b.X) <= 1 && absI64(a.Y-b.Y) <= 1
+}
+
+// filterCloseValues removes coincident and near-coincident adjacent points from each path (and the
+// wrap-around first/last pair), the cleanup the input-prep glitch fix relies on. Exact port of
+// filterCloseValues; modifies the paths in place.
+func filterCloseValues(ppg clipper.Paths) {
+	for i := range ppg {
+		pth := ppg[i]
+		var out clipper.Path
+		for j := 0; j < len(pth); j++ {
+			// adjacent_find erases the first of each close pair, so drop pth[j] when it is close to
+			// the next point (a run of close points collapses to its last)
+			if j+1 < len(pth) && isClosePoint(pth[j], pth[j+1]) {
+				continue
+			}
+			out = append(out, pth[j])
+		}
+		for len(out) > 1 && isClosePoint(out[0], out[len(out)-1]) {
+			out = out[:len(out)-1]
+		}
+		ppg[i] = out
+	}
+}
+
 // getPathNestingLevel counts how many of paths contain path's first point — the even/odd nesting
 // used to tell solid from hole and cleared from uncleared. Exact port of getPathNestingLevel.
 func getPathNestingLevel(path clipper.Path, paths clipper.Paths) int {

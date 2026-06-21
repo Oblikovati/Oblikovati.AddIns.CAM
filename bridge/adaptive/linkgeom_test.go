@@ -200,3 +200,19 @@ func TestAveragePointsSmoothsInterior(t *testing.T) {
 		t.Fatalf("averaged spike = %d, want 1000", pts[2].pt.Y)
 	}
 }
+
+func TestFilterCloseValues(t *testing.T) {
+	// A run of near-coincident points collapses to its last; the wrap-around pair is removed too.
+	p := clipper.Path{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 100, Y: 0}, {X: 100, Y: 100}, {X: 0, Y: 100}, {X: 0, Y: 1}}
+	paths := clipper.Paths{p}
+	filterCloseValues(paths)
+	got := paths[0]
+	for i := 1; i < len(got); i++ {
+		if isClosePoint(got[i-1], got[i]) {
+			t.Fatalf("adjacent close points survived at %d: %v", i, got)
+		}
+	}
+	if len(got) > 1 && isClosePoint(got[0], got[len(got)-1]) {
+		t.Fatalf("wrap-around close pair survived: %v", got)
+	}
+}
