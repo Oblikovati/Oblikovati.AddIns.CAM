@@ -20,9 +20,11 @@ type VCarveParams struct {
 	StepOver     float64 // fraction of tool diameter between contours (0..1); 0 → 0.5
 }
 
-// GenerateVCarve carves the region inside the boundary as nested inward offset contours, each at
-// a depth set by its distance d from the edge (d / tan(halfAngle)) below the top, until the
-// offsets collapse at the region's spine. The boundary itself is cut at the surface (zero depth).
+// GenerateVCarve carves the region inside the boundary as nested inward offset contours, until the
+// offsets collapse at the region's spine. Each point is cut at a depth set by its true distance to
+// the nearest wall (distance / tan(halfAngle)) below the top — not the contour's nominal offset —
+// so the V-bit never digs into a nearby wall where two edges crowd a contour point (a concave
+// corner), which a uniform per-contour depth would over-cut. The boundary is cut at the surface.
 func GenerateVCarve(boundary geom2d.Polygon, top float64, feeds Feeds, p VCarveParams) ([]gcode.Command, error) {
 	if p.ToolDiameter <= 0 {
 		return nil, fmt.Errorf("v-carve needs a positive tool diameter, got %g", p.ToolDiameter)
@@ -33,6 +35,7 @@ func GenerateVCarve(boundary geom2d.Polygon, top float64, feeds Feeds, p VCarveP
 	half := chamferHalfAngle(p.ToolAngleDeg) // reuses the chamfer half-angle (defaults to 45°)
 	step := vcarveStep(p.StepOver) * p.ToolDiameter
 	tan := math.Tan(half)
+	depthAt := func(pt geom2d.Point2) float64 { return top - geom2d.DistanceToBoundary(pt, boundary)/tan }
 
 	var cmds []gcode.Command
 	for d := 0.0; ; d += step {
@@ -40,7 +43,7 @@ func GenerateVCarve(boundary geom2d.Polygon, top float64, feeds Feeds, p VCarveP
 		if !ok {
 			break
 		}
-		cmds = append(cmds, walkLoop(orient(ring, true), top-d/tan, feeds)...)
+		cmds = append(cmds, walkLoopVaryingZ(orient(ring, true), depthAt, feeds)...)
 		if step <= 0 {
 			break
 		}

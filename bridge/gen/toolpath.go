@@ -77,6 +77,28 @@ func walkOpenPath(path []geom2d.Point2, z float64, feeds Feeds) []gcode.Command 
 	return append(cmds, gcode.NewCommand("G0", map[string]float64{"Z": feeds.ClearanceZ}))
 }
 
+// walkLoopVaryingZ cuts one closed loop where each point's depth is set by depthZ(point) rather
+// than a single level — for V-carving, whose cut depth tracks each point's distance to the nearest
+// wall. Rapids to clearance over the loop's start, plunges to the start point's depth, then feeds
+// each point at its own Z, closing back to the start.
+func walkLoopVaryingZ(loop geom2d.Polygon, depthZ func(geom2d.Point2) float64, feeds Feeds) []gcode.Command {
+	if len(loop) < 2 {
+		return nil
+	}
+	start := loop[0]
+	cmds := []gcode.Command{
+		gcode.NewCommand("G0", map[string]float64{"Z": feeds.ClearanceZ}),
+		gcode.NewCommand("G0", map[string]float64{"X": start.X, "Y": start.Y}),
+		gcode.NewCommand("G0", map[string]float64{"Z": feeds.SafeZ}),
+		gcode.NewCommand("G1", map[string]float64{"Z": depthZ(start), "F": feeds.Vert}),
+	}
+	for _, pt := range loop[1:] {
+		cmds = append(cmds, gcode.NewCommand("G1", map[string]float64{"X": pt.X, "Y": pt.Y, "Z": depthZ(pt), "F": feeds.Horiz}))
+	}
+	cmds = append(cmds, gcode.NewCommand("G1", map[string]float64{"X": start.X, "Y": start.Y, "Z": depthZ(start), "F": feeds.Horiz}))
+	return append(cmds, gcode.NewCommand("G0", map[string]float64{"Z": feeds.ClearanceZ}))
+}
+
 // orient returns the loop wound for the requested cut direction: CCW for climb milling on an
 // outside contour, CW for conventional. (Reversing a loop swaps climb/conventional.)
 func orient(loop geom2d.Polygon, climb bool) geom2d.Polygon {
