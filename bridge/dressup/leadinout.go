@@ -68,7 +68,7 @@ type leadResult struct {
 // would have entered at.
 func leadInPlunge(out *gcode.Path, cmds []gcode.Command, plungeIdx int, px, py float64, rapidIdx int, side, radius float64) *leadResult {
 	depth := cmds[plungeIdx].Params["Z"]
-	dx, dy, ok := nextCutDir(cmds[plungeIdx+1:], px, py)
+	dx, dy, _, ok := nextCutDir(cmds[plungeIdx+1:], px, py)
 	if !ok {
 		return nil
 	}
