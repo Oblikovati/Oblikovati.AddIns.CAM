@@ -75,8 +75,8 @@ func TestDrillingExecute(t *testing.T) {
 	for i, c := range path.Commands {
 		names[i] = c.Name
 	}
-	// (Drilling), G0(Z15), [G0(XY) G81]x2 sorted by Y then X → (1,1) before (5,5), G80, G0(Z15).
-	want := []string{"(Drilling)", "G0", "G0", "G81", "G0", "G81", "G80", "G0"}
+	// (Drilling), G0(Z15), G98 retract mode, [G0(XY) G81]x2 ordered (1,1) before (5,5), G80, G0(Z15).
+	want := []string{"(Drilling)", "G0", "G98", "G0", "G81", "G0", "G81", "G80", "G0"}
 	if len(names) != len(want) {
 		t.Fatalf("command names = %v, want %v", names, want)
 	}
@@ -86,8 +86,14 @@ func TestDrillingExecute(t *testing.T) {
 		}
 	}
 
-	// First cycle is the (1,1) hole (sorted first); verify its addressed parameters.
-	cycle := path.Commands[3]
+	// First cycle is the (1,1) hole (ordered first); verify its addressed parameters.
+	var cycle gcode.Command
+	for _, c := range path.Commands {
+		if c.Name == "G81" {
+			cycle = c
+			break
+		}
+	}
 	for addr, w := range map[string]float64{"X": 1, "Y": 1, "Z": 0, "R": 12, "F": 100} {
 		if got := cycle.Params[addr]; got != w {
 			t.Errorf("cycle param %s = %g, want %g", addr, got, w)
@@ -119,6 +125,36 @@ func TestDrillingBlindDepth(t *testing.T) {
 	// Depth 4 below the top (10) → Z = 6, not the through bottom (0).
 	if z := cycle.Params["Z"]; z != 6 {
 		t.Errorf("blind drill Z = %g, want 6 (top 10 − depth 4)", z)
+	}
+}
+
+// TestDrillingRetractMode checks the canned-cycle retract mode: G98 (return to clearance) by
+// default, G99 (return to the R plane) when RetractToR is set.
+func TestDrillingRetractMode(t *testing.T) {
+	hole := []DrillTarget{{X: 0, Y: 0, Top: 10, Bottom: 0}}
+	g98 := &DrillingOp{OpBase: OpBase{OpLabel: "D", IsActive: true, ClearanceHeight: 15, RetractHeight: 12}, Holes: hole}
+	g99 := &DrillingOp{OpBase: OpBase{OpLabel: "D", IsActive: true, ClearanceHeight: 15, RetractHeight: 12}, RetractToR: true, Holes: hole}
+
+	for _, tc := range []struct {
+		op   *DrillingOp
+		want string
+	}{{g98, "G98"}, {g99, "G99"}} {
+		path, err := tc.op.Execute(drillJob())
+		if err != nil {
+			t.Fatalf("Execute: %v", err)
+		}
+		found := false
+		for _, c := range path.Commands {
+			if c.Name == "G98" || c.Name == "G99" {
+				if c.Name != tc.want {
+					t.Errorf("retract mode = %q, want %q", c.Name, tc.want)
+				}
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("no retract mode emitted, want %q", tc.want)
+		}
 	}
 }
 

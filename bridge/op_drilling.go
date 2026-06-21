@@ -33,6 +33,7 @@ type DrillingOp struct {
 	FeedRetract bool    // G85 (boring/reaming)
 	Repeat      int     // L repeat count (<=1 omits L)
 	Depth       float64 // blind-hole depth below each hole top (mm); 0 → drill through to the hole bottom
+	RetractToR  bool    // true → G99 (retract to the R plane between holes, fast); false → G98 (retract to clearance, clears clamps)
 	Holes       []DrillTarget
 }
 
@@ -63,7 +64,10 @@ func (op *DrillingOp) Execute(job *Job) (gcode.Path, error) {
 		repeat = 1
 	}
 
-	cutting := []gcode.Command{gcode.NewCommand("G0", map[string]float64{"Z": op.ClearanceHeight})}
+	cutting := []gcode.Command{
+		gcode.NewCommand("G0", map[string]float64{"Z": op.ClearanceHeight}),
+		gcode.NewCommand(retractMode(op.RetractToR), nil), // canned-cycle retract mode (modal)
+	}
 	for _, h := range holes {
 		retract := op.RetractHeight
 		params := gen.DrillParams{
@@ -95,6 +99,15 @@ func (op *DrillingOp) Execute(job *Job) (gcode.Path, error) {
 	cutting = append(cutting, gcode.NewCommand("G80", nil)) // cancel canned cycle
 
 	return op.frame(cutting), nil
+}
+
+// retractMode returns the canned-cycle retract G-code: G99 (return to the R plane between holes)
+// when retractToR is set, else G98 (return to the initial clearance plane, which clears clamps).
+func retractMode(retractToR bool) string {
+	if retractToR {
+		return "G99"
+	}
+	return "G98"
 }
 
 // orderedHoles returns the holes in a short, deterministic drilling order: a nearest-neighbour

@@ -92,6 +92,7 @@ type opDoc struct {
 	ChipBreak   bool    `json:"chipBreak,omitempty"`
 	FeedRetract bool    `json:"feedRetract,omitempty"`
 	Repeat      int     `json:"repeat,omitempty"`
+	RetractToR  bool    `json:"retractToR,omitempty"`
 
 	// Profile / Engrave / Pocket / MillFace
 	Side            string  `json:"side,omitempty"`
@@ -272,7 +273,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 	case *DrillingOp:
 		d := baseDoc("drilling", o.OpBase)
 		d.DwellTime, d.PeckDepth, d.ChipBreak, d.FeedRetract, d.Repeat = o.DwellTime, o.PeckDepth, o.ChipBreak, o.FeedRetract, o.Repeat
-		d.Depth = o.Depth
+		d.Depth, d.RetractToR = o.Depth, o.RetractToR
 		return d, nil
 	case *ProfileOp:
 		d := baseDoc("profile", o.OpBase)
@@ -366,7 +367,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 func fromOpDoc(d opDoc) (Operation, error) {
 	switch d.Kind {
 	case "drilling":
-		return &DrillingOp{OpBase: opBaseFrom(d), DwellTime: d.DwellTime, PeckDepth: d.PeckDepth, ChipBreak: d.ChipBreak, FeedRetract: d.FeedRetract, Repeat: d.Repeat, Depth: d.Depth}, nil
+		return &DrillingOp{OpBase: opBaseFrom(d), DwellTime: d.DwellTime, PeckDepth: d.PeckDepth, ChipBreak: d.ChipBreak, FeedRetract: d.FeedRetract, Repeat: d.Repeat, Depth: d.Depth, RetractToR: d.RetractToR}, nil
 	case "profile":
 		return &ProfileOp{OpBase: opBaseFrom(d), Side: d.Side, OffsetExtra: d.OffsetExtra, Climb: d.Climb, StepDown: d.StepDown, RoughingPasses: d.RoughingPasses, RoughStep: d.RoughStep}, nil
 	case "pocket":
