@@ -130,6 +130,7 @@ func shots() []shot {
 		{"threadmill", &bridge.ThreadMillOp{OpBase: deepEnv("Thread"), MajorDiameter: 16, Pitch: 1.5, Internal: true, Climb: true, Holes: boreHole()}},
 		{"counterbore", &bridge.CounterboreOp{OpBase: deepEnv("Counterbore"), Diameter: 14, Depth: 4, Pitch: 1, Holes: boreHole()}},
 		{"tapping", &bridge.TappingOp{OpBase: millEnv("Tapping"), Pitch: 1.5, Holes: holes()}},
+		{"custom", &bridge.CustomOp{OpBase: millEnv("Custom"), GCode: customSample()}},
 		{"countersink", &bridge.CountersinkOp{OpBase: deepEnv("Countersink"), Diameter: 14, ToolAngle: 90, Holes: boreHole()}},
 		{"surface", &bridge.SurfaceOp{OpBase: deepEnv("Surface"), Zigzag: true, Rows: pyramidRows()}},
 		{"surface-crosshatch", &bridge.SurfaceOp{OpBase: deepEnv("Surface"), Zigzag: true, Rows: pyramidRows(), CrossRows: pyramidColumns()}},
@@ -231,6 +232,12 @@ func bossProbe() []gen.ProbePoint {
 		})
 	}
 	return pts
+}
+
+// customSample is the raw G-code the custom-operation shot emits verbatim — a triangle, to show
+// that a custom op cuts exactly the operator-typed moves (no toolpath generator involved).
+func customSample() string {
+	return "G0 Z15\nG0 X10 Y10\nG1 Z-2 F100\nG1 X45 Y10 F300\nG1 X27 Y40\nG1 X10 Y10\nG0 Z15"
 }
 
 // boreHole is a single central bored/tapped hole (mm) for the helix and thread-mill shots.

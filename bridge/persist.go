@@ -149,6 +149,9 @@ type opDoc struct {
 	// Tapping (Pitch and DwellTime are shared above)
 	LeftHand bool `json:"leftHand,omitempty"`
 
+	// Custom
+	GCode string `json:"gcode,omitempty"`
+
 	Dressups []dressupDoc `json:"dressups,omitempty"`
 }
 
@@ -337,6 +340,10 @@ func toOpDoc(op Operation) (opDoc, error) {
 		d := baseDoc("tapping", o.OpBase)
 		d.Pitch, d.LeftHand, d.DwellTime = o.Pitch, o.LeftHand, o.DwellTime
 		return d, nil
+	case *CustomOp:
+		d := baseDoc("custom", o.OpBase)
+		d.GCode = o.GCode
+		return d, nil
 	case *CountersinkOp:
 		d := baseDoc("countersink", o.OpBase)
 		d.Diameter, d.ToolAngle = o.Diameter, o.ToolAngle
@@ -391,6 +398,8 @@ func fromOpDoc(d opDoc) (Operation, error) {
 		return &CounterboreOp{OpBase: opBaseFrom(d), Diameter: d.Diameter, Depth: d.Depth, Pitch: d.Pitch}, nil
 	case "tapping":
 		return &TappingOp{OpBase: opBaseFrom(d), Pitch: d.Pitch, LeftHand: d.LeftHand, DwellTime: d.DwellTime}, nil
+	case "custom":
+		return &CustomOp{OpBase: opBaseFrom(d), GCode: d.GCode}, nil
 	case "countersink":
 		return &CountersinkOp{OpBase: opBaseFrom(d), Diameter: d.Diameter, ToolAngle: d.ToolAngle}, nil
 	case "surface":

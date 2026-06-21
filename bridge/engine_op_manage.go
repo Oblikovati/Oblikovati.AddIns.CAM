@@ -52,6 +52,25 @@ func (e *Engine) duplicateOpAction() (*JobResult, error) {
 	})
 }
 
+// defaultCustomGCode is the sample G-code a freshly added custom operation carries, to be edited.
+const defaultCustomGCode = "(custom G-code — edit me)\nM0"
+
+// addCustomOpAction inserts a custom (raw G-code) operation right after the selected one, taking
+// the selected op's tool controller so it slots into the program without a spurious tool change.
+func (e *Engine) addCustomOpAction() (*JobResult, error) {
+	return e.mutateSelectedOp(func(job *Job, idx int) string {
+		base := OpBase{OpLabel: "Custom", IsActive: true, ToolController: job.Operations[idx].ToolControllerIndex()}
+		custom := &CustomOp{OpBase: base, GCode: defaultCustomGCode}
+		next := make([]Operation, 0, len(job.Operations)+1)
+		next = append(next, job.Operations[:idx+1]...)
+		next = append(next, custom)
+		next = append(next, job.Operations[idx+1:]...)
+		job.Operations = next
+		e.editingOp = idx + 1
+		return fmt.Sprintf("CAM: added a custom operation (%d operation(s)).", len(job.Operations))
+	})
+}
+
 // deleteOpAction removes the selected operation from the job.
 func (e *Engine) deleteOpAction() (*JobResult, error) {
 	return e.mutateSelectedOp(func(job *Job, idx int) string {
