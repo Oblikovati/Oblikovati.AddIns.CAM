@@ -25,6 +25,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `pocket-zigzag-island.png` | Zigzag pocket around an island: the rows split around the central island, rapiding over it rather than cutting through. |
 | `adaptive.png` | HSM adaptive clearing: one continuous low-engagement spiral that stays down (no rapids between passes). |
 | `adaptive-island.png` | Adaptive clearing with an island: the low-engagement passes route around a central island, leaving it standing. |
+| `adaptive-finish.png` | Adaptive clearing with a finish allowance: the roughing spiral stops short of the wall, then a final pass cleans it to size. |
 | `rest.png` | Rest machining: only the wall band a previous larger tool left (a few rings, interior untouched). |
 | `rest-island.png` | Rest machining with an island: clears the wall band at the outer boundary AND the band hugging the island, leaving the already-cleared interior untouched. |
 | `trochoidal.png` | Trochoidal milling: overlapping circular loops marching along the contour (low engagement). |
