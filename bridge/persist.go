@@ -281,7 +281,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 		return d, nil
 	case *AdaptiveOp:
 		d := baseDoc("adaptive", o.OpBase)
-		d.StepOver, d.Climb, d.StepDown = o.StepOver, o.Climb, o.StepDown
+		d.StepOver, d.Climb, d.StepDown, d.FinishAllowance = o.StepOver, o.Climb, o.StepDown, o.FinishAllowance
 		return d, nil
 	case *RestOp:
 		d := baseDoc("rest", o.OpBase)
@@ -362,7 +362,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "pocket":
 		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown, FinishAllowance: d.FinishAllowance, Pattern: d.Pattern, OneWay: d.OneWay}, nil
 	case "adaptive":
-		return &AdaptiveOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
+		return &AdaptiveOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown, FinishAllowance: d.FinishAllowance}, nil
 	case "rest":
 		return &RestOp{OpBase: opBaseFrom(d), PrevToolDiameter: d.PrevToolDiameter, StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "trochoidal":

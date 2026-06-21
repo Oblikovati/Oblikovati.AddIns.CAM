@@ -3,6 +3,7 @@
 package gen
 
 import (
+	"math"
 	"testing"
 
 	"oblikovati.org/cam/bridge/gcode"
@@ -83,6 +84,27 @@ func TestAdaptiveRoutesAroundIsland(t *testing.T) {
 	}
 	if n := cutsInside(withIsland, grown); n != 0 {
 		t.Errorf("the island adaptive clearing put %d cutting moves inside the island keep-out", n)
+	}
+}
+
+// TestAdaptiveFinishAllowance checks a finish allowance makes the roughing spiral leave the wall
+// but a final pass still cleans it to size: the cut reaches the same wall as a plain adaptive
+// clear, with an extra (finishing) loop beyond the allowance-shortened spiral.
+func TestAdaptiveFinishAllowance(t *testing.T) {
+	boundary := square(40)
+	plain, err := GenerateAdaptive(boundary, []float64{0}, testFeeds, AdaptiveParams{ToolRadius: 2, StepOver: 0.2, Climb: true})
+	if err != nil {
+		t.Fatalf("plain adaptive: %v", err)
+	}
+	finished, err := GenerateAdaptive(boundary, []float64{0}, testFeeds, AdaptiveParams{ToolRadius: 2, StepOver: 0.2, Climb: true, FinishAllowance: 1})
+	if err != nil {
+		t.Fatalf("finish-allowance adaptive: %v", err)
+	}
+	if pr, fr := maxWallReach(plain, 20), maxWallReach(finished, 20); math.Abs(pr-fr) > 1e-6 {
+		t.Errorf("the finish pass should clean to the wall: plain reach %g, finished reach %g", pr, fr)
+	}
+	if countPlunges(finished) <= countPlunges(plain) {
+		t.Errorf("a finish allowance should add a finishing pass: plain %d, finished %d", countPlunges(plain), countPlunges(finished))
 	}
 }
 

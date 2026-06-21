@@ -89,6 +89,7 @@ func (op *AdaptiveOp) Parameters() []OpParam {
 	return append([]OpParam{
 		numberParam("stepOver", "Engagement (×⌀)", op.StepOver),
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
+		numberParam("finishAllowance", "Finish allowance (mm)", op.FinishAllowance),
 		boolParam("climb", "Climb", op.Climb),
 	}, depthParams(op.OpBase)...)
 }
@@ -100,6 +101,8 @@ func (op *AdaptiveOp) SetParameter(id, value string) bool {
 		op.StepOver = panelNum(value, op.StepOver)
 	case "stepDown":
 		op.StepDown = panelNum(value, op.StepDown)
+	case "finishAllowance":
+		op.FinishAllowance = panelNum(value, op.FinishAllowance)
 	case "climb":
 		op.Climb = parseBool(value)
 	default:

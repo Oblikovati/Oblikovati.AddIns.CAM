@@ -15,10 +15,11 @@ import (
 // StepOver is that radial engagement as a fraction of the tool diameter (0..1) — small by design
 // (the HSM signature), defaulting to defaultAdaptiveStepOver.
 type AdaptiveParams struct {
-	ToolRadius float64
-	StepOver   float64
-	Climb      bool
-	Islands    []geom2d.Polygon // regions to leave standing; the clearing routes around them
+	ToolRadius      float64
+	StepOver        float64
+	Climb           bool
+	Islands         []geom2d.Polygon // regions to leave standing; the clearing routes around them
+	FinishAllowance float64          // mm of stock to leave on the walls when roughing; >0 adds a final wall pass
 }
 
 // defaultAdaptiveStepOver is the radial engagement (fraction of tool diameter) used when
@@ -37,18 +38,22 @@ func GenerateAdaptive(boundary geom2d.Polygon, levels []float64, feeds Feeds, p 
 	if p.ToolRadius <= 0 {
 		return nil, fmt.Errorf("adaptive clearing needs a positive tool radius, got %g", p.ToolRadius)
 	}
-	rings := pocketRings(boundary, p.ToolRadius, p.stepDistance())
+	wallDist := p.ToolRadius + p.FinishAllowance // the spiral leaves the allowance on every wall
+	rings := pocketRings(boundary, wallDist, p.stepDistance())
 	if len(rings) == 0 {
-		return nil, fmt.Errorf("adaptive clearing: tool radius %g is too large to enter the region (area %g)", p.ToolRadius, boundary.Area())
+		return nil, fmt.Errorf("adaptive clearing: tool radius %g (+ allowance %g) is too large to enter the region (area %g)", p.ToolRadius, p.FinishAllowance, boundary.Area())
 	}
-	keepouts := grownIslands(p.Islands, p.ToolRadius)
+	keepouts := grownIslands(p.Islands, wallDist)
+	finishRings, finishKeepouts := pocketFinishPass(boundary, PocketParams{ToolRadius: p.ToolRadius, Islands: p.Islands, FinishAllowance: p.FinishAllowance})
+
 	var cmds []gcode.Command
 	for _, z := range levels {
 		if len(keepouts) == 0 {
 			cmds = append(cmds, walkSpiral(rings, z, feeds, p.Climb)...)
-			continue
+		} else {
+			cmds = append(cmds, walkClippedRings(rings, keepouts, z, feeds, p.Climb)...)
 		}
-		cmds = append(cmds, walkClippedRings(rings, keepouts, z, feeds, p.Climb)...)
+		cmds = append(cmds, walkPocketRings(finishRings, finishKeepouts, z, feeds, p.Climb)...)
 	}
 	return cmds, nil
 }
