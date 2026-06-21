@@ -37,7 +37,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `chamfer-multipass.png` | Chamfer roughing: a wide bevel cut in flank passes stepping out and down from the top edge to the full width (depth shade traces the flank). |
 | `vcarve.png` | V-carve: nested contours deepening inward (the depth shade traces the V valley toward the spine). |
 | `custom.png` | Custom operation: raw operator-typed G-code emitted verbatim (here a triangle) — the escape hatch for moves no generator produces. |
-| `dressup-tabs.png` | Holding tabs lifting the tool over the boundary. |
+| `dressup-tabs.png` | Holding tabs: small evenly-spaced bridges where the tool lifts over the boundary (each exactly the tab width, with ramps). |
 | `dressup-dogbone.png` | Dogbone corner relief: 45° bones at the corners. |
 | `dressup-ramp.png` | Ramp entry: the straight plunge replaced by an angled descent. |
 | `dressup-helicalramp.png` | Helical ramp entry: the straight plunge replaced by a helix on a circle tangent to the first cut (the entry circle bored at the start). |
