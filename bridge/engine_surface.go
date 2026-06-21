@@ -35,6 +35,42 @@ func (e *Engine) RunSurface3DJobOnHost(bodyIndex int) (*JobResult, error) {
 	return e.postPreviewResult(job, fmt.Sprintf("finished the surface (%d passes)", countRows(op.Rows)))
 }
 
+// RunCrosshatchSurfaceJobOnHost finishes the body's top surface with two perpendicular sets of
+// drop-cutter passes (along X, then along Y) for a finer scallop than single-direction surfacing.
+func (e *Engine) RunCrosshatchSurfaceJobOnHost(bodyIndex int) (*JobResult, error) {
+	tris, stock, err := e.meshAndStock(bodyIndex)
+	if err != nil {
+		return nil, err
+	}
+	job := e.newMillJob(bodyIndex, stock)
+	op, err := e.surfaceOp(job, stock, tris, e.cutting())
+	if err != nil {
+		return nil, err
+	}
+	cross, err := e.dropCutterRows(job, stock, tris, e.cutting(), scanLinesY)
+	if err != nil {
+		return nil, err
+	}
+	op.CrossRows = cross
+	job.Operations = []Operation{op}
+	return e.postPreviewResult(job, fmt.Sprintf("crosshatch-finished the surface (%d + %d passes)", countRows(op.Rows), countRows(op.CrossRows)))
+}
+
+// dropCutterRows drops the ball-nose cutter over the mesh along the scan lines built by lineFn
+// (scanLines for X passes, scanLinesY for the perpendicular crosshatch passes), returning the
+// surface-riding cutter-location rows as generator vectors.
+func (e *Engine) dropCutterRows(job *Job, stock Stock, tris []ocl.Triangle, cut cutSettings, lineFn func(Stock, float64) []ocl.ScanLine) ([][]gcode.Vector3, error) {
+	ball := indexForShape(job.Tools, "ballend")
+	diameter := job.Tools[ball].Tool.Diameter
+	stepOver := passSpacing(cut, diameter, surfStepOver)
+	lines := lineFn(stock, stepOver)
+	rows, err := e.surfacer.DropCutter(tris, diameter, ballCutterLength, stock.BottomZ(), surfSampling, lines)
+	if err != nil {
+		return nil, fmt.Errorf("drop-cutter over %d triangles / %d passes: %w", len(tris), len(lines), err)
+	}
+	return toVectorRows(rows), nil
+}
+
 // meshAndStock reads the body's range box (for stock) and its tessellation (for the surface
 // mesh), returning the triangles in millimetres.
 func (e *Engine) meshAndStock(bodyIndex int) ([]ocl.Triangle, Stock, error) {
@@ -132,6 +168,19 @@ func scanLines(stock Stock, stepOver float64) []ocl.ScanLine {
 	var lines []ocl.ScanLine
 	for x := stock.Min.X; x <= stock.Max.X+1e-9; x += stepOver {
 		lines = append(lines, ocl.ScanLine{X0: x, Y0: stock.Min.Y, X1: x, Y1: stock.Max.Y})
+	}
+	return lines
+}
+
+// scanLinesY builds parallel X-spanning scan lines across the stock's Y extent — the perpendicular
+// counterpart of scanLines, used for the second (crosshatch) drop-cutter pass.
+func scanLinesY(stock Stock, stepOver float64) []ocl.ScanLine {
+	if stepOver <= 0 {
+		return nil
+	}
+	var lines []ocl.ScanLine
+	for y := stock.Min.Y; y <= stock.Max.Y+1e-9; y += stepOver {
+		lines = append(lines, ocl.ScanLine{X0: stock.Min.X, Y0: y, X1: stock.Max.X, Y1: y})
 	}
 	return lines
 }

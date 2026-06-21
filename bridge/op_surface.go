@@ -15,10 +15,11 @@ import (
 // toolpath role of FreeCAD's CAM 3D Surface op (whose Z-projection is likewise OCL's).
 type SurfaceOp struct {
 	OpBase
-	StepOver float64           // distance between parallel scan lines (mm)
-	Sampling float64           // point spacing along a scan line (mm)
-	Zigzag   bool              // alternate pass direction
-	Rows     [][]gcode.Vector3 // drop-cutter cutter-location rows (mm), populated by the engine
+	StepOver  float64           // distance between parallel scan lines (mm)
+	Sampling  float64           // point spacing along a scan line (mm)
+	Zigzag    bool              // alternate pass direction
+	Rows      [][]gcode.Vector3 // drop-cutter cutter-location rows (mm), populated by the engine
+	CrossRows [][]gcode.Vector3 // optional perpendicular rows for a crosshatch finish, populated by the engine
 }
 
 // Features reports the property groups a 3D surface op uses.
@@ -35,12 +36,18 @@ func (op *SurfaceOp) Execute(job *Job) (gcode.Path, error) {
 	if len(op.Rows) == 0 {
 		return gcode.Path{}, fmt.Errorf("surface operation %q has no drop-cutter rows — the engine resolves them from the part mesh", op.OpLabel)
 	}
-	cmds, err := gen.GenerateSurfaceFinish(op.Rows, op.feeds(tc), gen.SurfaceFinishParams{
-		ClearanceZ: op.ClearanceHeight,
-		Zigzag:     op.Zigzag,
-	})
+	params := gen.SurfaceFinishParams{ClearanceZ: op.ClearanceHeight, Zigzag: op.Zigzag}
+	cmds, err := gen.GenerateSurfaceFinish(op.Rows, op.feeds(tc), params)
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("surface operation %q: %w", op.OpLabel, err)
+	}
+	// A crosshatch finish follows the parallel passes with a perpendicular set for a finer scallop.
+	if len(op.CrossRows) > 0 {
+		cross, err := gen.GenerateSurfaceFinish(op.CrossRows, op.feeds(tc), params)
+		if err != nil {
+			return gcode.Path{}, fmt.Errorf("surface operation %q crosshatch: %w", op.OpLabel, err)
+		}
+		cmds = append(cmds, cross...)
 	}
 	return op.frame(cmds), nil
 }

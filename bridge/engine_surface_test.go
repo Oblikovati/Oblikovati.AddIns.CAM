@@ -65,6 +65,30 @@ func TestRunSurface3DJob(t *testing.T) {
 	}
 }
 
+// TestRunCrosshatchSurfaceJob runs both perpendicular pass sets and posts a longer toolpath than a
+// single-direction surface job.
+func TestRunCrosshatchSurfaceJob(t *testing.T) {
+	rows := [][]ocl.Point3{
+		{{X: 0, Y: 0, Z: 1}, {X: 0, Y: 2, Z: 1}},
+		{{X: 1.5, Y: 0, Z: 1}, {X: 1.5, Y: 2, Z: 1}},
+	}
+	single, err := NewEngine(&surfaceHost{}).WithSurfacer(&fakeSurfacer{rows: rows}).RunSurface3DJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunSurface3DJobOnHost: %v", err)
+	}
+	cross, err := NewEngine(&surfaceHost{}).WithSurfacer(&fakeSurfacer{rows: rows}).RunCrosshatchSurfaceJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunCrosshatchSurfaceJobOnHost: %v", err)
+	}
+	if !strings.Contains(cross.Summary, "crosshatch") {
+		t.Errorf("summary = %q, want it to mention crosshatch", cross.Summary)
+	}
+	// The crosshatch cuts both pass sets, so its program is longer than the single-direction one.
+	if cross.GCodeLines <= single.GCodeLines {
+		t.Errorf("crosshatch program (%d lines) should exceed the single-direction one (%d)", cross.GCodeLines, single.GCodeLines)
+	}
+}
+
 // TestRunSurface3DEmptyMesh surfaces an empty tessellation as a job error.
 func TestRunSurface3DEmptyMesh(t *testing.T) {
 	h := &surfaceHost{}
