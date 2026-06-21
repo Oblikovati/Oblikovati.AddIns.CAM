@@ -61,13 +61,14 @@ type regionProcessor struct {
 
 	// pass-loop state (set up by clearRegion / runPasses), kept here so the orchestration methods
 	// read like the upstream closures
-	tbpMinus          clipper.Paths // tool bound shrunk by 2, the engage search clips against it
-	toolPos           clipper.IntPoint
-	toolDir           DoublePoint
-	gyro              []DoublePoint // recent tool directions, averaged to smooth the path
-	clearedBeforePass *clearedArea  // snapshot to measure each pass's newly-cleared area
-	linkPath          []TPath       // the link/lead-in feeding the current pass
-	helixRadiusScaled int64
+	tbpMinus            clipper.Paths // tool bound shrunk by 2, the engage search clips against it
+	toolPos             clipper.IntPoint
+	toolDir             DoublePoint
+	gyro                []DoublePoint // recent tool directions, averaged to smooth the path
+	clearedBeforePass   *clearedArea  // snapshot to measure each pass's newly-cleared area
+	initialClearedPaths clipper.Paths // the cleared area at region start, for the total-cleared report
+	linkPath            []TPath       // the link/lead-in feeding the current pass
+	helixRadiusScaled   int64
 }
 
 // cutArea measures the freshly cut area for a move from c1 to c2 against the given cleared-area

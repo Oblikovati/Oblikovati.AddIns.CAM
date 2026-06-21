@@ -28,9 +28,11 @@ func (rp *regionProcessor) process(stockInputPaths, finishingPaths clipper.Paths
 		return nil
 	}
 	if rp.s.cfg.FinishingProfile {
-		return rp.finishingPass(stockInputPaths, finishingPaths)
+		if err := rp.finishingPass(stockInputPaths, finishingPaths); err != nil {
+			return err
+		}
 	}
-	return nil
+	return rp.finalizeClearedArea()
 }
 
 // finishingPass cuts the thin finishing allowance along the walls: it retargets the tool bound to
