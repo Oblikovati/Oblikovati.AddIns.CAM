@@ -32,6 +32,25 @@ func TestRunMillFaceAndEngrave(t *testing.T) {
 		if !h.called(wire.MethodClientGraphicsSet) {
 			t.Errorf("%s should push a toolpath overlay", tc.name)
 		}
+		assertOverlayOnTop(t, h, tc.name)
+	}
+}
+
+// assertOverlayOnTop checks every toolpath overlay primitive the engine pushed is drawn on top of
+// the model, so the path is not occluded by the solid stock (the cut lies inside the part).
+func assertOverlayOnTop(t *testing.T, h *recordingHost, name string) {
+	t.Helper()
+	if len(h.graphicsArgs) == 0 {
+		t.Fatalf("%s recorded no client-graphics args", name)
+	}
+	for _, a := range h.graphicsArgs {
+		for _, n := range a.Nodes {
+			for _, p := range n.Primitives {
+				if !p.OnTop {
+					t.Errorf("%s overlay %q primitive is not OnTop (would be occluded by the stock)", name, a.ClientId)
+				}
+			}
+		}
 	}
 }
 

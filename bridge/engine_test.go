@@ -38,11 +38,18 @@ type recordingHost struct {
 	methods      []string
 	failOn       string              // when set, that method returns an error
 	sectionWires []wire.WirePolyline // when set, overrides the default single-square section
+	graphicsArgs []wire.SetClientGraphicsArgs
 }
 
-func (h *recordingHost) Call(method string, _ []byte) ([]byte, error) {
+func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
 	h.mu.Lock()
 	h.methods = append(h.methods, method)
+	if method == wire.MethodClientGraphicsSet {
+		var a wire.SetClientGraphicsArgs
+		if json.Unmarshal(payload, &a) == nil {
+			h.graphicsArgs = append(h.graphicsArgs, a)
+		}
+	}
 	h.mu.Unlock()
 	if method == h.failOn {
 		return nil, &hostError{method}
