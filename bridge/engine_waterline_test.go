@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"oblikovati.org/api/wire"
 	"oblikovati.org/cam/bridge/ocl"
 )
 
@@ -39,6 +40,22 @@ func TestRunWaterlineJob(t *testing.T) {
 	}
 	if !strings.Contains(res.Summary, "levels") || res.GCodeLines == 0 {
 		t.Errorf("waterline produced no levels / no G-code: %q (%d lines)", res.Summary, res.GCodeLines)
+	}
+}
+
+// TestWaterlineUsesOffsetSurface checks the waterline op derives its tool-centre contours from the
+// EXACT offset surface (brep.offsetFaces, then sectioning) rather than the drop-cutter heightfield.
+func TestWaterlineUsesOffsetSurface(t *testing.T) {
+	h := &surfaceHost{}
+	res, err := NewEngine(h).WithSurfacer(coneSurfacer{peak: 20}).RunWaterlineJobOnHost(0)
+	if err != nil {
+		t.Fatalf("RunWaterlineJobOnHost: %v", err)
+	}
+	if !h.called(wire.MethodBrepOffsetFaces) {
+		t.Error("waterline should offset the part surface via brep.offsetFaces")
+	}
+	if res.GCodeLines == 0 {
+		t.Error("waterline from the offset surface produced no toolpath")
 	}
 }
 

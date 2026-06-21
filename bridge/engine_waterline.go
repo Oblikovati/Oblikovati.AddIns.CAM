@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"math"
 
+	"oblikovati.org/api/wire"
 	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/gen"
+	"oblikovati.org/cam/bridge/geom2d"
 	"oblikovati.org/cam/bridge/ocl"
 )
 
@@ -28,12 +30,12 @@ func (e *Engine) RunWaterlineJobOnHost(bodyIndex int) (*JobResult, error) {
 	job := e.newMillJob(bodyIndex, stock)
 	cut := e.cutting()
 	ball := indexForShape(job.Tools, "ballend")
-	hf, err := e.dropCutterField(tris, stock, job.Tools[ball].Tool.Diameter)
+	diameter := job.Tools[ball].Tool.Diameter
+	stepDown := levelSpacing(cut, waterStepDown)
+	levels, err := e.waterlineLevels(bodyIndex, diameter, stock, tris, stepDown)
 	if err != nil {
 		return nil, err
 	}
-	stepDown := levelSpacing(cut, waterStepDown)
-	levels := extractLevels(hf, stepDown)
 	env := e.millEnvelope("Waterline", stock)
 	env.ToolController = ball
 	job.Operations = []Operation{&WaterlineOp{
@@ -41,6 +43,86 @@ func (e *Engine) RunWaterlineJobOnHost(bodyIndex int) (*JobResult, error) {
 		StepOver: waterStepOver, StepDown: stepDown, Levels: levels,
 	}}
 	return e.postPreviewResult(job, fmt.Sprintf("waterline-finished the surface (%d levels)", len(levels)))
+}
+
+// waterlineLevels builds the constant-Z tool-centre contours. It prefers the EXACT offset surface —
+// the part faces offset outward by the ball radius (brep.offsetFaces), sectioned at each Z level
+// (brep.sectionWithPlane) — so the loops come from analytic geometry. If that yields nothing (e.g. a
+// surface whose offset self-intersects), it falls back to slicing the drop-cutter heightfield.
+func (e *Engine) waterlineLevels(bodyIndex int, diameter float64, stock Stock, tris []ocl.Triangle, stepDown float64) ([]gen.LevelLoops, error) {
+	if levels, err := e.offsetSurfaceLevels(bodyIndex, diameter/2, stock, stepDown); err == nil && len(levels) > 0 {
+		return levels, nil
+	}
+	hf, err := e.dropCutterField(tris, stock, diameter)
+	if err != nil {
+		return nil, err
+	}
+	return extractLevels(hf, stepDown), nil
+}
+
+// offsetSurfaceLevels offsets the body's faces outward by the ball radius (the tool-centre surface)
+// and sections that transient surface at each Z level into contour loops. Z and the ball radius are
+// millimetres; the brep ops work in the host's centimetre unit, hence the cmToMM scaling.
+func (e *Engine) offsetSurfaceLevels(bodyIndex int, ballRadius float64, stock Stock, stepDown float64) ([]gen.LevelLoops, error) {
+	refs, err := e.api.Model().ReferenceKeys()
+	if err != nil {
+		return nil, fmt.Errorf("read reference keys: %w", err)
+	}
+	keys := bodyFaceKeys(refs, bodyIndex)
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("body %d has no faces to offset", bodyIndex)
+	}
+	off, err := e.api.TransientBRep().OffsetFaces(wire.BrepOffsetFacesArgs{
+		Source:   wire.BrepBodyRef{BodyIndex: &bodyIndex},
+		FaceKeys: keys,
+		Distance: ballRadius / cmToMM,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("offset body %d surface by the ball radius: %w", bodyIndex, err)
+	}
+	var levels []gen.LevelLoops
+	// The cutter centre sits a ball radius above the highest point, so the top level is there.
+	for _, z := range gen.DepthLevels(stock.Max.Z+ballRadius, stock.BottomZ(), stepDown) {
+		section, err := e.api.TransientBRep().CreateIntersectionWithPlane(
+			wire.BrepBodyRef{Handle: off.Handle}, []float64{0, 0, z / cmToMM}, []float64{0, 0, 1})
+		if err != nil {
+			return nil, fmt.Errorf("section the offset surface at z=%.2f: %w", z, err)
+		}
+		if loops := levelLoopsFromContours(sortedContours(section.Wires), z); len(loops) > 0 {
+			levels = append(levels, gen.LevelLoops{Z: z, Loops: loops})
+		}
+	}
+	return levels, nil
+}
+
+// bodyFaceKeys returns the reference keys of every face of the given document body.
+func bodyFaceKeys(refs wire.ReferenceKeysResult, bodyIndex int) []string {
+	if bodyIndex < 0 || bodyIndex >= len(refs.Bodies) {
+		return nil
+	}
+	faces := refs.Bodies[bodyIndex].Faces
+	keys := make([]string, 0, len(faces))
+	for _, f := range faces {
+		keys = append(keys, f.Key)
+	}
+	return keys
+}
+
+// levelLoopsFromContours turns the XY section polygons (mm) into closed tool-centre loops at height z.
+func levelLoopsFromContours(polys []geom2d.Polygon, z float64) [][]gcode.Vector3 {
+	var loops [][]gcode.Vector3
+	for _, poly := range polys {
+		if len(poly) < 3 {
+			continue
+		}
+		loop := make([]gcode.Vector3, len(poly)+1)
+		for i, p := range poly {
+			loop[i] = gcode.Vector3{X: p.X, Y: p.Y, Z: z}
+		}
+		loop[len(poly)] = loop[0] // close the contour
+		loops = append(loops, loop)
+	}
+	return loops
 }
 
 // dropCutterField samples the cutter-location surface on a regular grid by dropping the cutter

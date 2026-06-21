@@ -66,10 +66,12 @@ func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
 	switch method {
 	case wire.MethodModelReferenceKeys:
 		return json.Marshal(wire.ReferenceKeysResult{Bodies: []wire.BodyTopology{{Faces: []wire.TopologyRef{
-			{Kind: "plane", Point: []float64{2, 2, 1}},
-			{Kind: "cylinder", Point: []float64{1, 1, 0.5}},
-			{Kind: "cylinder", Point: []float64{3, 3, 0.5}},
+			{Key: "f0", Kind: "plane", Point: []float64{2, 2, 1}},
+			{Key: "f1", Kind: "cylinder", Point: []float64{1, 1, 0.5}},
+			{Key: "f2", Kind: "cylinder", Point: []float64{3, 3, 0.5}},
 		}}}})
+	case wire.MethodBrepOffsetFaces:
+		return json.Marshal(wire.BrepHandleResult{Handle: 11, Stats: wire.BrepBodyStats{Faces: 3}})
 	case wire.MethodBodyRangeBox:
 		return json.Marshal(wire.BodyRangeBoxResult{Min: []float64{0, 0, 0}, Max: []float64{4, 4, 1}})
 	case wire.MethodBodyMinimumDistance:
