@@ -105,6 +105,10 @@ func (r *heidenhainRenderer) writeCommand(b *strings.Builder, c gcode.Command) {
 		r.toolCall(b, c, true)
 	case "M5", "M05":
 		r.line(b, "M5")
+	case "M0", "M00":
+		r.line(b, "M0")
+	case "M1", "M01":
+		r.line(b, "M1")
 	default:
 		if strings.HasPrefix(c.Name, "(") {
 			r.comment(b, strings.Trim(c.Name, "()"))

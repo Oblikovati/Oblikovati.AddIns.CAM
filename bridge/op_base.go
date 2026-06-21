@@ -57,6 +57,7 @@ type OpBase struct {
 	StartDepth      float64 // top of cut (mm)
 	FinalDepth      float64 // bottom of cut (mm)
 	Coolant         string  // "none" | "flood" | "mist"
+	PauseAfter      bool    // emit an optional stop (M1) after this operation, e.g. to inspect
 
 	Dressups []Dressup // toolpath post-processes applied after framing (tabs, dogbone, …)
 }
@@ -68,6 +69,9 @@ func (b *OpBase) CoolantMode() string {
 	}
 	return b.Coolant
 }
+
+// PausesAfter reports whether an optional stop should follow this operation.
+func (b *OpBase) PausesAfter() bool { return b.PauseAfter }
 
 // Coolant modes emitted around an operation (flood = M8, mist = M7, off = M9).
 const (

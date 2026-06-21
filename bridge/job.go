@@ -51,6 +51,7 @@ func (j *Job) GenerateAll() ([]OperationResult, error) {
 			Path:       path,
 			Controller: tc,
 			Coolant:    coolantOf(op),
+			PauseAfter: pauseAfterOf(op),
 		})
 	}
 	return results, nil
@@ -64,6 +65,14 @@ func coolantOf(op Operation) string {
 	return CoolantNone
 }
 
+// pauseAfterOf reads whether an operation requests an optional stop after it.
+func pauseAfterOf(op Operation) bool {
+	if p, ok := op.(interface{ PausesAfter() bool }); ok {
+		return p.PausesAfter()
+	}
+	return false
+}
+
 // OperationResult is one operation's generated toolpath plus the controller it ran under
 // (the post processor needs the tool number + spindle to emit tool-change and start
 // blocks between operations).
@@ -72,4 +81,5 @@ type OperationResult struct {
 	Path       gcode.Path
 	Controller ToolController
 	Coolant    string // "none" | "flood" | "mist"
+	PauseAfter bool   // emit an optional stop (M1) after this operation
 }
