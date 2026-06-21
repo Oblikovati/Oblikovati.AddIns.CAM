@@ -32,6 +32,7 @@ type DrillingOp struct {
 	ChipBreak   bool    // G73 instead of G83
 	FeedRetract bool    // G85 (boring/reaming)
 	Repeat      int     // L repeat count (<=1 omits L)
+	Depth       float64 // blind-hole depth below each hole top (mm); 0 → drill through to the hole bottom
 	Holes       []DrillTarget
 }
 
@@ -73,9 +74,13 @@ func (op *DrillingOp) Execute(job *Job) (gcode.Path, error) {
 			ChipBreak:     op.ChipBreak,
 			FeedRetract:   op.FeedRetract,
 		}
+		bottom := h.Bottom
+		if op.Depth > 0 { // a set drill depth makes a blind hole: stop short of the through bottom
+			bottom = h.Top - op.Depth
+		}
 		cmds, err := gen.GenerateDrill(
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top},
-			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Bottom},
+			gcode.Vector3{X: h.X, Y: h.Y, Z: bottom},
 			params,
 		)
 		if err != nil {

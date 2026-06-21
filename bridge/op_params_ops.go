@@ -258,6 +258,7 @@ func (op *ToolLengthProbeOp) SetParameter(id, value string) bool {
 // Parameters lists the editable drilling parameters.
 func (op *DrillingOp) Parameters() []OpParam {
 	return append([]OpParam{
+		numberParam("drillDepth", "Drill depth (mm, 0=thru)", op.Depth),
 		numberParam("peckDepth", "Peck depth (mm)", op.PeckDepth),
 		numberParam("dwellTime", "Dwell (s)", op.DwellTime),
 		numberParam("repeat", "Repeat", float64(op.Repeat)),
@@ -269,6 +270,8 @@ func (op *DrillingOp) Parameters() []OpParam {
 // SetParameter applies one drilling parameter edit.
 func (op *DrillingOp) SetParameter(id, value string) bool {
 	switch id {
+	case "drillDepth":
+		op.Depth = panelNum(value, op.Depth)
 	case "peckDepth":
 		op.PeckDepth = panelNum(value, op.PeckDepth)
 	case "dwellTime":

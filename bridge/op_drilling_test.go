@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"oblikovati.org/api/wire"
+	"oblikovati.org/cam/bridge/gcode"
 )
 
 // tourTravel sums the XY rapid travel of an ordered hole list.
@@ -91,6 +92,33 @@ func TestDrillingExecute(t *testing.T) {
 		if got := cycle.Params[addr]; got != w {
 			t.Errorf("cycle param %s = %g, want %g", addr, got, w)
 		}
+	}
+}
+
+// TestDrillingBlindDepth checks a set drill depth makes a blind hole — the cycle stops Depth below
+// the hole top rather than going through to the detected bottom.
+func TestDrillingBlindDepth(t *testing.T) {
+	op := &DrillingOp{
+		OpBase: OpBase{OpLabel: "Drilling", IsActive: true, ClearanceHeight: 15, RetractHeight: 12},
+		Depth:  4,
+		Holes:  []DrillTarget{{X: 0, Y: 0, Top: 10, Bottom: 0}}, // a 10 mm-deep through hole
+	}
+	path, err := op.Execute(drillJob())
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	var cycle gcode.Command
+	for _, c := range path.Commands {
+		if c.Name == "G81" {
+			cycle = c
+		}
+	}
+	if cycle.Name == "" {
+		t.Fatal("no drill cycle emitted")
+	}
+	// Depth 4 below the top (10) → Z = 6, not the through bottom (0).
+	if z := cycle.Params["Z"]; z != 6 {
+		t.Errorf("blind drill Z = %g, want 6 (top 10 − depth 4)", z)
 	}
 }
 
