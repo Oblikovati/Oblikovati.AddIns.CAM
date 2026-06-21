@@ -34,6 +34,7 @@ type iterateNextStepOutput struct {
 	area              float64
 	errorFraction     float64
 	iterationAngle    float64
+	hasIterationAngle bool // whether a valid step angle was recorded (upstream optional<double>)
 	failed            bool
 	tooManyIterations bool
 }
@@ -57,6 +58,16 @@ type regionProcessor struct {
 	lastExpandToolDir DoublePoint   // tool direction at the last cleared-area expansion
 	interp            interpolation // the per-step angle search
 	overCutCount      int
+
+	// pass-loop state (set up by clearRegion / runPasses), kept here so the orchestration methods
+	// read like the upstream closures
+	tbpMinus          clipper.Paths // tool bound shrunk by 2, the engage search clips against it
+	toolPos           clipper.IntPoint
+	toolDir           DoublePoint
+	gyro              []DoublePoint // recent tool directions, averaged to smooth the path
+	clearedBeforePass *clearedArea  // snapshot to measure each pass's newly-cleared area
+	linkPath          []TPath       // the link/lead-in feeding the current pass
+	helixRadiusScaled int64
 }
 
 // cutArea measures the freshly cut area for a move from c1 to c2 against the given cleared-area
@@ -191,6 +202,7 @@ search:
 		rp.interp.addPoint(errVal, rp.angle, newToolPos, pointNotInterp, isConventional)
 		if math.Abs(errVal) < maxError && !isConventional {
 			out.iterationAngle = rp.angle
+			out.hasIterationAngle = true
 			break
 		}
 		if iteration == maxIterations-1 {
@@ -280,6 +292,7 @@ func (rp *regionProcessor) handleRepeatPoint(toolDir DoublePoint, angle float64,
 		*areaPD = pick.errorVal + targetAreaPD
 		*area = *areaPD * float64(rp.stepScaled)
 		out.iterationAngle = angle
+		out.hasIterationAngle = true
 		return true, true
 	}
 	return true, false
