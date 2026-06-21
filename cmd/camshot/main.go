@@ -115,7 +115,7 @@ func shots() []shot {
 		{"engrave", &bridge.EngraveOp{OpBase: millEnv("Engrave"), Climb: true, Boundary: part()}},
 		{"chamfer", &bridge.ChamferOp{OpBase: millEnv("Chamfer"), Width: 1.5, ToolAngle: 90, Side: gen.SideOutside, Climb: true, Boundary: part()}},
 		{"chamfer-multipass", &bridge.ChamferOp{OpBase: millEnv("Chamfer"), Width: 4, ToolAngle: 90, Side: gen.SideOutside, Climb: true, Passes: 4, Boundary: part()}},
-		{"vcarve", &bridge.VCarveOp{OpBase: millEnv("V-Carve"), ToolAngle: 90, StepOver: 0.4, Boundary: part()}},
+		{"vcarve", &bridge.VCarveOp{OpBase: millEnv("V-Carve"), ToolAngle: 90, Boundary: part()}},
 		{"dressup-tabs", profileOp([]bridge.Dressup{bridge.NewTagsDressup(4, 3, 1)})},
 		{"dressup-dogbone", profileOp([]bridge.Dressup{bridge.NewDogboneDressup(dressup.StyleDogbone, 2, 0.785, dressup.SideBoth)})},
 		{"dressup-ramp", profileOp([]bridge.Dressup{bridge.NewRampDressup(4, 0.26)})},

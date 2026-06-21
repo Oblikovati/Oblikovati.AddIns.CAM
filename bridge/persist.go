@@ -127,9 +127,10 @@ type opDoc struct {
 	// Rest
 	PrevToolDiameter float64 `json:"prevToolDiameter,omitempty"`
 
-	// Chamfer
-	Width     float64 `json:"width,omitempty"`
-	ToolAngle float64 `json:"toolAngle,omitempty"`
+	// Chamfer / V-carve
+	Width       float64 `json:"width,omitempty"`
+	ToolAngle   float64 `json:"toolAngle,omitempty"`
+	TipDiameter float64 `json:"tipDiameter,omitempty"`
 
 	// Trochoidal
 	LoopRadius float64 `json:"loopRadius,omitempty"`
@@ -314,7 +315,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 		return d, nil
 	case *VCarveOp:
 		d := baseDoc("vcarve", o.OpBase)
-		d.ToolAngle, d.StepOver = o.ToolAngle, o.StepOver
+		d.ToolAngle, d.TipDiameter, d.StepDown = o.ToolAngle, o.TipDiameter, o.StepDown
 		return d, nil
 	case *SlotOp:
 		d := baseDoc("slot", o.OpBase)
@@ -387,7 +388,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "chamfer":
 		return &ChamferOp{OpBase: opBaseFrom(d), Width: d.Width, ToolAngle: d.ToolAngle, Side: d.Side, Climb: d.Climb, Passes: d.RoughingPasses}, nil
 	case "vcarve":
-		return &VCarveOp{OpBase: opBaseFrom(d), ToolAngle: d.ToolAngle, StepOver: d.StepOver}, nil
+		return &VCarveOp{OpBase: opBaseFrom(d), ToolAngle: d.ToolAngle, TipDiameter: d.TipDiameter, StepDown: d.StepDown}, nil
 	case "slot":
 		return &SlotOp{OpBase: opBaseFrom(d), Width: d.Width, StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "probe":
