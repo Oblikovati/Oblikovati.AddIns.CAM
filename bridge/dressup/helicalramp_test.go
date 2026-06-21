@@ -56,6 +56,52 @@ func TestApplyHelicalRampReplacesPlunge(t *testing.T) {
 	}
 }
 
+// maxHelixStray returns the farthest a helix XY point strays from the plunge point (0,0), over the
+// moves before the first contour cut (X==10).
+func maxHelixStray(out gcode.Path) float64 {
+	maxR := 0.0
+	for _, c := range out.Commands {
+		x, okx := c.Params["X"]
+		y, oky := c.Params["Y"]
+		if !okx || !oky || x == 10 {
+			continue
+		}
+		maxR = math.Max(maxR, math.Hypot(x, y))
+	}
+	return maxR
+}
+
+// TestApplyHelicalRampBoundedShrinksToFit checks the wall-clearance guard shrinks the helix so its
+// entry circle never reaches past the available room — a 3mm radius in 1mm of room is cut down so
+// the helix strays no more than 2·1mm from the plunge point, instead of 2·3mm.
+func TestApplyHelicalRampBoundedShrinksToFit(t *testing.T) {
+	roomAt := func(_, _ float64) float64 { return 1 } // 1mm to the nearest wall everywhere
+	out := ApplyHelicalRampBounded(plungeLoop(), HelicalRampParams{Radius: 3, Pitch: 1}, roomAt)
+	if stray := maxHelixStray(out); stray > 2*1+1e-6 {
+		t.Errorf("bounded helix strayed %g, want <= 2 (2·1mm room); the guard did not shrink the radius", stray)
+	}
+	// Sanity: unbounded, the same helix strays well past the room.
+	if stray := maxHelixStray(ApplyHelicalRamp(plungeLoop(), HelicalRampParams{Radius: 3, Pitch: 1})); stray <= 2 {
+		t.Fatalf("unbounded helix should stray past 2, got %g — test premise broken", stray)
+	}
+}
+
+// TestApplyHelicalRampBoundedNilIsUnbounded checks a nil clearance function leaves the path exactly
+// as the unbounded ramp produces it.
+func TestApplyHelicalRampBoundedNilIsUnbounded(t *testing.T) {
+	p := HelicalRampParams{Radius: 3, Pitch: 1}
+	bounded := ApplyHelicalRampBounded(plungeLoop(), p, nil)
+	plain := ApplyHelicalRamp(plungeLoop(), p)
+	if len(bounded.Commands) != len(plain.Commands) {
+		t.Fatalf("nil guard changed the move count: %d vs %d", len(bounded.Commands), len(plain.Commands))
+	}
+	for i := range bounded.Commands {
+		if bounded.Commands[i].Params["X"] != plain.Commands[i].Params["X"] || bounded.Commands[i].Params["Z"] != plain.Commands[i].Params["Z"] {
+			t.Errorf("nil guard diverged at move %d", i)
+		}
+	}
+}
+
 // TestApplyHelicalRampTurns checks a smaller pitch makes more turns (more descent moves).
 func TestApplyHelicalRampTurns(t *testing.T) {
 	coarse := ApplyHelicalRamp(plungeLoop(), HelicalRampParams{Radius: 3, Pitch: 3.5})

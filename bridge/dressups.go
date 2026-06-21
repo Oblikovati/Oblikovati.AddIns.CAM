@@ -60,6 +60,13 @@ func (d HelicalRampDressup) Apply(path gcode.Path) gcode.Path {
 	return dressup.ApplyHelicalRamp(path, d.Params)
 }
 
+// ApplyWithRoom implements roomAwareDressup: the helix radius is shrunk per plunge so the entry
+// circle stays inside the wall clearance reported by roomAt, preventing a fixed radius from gouging
+// a nearby wall in a tight pocket. Operations that know their boundary supply roomAt.
+func (d HelicalRampDressup) ApplyWithRoom(path gcode.Path, roomAt func(x, y float64) float64) gcode.Path {
+	return dressup.ApplyHelicalRampBounded(path, d.Params, roomAt)
+}
+
 // Name implements Dressup.
 func (d HelicalRampDressup) Name() string { return "Helical Ramp" }
 

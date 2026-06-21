@@ -7,6 +7,7 @@ import (
 
 	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/gen"
+	"oblikovati.org/cam/bridge/geom2d"
 )
 
 // FeatureFlag enumerates the property groups an operation uses: the fields always exist on the
@@ -59,6 +60,30 @@ type OpBase struct {
 	FeedScale       float64 // multiplier on the tool's cutting/plunge feed for this op (e.g. 0.5 for a finishing pass); 0 → full feed
 
 	Dressups []Dressup // toolpath post-processes applied after framing (tabs, dogbone, …)
+
+	// roomAt, when set by an op that knows its driving region, reports the distance from a point to
+	// the nearest wall so room-aware dressups (e.g. the helical ramp) can keep their geometry inside
+	// the boundary. It is runtime-only state, never persisted. See setRoom.
+	roomAt func(x, y float64) float64
+}
+
+// roomAwareDressup is the optional capability a dressup implements when it can use a wall-clearance
+// function — the helical ramp shrinks its entry circle to fit. applyDressups offers roomAt only to
+// dressups that implement it and only when the op has supplied one.
+type roomAwareDressup interface {
+	ApplyWithRoom(gcode.Path, func(x, y float64) float64) gcode.Path
+}
+
+// setRoom records the op's wall-clearance function, to be offered to room-aware dressups. An op
+// calls it from Execute once it has its boundary, before framing.
+func (b *OpBase) setRoom(roomAt func(x, y float64) float64) { b.roomAt = roomAt }
+
+// setBoundaryRoom is the common case of setRoom: the wall clearance is the distance to a closed
+// region boundary, so a clearing op (pocket, adaptive) can keep helical entries inside it.
+func (b *OpBase) setBoundaryRoom(boundary geom2d.Polygon) {
+	b.setRoom(func(x, y float64) float64 {
+		return geom2d.DistanceToBoundary(geom2d.Point2{X: x, Y: y}, boundary)
+	})
 }
 
 // feedFactor returns the operation's feed multiplier, defaulting an unset (zero) FeedScale to 1.
@@ -151,6 +176,10 @@ func (b *OpBase) frame(cutting []gcode.Command) gcode.Path {
 // returns the path unchanged, so every op gains dressup support at no cost.
 func (b *OpBase) applyDressups(path gcode.Path) gcode.Path {
 	for _, d := range b.Dressups {
+		if aware, ok := d.(roomAwareDressup); ok && b.roomAt != nil {
+			path = aware.ApplyWithRoom(path, b.roomAt)
+			continue
+		}
 		path = d.Apply(path)
 	}
 	return path
