@@ -88,6 +88,32 @@ func TestZigzagPocketRoutesAroundIsland(t *testing.T) {
 	}
 }
 
+// TestZigzagPocketOneWay checks one-direction mode cuts every row the same way (no reversal) and
+// rapids back between rows (one plunge per row), unlike the linked back-and-forth zigzag.
+func TestZigzagPocketOneWay(t *testing.T) {
+	boundary := square(40)
+	base := PocketParams{ToolRadius: 2, StepOver: 0.5, Pattern: PocketZigzag}
+	oneWay := base
+	oneWay.OneWay = true
+
+	zig, err := GeneratePocket(boundary, []float64{0}, testFeeds, oneWay)
+	if err != nil {
+		t.Fatalf("one-way pocket: %v", err)
+	}
+	// Every cutting row runs the same direction: all X-travel signs are positive.
+	for _, d := range rowDirections(zig) {
+		if d < 0 {
+			t.Errorf("one-way milling should never reverse a row, got dirs %v", rowDirections(zig))
+			break
+		}
+	}
+	// One plunge per row (rapid return between), so more plunges than the linked back-and-forth.
+	linked, _ := GeneratePocket(boundary, []float64{0}, testFeeds, base)
+	if countPlunges(zig) <= countPlunges(linked) {
+		t.Errorf("one-way should plunge per row (%d) more than linked zigzag (%d)", countPlunges(zig), countPlunges(linked))
+	}
+}
+
 // TestZigzagPocketTooSmall errors when the tool cannot enter the region.
 func TestZigzagPocketTooSmall(t *testing.T) {
 	if _, err := GeneratePocket(square(3), []float64{0}, testFeeds, PocketParams{ToolRadius: 2, Pattern: PocketZigzag}); err == nil {

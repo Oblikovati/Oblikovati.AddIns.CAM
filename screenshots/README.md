@@ -21,6 +21,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `pocket-island.png` | Pocket with an island: the clearing routes around a central island, leaving it standing. |
 | `pocket-finish.png` | Pocket with a finish allowance: roughing rings stop short of the wall (the allowance gap), then a final pass cleans the wall to size. |
 | `pocket-zigzag.png` | Pocket (zigzag pattern): parallel back-and-forth rows linked at the walls into one continuous lawn-mower sweep. |
+| `pocket-zigzag-oneway.png` | Zigzag pocket, one-direction mode: every row cut the same way (consistent climb) with a rapid return between rows. |
 | `pocket-zigzag-island.png` | Zigzag pocket around an island: the rows split around the central island, rapiding over it rather than cutting through. |
 | `adaptive.png` | HSM adaptive clearing: one continuous low-engagement spiral that stays down (no rapids between passes). |
 | `adaptive-island.png` | Adaptive clearing with an island: the low-engagement passes route around a central island, leaving it standing. |
