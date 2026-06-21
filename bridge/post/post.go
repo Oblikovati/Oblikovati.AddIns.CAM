@@ -8,13 +8,37 @@ package post
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"oblikovati.org/cam/bridge/gcode"
 )
 
+// parseScalarPostArgs reads the comment / inch / precision flags shared by the self-contained
+// posts (Marlin, Heidenhain), starting from the given default precision. Inches force 4-decimal
+// precision, matching the legacy posts. Posts with extra flags parse those on top of this.
+func parseScalarPostArgs(argstring string, defaultPrecision int) (comments, inches bool, precision int) {
+	comments, precision = true, defaultPrecision
+	for _, tok := range shlexSplit(argstring) {
+		switch {
+		case tok == "--no-comments":
+			comments = false
+		case tok == "--inches":
+			inches = true
+		case strings.HasPrefix(tok, "--precision="):
+			if p, err := strconv.Atoi(strings.TrimPrefix(tok, "--precision=")); err == nil {
+				precision = p
+			}
+		}
+	}
+	if inches {
+		precision = 4
+	}
+	return comments, inches, precision
+}
+
 // Export renders objects with the named post processor ("linuxcnc" | "grbl" | "fanuc" | "marlin"
-// | "haas"), erroring on an unknown name (the message lists the supported posts).
+// | "haas" | "heidenhain"), erroring on an unknown name (the message lists the supported posts).
 func Export(name string, objects []Object, argstring string) (string, error) {
 	switch name {
 	case "linuxcnc", "":
@@ -27,8 +51,10 @@ func Export(name string, objects []Object, argstring string) (string, error) {
 		return ExportMarlin(objects, argstring), nil
 	case "haas":
 		return ExportHaas(objects, argstring), nil
+	case "heidenhain":
+		return ExportHeidenhain(objects, argstring), nil
 	default:
-		return "", fmt.Errorf("unknown post processor %q (supported: linuxcnc, grbl, fanuc, marlin, haas)", name)
+		return "", fmt.Errorf("unknown post processor %q (supported: linuxcnc, grbl, fanuc, marlin, haas, heidenhain)", name)
 	}
 }
 

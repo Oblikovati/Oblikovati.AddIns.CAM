@@ -81,7 +81,7 @@ const (
 // SetPost selects the post processor ("linuxcnc" | "grbl" | "fanuc" | "marlin" | "haas"); an empty/unknown
 // name leaves the current one. Returns the engine for chaining. Stand-in for the panel's post dropdown.
 func (e *Engine) SetPost(name string) *Engine {
-	if name == "linuxcnc" || name == "grbl" || name == "fanuc" || name == "marlin" || name == "haas" {
+	if name == "linuxcnc" || name == "grbl" || name == "fanuc" || name == "marlin" || name == "haas" || name == "heidenhain" {
 		e.mu.Lock()
 		e.postName = name
 		e.mu.Unlock()
