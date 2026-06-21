@@ -51,6 +51,7 @@ func (op *TappingOp) Execute(job *Job) (gcode.Path, error) {
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top},
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Bottom},
 			feed,
+			tc.SpindleSpeed,
 			gen.TapParams{Pitch: op.Pitch, LeftHand: op.LeftHand, DwellTime: op.DwellTime},
 		)
 		if err != nil {

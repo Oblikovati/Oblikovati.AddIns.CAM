@@ -20,17 +20,18 @@ type TapParams struct {
 }
 
 // GenerateTap produces the G-code for tapping a single hole, given the hole's top (start) and
-// bottom (end) points and the synchronised feed (mm/min = Pitch × spindle-rpm). The edge must
-// be Z-aligned and the start must sit above the end, like the drill generator. It emits exactly
-// one canned-cycle command:
+// bottom (end) points, the synchronised feed (mm/min = Pitch × spindle-rpm) and the spindle speed
+// (rpm) the cycle synchronises against. The edge must be Z-aligned and the start must sit above the
+// end, like the drill generator. It emits exactly one canned-cycle command:
 //
 //	right-hand → G84
 //	left-hand  → G74
 //
-// with X/Y/Z/R/F (and P when a dwell is requested). The feed must already equal Pitch × rpm;
-// the op layer computes it from the tool controller's spindle speed so the generator stays a
-// pure geometry-to-command mapping.
-func GenerateTap(start, end gcode.Vector3, feed float64, p TapParams) ([]gcode.Command, error) {
+// with X/Y/Z/R/S/F (and P when a dwell is requested). The spindle speed S is carried in the cycle as
+// FreeCAD's tapping generator does, so the controller has the rpm it synchronises the tap feed to.
+// The op layer supplies feed and rpm from the tool controller, keeping the generator a pure
+// geometry-to-command mapping.
+func GenerateTap(start, end gcode.Vector3, feed, spindleSpeed float64, p TapParams) ([]gcode.Command, error) {
 	if err := validateTap(start, end, feed, p); err != nil {
 		return nil, err
 	}
@@ -39,6 +40,7 @@ func GenerateTap(start, end gcode.Vector3, feed float64, p TapParams) ([]gcode.C
 		"Y": start.Y,
 		"Z": end.Z,
 		"R": start.Z,
+		"S": spindleSpeed,
 		"F": feed,
 	}
 	name := "G84"
