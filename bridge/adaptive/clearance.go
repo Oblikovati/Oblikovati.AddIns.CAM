@@ -12,14 +12,14 @@ import (
 
 // isClearPath reports whether the tool can travel along tp (a link/rapid move) without touching
 // uncut stock: the swept tool footprint (radius plus a safety clearance) is subtracted from the
-// cleared region and the move is clear only if almost no footprint falls outside it. Exact port of
-// IsClearPath.
-func (rp *regionProcessor) isClearPath(tp clipper.Path, safetyClearance float64) (bool, error) {
+// given cleared region and the move is clear only if almost no footprint falls outside it. Exact
+// port of IsClearPath (cleared is explicit so the link machinery can test a working copy).
+func (rp *regionProcessor) isClearPath(tp clipper.Path, cleared *clearedArea, safetyClearance float64) (bool, error) {
 	toolShape, err := clipper.Offset(clipper.Paths{tp}, clipper.Round, clipper.OpenRound, float64(rp.s.toolRadiusScaled)+safetyClearance, 0, 0)
 	if err != nil {
 		return false, err
 	}
-	crossing, err := clipper.Subtract(toolShape, rp.cleared.cleared())
+	crossing, err := clipper.Subtract(toolShape, cleared.cleared())
 	if err != nil {
 		return false, err
 	}
@@ -34,8 +34,8 @@ func (rp *regionProcessor) isClearPath(tp clipper.Path, safetyClearance float64)
 // over-engaging: it walks the segment in steps and rejects it if any step cuts more than
 // areaFactor times the optimal engagement, or if the tool would leave the region. A move shorter
 // than half a step is treated as an insignificant cut and allowed. Exact port of
-// IsAllowedToCutTrough (areaFactor defaults to 1.5 at the call sites).
-func (rp *regionProcessor) isAllowedToCutThrough(p1, p2 clipper.IntPoint, areaFactor float64, skipBoundsCheck bool) (bool, error) {
+// IsAllowedToCutTrough (cleared is explicit; areaFactor defaults to 1.5 at the call sites).
+func (rp *regionProcessor) isAllowedToCutThrough(p1, p2 clipper.IntPoint, cleared *clearedArea, areaFactor float64, skipBoundsCheck bool) (bool, error) {
 	if !skipBoundsCheck && (!isPointWithinCutRegion(rp.toolBoundPaths, p2) || !isPointWithinCutRegion(rp.toolBoundPaths, p1)) {
 		return false, nil // an endpoint is outside the region — not clear to cut
 	}
@@ -57,7 +57,7 @@ func (rp *regionProcessor) isAllowedToCutThrough(p1, p2 clipper.IntPoint, areaFa
 			X: p1.X + int64(float64(p2.X-p1.X)*frac),
 			Y: p1.Y + int64(float64(p2.Y-p1.Y)*frac),
 		}
-		area, _, err := rp.cutArea(toolPos1, toolPos2)
+		area, _, err := rp.cutArea(toolPos1, toolPos2, cleared)
 		if err != nil {
 			return false, err
 		}
