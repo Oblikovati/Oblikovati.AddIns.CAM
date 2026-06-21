@@ -242,7 +242,7 @@ func (e *Engine) buildSlotJob(bodyIndex int) (*Job, geom2d.Polygon, error) {
 
 // newMillJob builds a job with stock and the loaded tool controllers (the primary end mill plus
 // the library tools). Milling operations run on the end mill at index 0; the 3D ops select the
-// ball-nose. Mirrors a FreeCAD job loading its tool controllers.
+// ball-nose, the way a job loads its tool controllers.
 func (e *Engine) newMillJob(bodyIndex int, stock Stock) *Job {
 	job := NewJob()
 	job.Stock = stock

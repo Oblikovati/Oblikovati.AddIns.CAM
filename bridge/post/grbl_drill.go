@@ -11,8 +11,8 @@ import (
 )
 
 // drillTranslate expands a canned drilling cycle (G81/G82/G83) into the explicit G0/G1
-// moves GRBL understands, since GRBL has no canned cycles. It is the Go port of
-// grbl_legacy_post.drill_translate and follows the same NIST-RS274 motion: position over
+// moves GRBL understands, since GRBL has no canned cycles. It follows the NIST-RS274 motion:
+// position over
 // the hole at the R plane, plunge at feed, retract; for G83 peck in Q increments with a
 // small rapid back to just above the previous depth between pecks. All emitted lines carry
 // the running line number.
@@ -97,8 +97,8 @@ func (r *grblRenderer) tapTranslate(tokens []string, c gcode.Command) string {
 
 // peck emits the G83 peck-drilling moves: descend in Q-step increments, retracting to the
 // clearance plane after each peck and rapiding back to just above the last depth, until the
-// final depth is reached. Mirrors the upstream G83 loop (a_bit = 5% of the step). A zero
-// step emits nothing (an infinite-loop guard, as upstream).
+// final depth is reached (each retract clears by 5% of the step). A zero step emits nothing
+// (an infinite-loop guard).
 func (r *grblRenderer) peck(b *strings.Builder, z, rPlane, clearZ, step float64, feed string) {
 	if step == 0 {
 		return
@@ -123,7 +123,7 @@ func (r *grblRenderer) peck(b *strings.Builder, z, rPlane, clearZ, step float64,
 }
 
 // clearanceZ computes the cycle's retract level from the active G98/G99 mode and the
-// current tool Z, matching the upstream's (slightly quirky) precedence.
+// current tool Z.
 func (r *grblRenderer) clearanceZ(rPlane float64) float64 {
 	if r.drillRetract == "G98" && r.curZ >= rPlane {
 		return r.curZ

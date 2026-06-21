@@ -4,7 +4,7 @@
 // points) with the operations 2.5D toolpaths need — signed area, winding, point
 // containment, and polygon offsetting. It is the leaf the profile/pocket generators build
 // on, depends on nothing in this module, and is fully unit-testable without a host. It
-// plays the role FreeCAD's libarea plays (2D offset + region math), in pure Go.
+// provides 2D offset + region math, in pure Go.
 package geom2d
 
 import "math"

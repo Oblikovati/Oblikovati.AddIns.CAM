@@ -35,7 +35,7 @@ const maxProfilePasses = 100
 
 // GenerateProfile cuts a contour around the boundary at each depth level: the boundary is
 // radius-compensated to the chosen side, oriented for the cut direction, and walked at every
-// Z. Ports the toolpath shape of FreeCAD's Path/Op/Profile (the offset + Z-stepdown core).
+// Z (the offset + Z-stepdown core).
 //
 // With RoughingPasses > 1 it takes several radial passes per level, from the outermost (one
 // RoughStep × (passes−1) of extra stock away from the wall) inward to the final contour — for

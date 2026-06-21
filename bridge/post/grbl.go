@@ -10,8 +10,8 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 )
 
-// GRBLOptions are the GRBL post's knobs. Defaults match the upstream legacy post: comments
-// + header on, metric, precision 3, drill cycles translated to G0/G1 (GRBL has no canned
+// GRBLOptions are the GRBL post's knobs. The legacy-dialect defaults: comments + header on,
+// metric, precision 3, drill cycles translated to G0/G1 (GRBL has no canned
 // cycles), tool changes commented out (GRBL ignores M6).
 type GRBLOptions struct {
 	OutputHeader     bool
@@ -26,7 +26,7 @@ type GRBLOptions struct {
 	Postamble        string
 }
 
-// defaultGRBLOptions returns the upstream GRBL defaults.
+// defaultGRBLOptions returns the legacy GRBL defaults.
 func defaultGRBLOptions() GRBLOptions {
 	return GRBLOptions{
 		OutputHeader:   true,
@@ -92,8 +92,8 @@ type grblRenderer struct {
 	drillRetract string // "G98" (return to prior Z) | "G99" (return to R)
 }
 
-// ExportGRBL renders objects to GRBL-dialect G-code, the Go port of grbl_legacy_post.export.
-// Validated against FreeCAD's TestGrblLegacyPost.
+// ExportGRBL renders objects to GRBL-dialect G-code (the legacy GRBL dialect), validated
+// against a reference exact-string oracle.
 func ExportGRBL(objects []Object, argstring string) string {
 	r := &grblRenderer{opts: parseGRBLArgs(argstring), lineNR: 100, drillRetract: "G98"}
 	var b strings.Builder
@@ -189,7 +189,7 @@ func (r *grblRenderer) parsePath(obj Object) string {
 			continue
 		}
 		// When translating cycles, the canned-cycle return-mode/cancel codes are not valid
-		// GRBL — comment them out (the upstream's SUPPRESS_COMMANDS), e.g. G80 → "( G80 )".
+		// GRBL — comment them out, e.g. G80 → "( G80 )".
 		if r.opts.TranslateDrill && (c.Name == "G80" || c.Name == "G98" || c.Name == "G99") {
 			tokens = append([]string{"("}, append(tokens, ")")...)
 		}
@@ -289,7 +289,7 @@ func (r *grblRenderer) fixed(v float64) string {
 }
 
 // formatOutstring joins tokens with a space and trims — GRBL lines carry no trailing
-// space (unlike LinuxCNC). Mirrors the upstream format_outstring.
+// space (unlike LinuxCNC).
 func formatOutstring(tokens []string) string {
 	return strings.TrimSpace(strings.Join(tokens, " "))
 }

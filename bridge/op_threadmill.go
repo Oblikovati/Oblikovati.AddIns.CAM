@@ -12,7 +12,7 @@ import (
 // ThreadMillOp cuts a thread into each detected hole by helical interpolation — a single thread
 // mill orbiting the hole axis, advancing one pitch per turn. It reuses the part's holes (like
 // Drilling/Helix) but produces a thread instead of a plain bore, so it suits tapped holes cut
-// without a tap. Ports the role of FreeCAD's Path/Op/ThreadMilling.
+// without a tap.
 type ThreadMillOp struct {
 	OpBase
 	MajorDiameter float64 // mm — nominal thread diameter

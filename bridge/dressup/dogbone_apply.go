@@ -15,8 +15,7 @@ type cutRef struct {
 // ApplyDogbone inserts corner-relief bones into a profile/pocket path so a round end mill can
 // reach internal corners. It splits the path into cutting loops (broken by rapids), forms a
 // kink at every corner, and for each corner that turns sharply enough on the selected side it
-// cuts a bone out and back. A zero length returns the path unchanged. Ports FreeCAD's
-// DogboneII dressup over the dogboneII generator.
+// cuts a bone out and back. A zero length returns the path unchanged.
 func ApplyDogbone(path gcode.Path, p DogboneParams) gcode.Path {
 	if p.Length <= 0 {
 		return path
@@ -80,7 +79,7 @@ type cornerKink struct {
 }
 
 // loopKinks builds the kink at each interior corner of a loop, plus the closing corner when
-// the loop returns to its start. Ports DogboneII createKinks.
+// the loop returns to its start.
 func loopKinks(group []cutRef) []cornerKink {
 	var kinks []cornerKink
 	for j := 1; j < len(group); j++ {

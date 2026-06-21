@@ -9,8 +9,8 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 )
 
-// pathObject wraps one or more G-code lines (parsed) as a single "testpath" object, the
-// fixture shape FreeCAD's TestLinuxCNCLegacyPost uses.
+// pathObject wraps one or more G-code lines (parsed) as a single "testpath" object — the
+// fixture shape the post oracle tests use.
 func pathObject(lines ...string) []Object {
 	cmds := make([]gcode.Command, 0, len(lines))
 	for _, l := range lines {
@@ -19,8 +19,8 @@ func pathObject(lines ...string) []Object {
 	return []Object{{Label: "testpath", Path: gcode.NewPath(cmds)}}
 }
 
-// sixthLine renders and returns line index 5, the line the upstream compare_sixth_line
-// helper checks (the first real command after preamble + operation comments).
+// sixthLine renders and returns line index 5 (the first real command after the preamble +
+// operation comments).
 func sixthLine(t *testing.T, line, args string) string {
 	t.Helper()
 	out := ExportLinuxCNC(pathObject(line), args)

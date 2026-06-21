@@ -11,7 +11,7 @@ import (
 )
 
 // ProfileOp cuts a contour around a boundary with tool-radius compensation, stepping down in
-// Z. It ports the toolpath behaviour of FreeCAD's Path/Op/Profile. The driving Boundary (a
+// Z. The driving Boundary (a
 // closed XY contour in millimetres) is populated by the engine from the part's silhouette /
 // a selected face; Execute is pure given the boundary, tool, and depths.
 type ProfileOp struct {

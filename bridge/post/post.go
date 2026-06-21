@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 // Package post renders a toolpath (gcode.Path) to machine G-code. Each post processor is a
-// pure command-list → string transform with no host or kernel dependency, mirroring
-// FreeCAD's Path/Post scripts. Milestone 1 ports two legacy posts — LinuxCNC and GRBL —
-// validated against FreeCAD's exact-string oracle tests.
+// pure command-list → string transform with no host or kernel dependency. The first two posts
+// — LinuxCNC and GRBL — are validated against exact-string oracle tests.
 package post
 
 import (
@@ -60,7 +59,7 @@ func Export(name string, objects []Object, argstring string) (string, error) {
 
 // Object is one postable item: a labelled toolpath. A post renders a sequence of Objects
 // (operations), wrapping each in the controller-specific operation framing. It is the
-// minimal stand-in for FreeCAD's "postable" doc objects.
+// minimal "postable" item.
 type Object struct {
 	Label string
 	Path  gcode.Path

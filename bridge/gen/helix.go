@@ -34,8 +34,8 @@ type HelixParams struct {
 }
 
 // GenerateHelix produces the helical-bore toolpath between the hole's top and bottom centre
-// points (a vertical edge). It is a port of FreeCAD's helix generator (the vertical, non-cone
-// path): each full turn is two 180° arcs, descending linearly, optionally over an annulus of
+// points (a vertical edge). The vertical (non-cone) path: each full turn is two 180° arcs,
+// descending linearly, optionally over an annulus of
 // concentric helices, each followed by a wall-clearing retract. Emits G2/G3 arcs with I/J
 // centre offsets.
 func GenerateHelix(top, bottom gcode.Vector3, p HelixParams) ([]gcode.Command, error) {
@@ -109,7 +109,7 @@ func (h helixState) halfArc(dx, z float64) gcode.Command {
 }
 
 // retract returns the move back to the retract height after one helix, nudged off the wall
-// for the centre-clearing or step-over cases (mirrors the upstream retract()).
+// for the centre-clearing or step-over cases.
 func (h helixState) retract(r, lastStep float64) gcode.Command {
 	offset := 0.0
 	switch {
@@ -150,7 +150,7 @@ func arcCode(direction string) string {
 	return "G2"
 }
 
-// validateHelix rejects illegal geometry and parameters, mirroring the upstream guards.
+// validateHelix rejects illegal geometry and parameters.
 func validateHelix(top, bottom gcode.Vector3, p HelixParams) error {
 	if !isClose(top.X-bottom.X, 0) || !isClose(top.Y-bottom.Y, 0) {
 		return fmt.Errorf("helix edge is not aligned with Z axis: top=%v bottom=%v", top, bottom)
@@ -193,6 +193,5 @@ func reverseFloats(s []float64) {
 	}
 }
 
-// round6 rounds to 6 decimals, matching the upstream round(x, 6) used before the ceil so the
-// turn count lands identically.
+// round6 rounds to 6 decimals, applied before the ceil so the turn count lands identically.
 func round6(x float64) float64 { return math.Round(x*1e6) / 1e6 }

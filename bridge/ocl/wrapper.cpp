@@ -2,7 +2,7 @@
 
 // C-ABI wrapper over OpenCAMLib's PathDropCutter (the C++ library is LGPL-2.1, see
 // COPYING.opencamlib). It builds the surface kd-tree once and drops the cutter along each scan
-// line, mirroring how FreeCAD's CAM surface op drives OCL.
+// line, the way a CAM surface op drives OCL.
 
 #include "wrapper.h"
 

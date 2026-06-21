@@ -13,7 +13,7 @@ import (
 const pi = math.Pi
 
 // mnvr builds the move list for a G-code maneuver string ("G1X1/G1Y1"), starting at the
-// origin — the Go equivalent of the oracle's MNVR helper.
+// origin.
 func mnvr(s string) []move {
 	path := parseManeuver(s)
 	var moves []move
@@ -31,7 +31,7 @@ func mnvr(s string) []move {
 
 // parseManeuver tokenizes a compact maneuver string into commands. Commands run together
 // ("G2Y2J1G1X0" is two) and are separated by an optional "/"; a new command begins at each
-// G/M code. Mirrors the oracle feeding such strings through Path.Path's G-code parser.
+// G/M code, the way a G-code parser feeds such strings.
 func parseManeuver(s string) []gcode.Command {
 	var cmds []gcode.Command
 	i := 0
@@ -68,14 +68,14 @@ func isNumByte(b byte) bool {
 	return b == '+' || b == '-' || b == '.' || (b >= '0' && b <= '9')
 }
 
-// kinkOf builds the single kink of a two-move maneuver string (the oracle's KINK helper).
+// kinkOf builds the single kink of a two-move maneuver string.
 func kinkOf(s string) kink {
 	moves := mnvr(s)
 	return newKink(moves[0], moves[1])
 }
 
 // createKinks forms a kink at each junction of a maneuver, closing the loop when it returns
-// to its start (the oracle's createKinks).
+// to its start.
 func createKinks(moves []move) []kink {
 	var kinks []kink
 	for j := 1; j < len(moves); j++ {
@@ -87,7 +87,7 @@ func createKinks(moves []move) []kink {
 	return kinks
 }
 
-// TestKinkDeflections ports TestGeneratorDogboneII.test20: the signed turn at each corner.
+// TestKinkDeflections checks the signed turn at each corner.
 func TestKinkDeflections(t *testing.T) {
 	cases := []struct {
 		maneuver string

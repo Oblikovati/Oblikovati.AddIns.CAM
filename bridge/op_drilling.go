@@ -20,8 +20,8 @@ type DrillTarget struct {
 	Bottom float64
 }
 
-// DrillingOp drills a set of circular holes with a canned cycle. It ports FreeCAD's
-// Path/Op/Drilling (CircularHoleBase): the holes are resolved from the part's cylindrical
+// DrillingOp drills a set of circular holes with a canned cycle: the holes are resolved from
+// the part's cylindrical
 // faces, ordered into a short travel tour, and each emitted as a G81/G82/G83/G85 cycle via the
 // drill generator. The
 // peck/dwell/feed-retract knobs map straight onto gen.DrillParams.
@@ -114,7 +114,7 @@ func retractMode(retractToR bool) string {
 // tour that starts at the lowest hole (min Y, then min X) and repeatedly hops to the closest
 // remaining one, cutting the rapid travel between holes versus a plain row-by-row sort. Starting
 // from a fixed anchor and breaking distance ties by (Y, X) keeps the tour stable across runs.
-// FreeCAD's sort_locations does the same job. Replaces the earlier Y-then-X sort.
+// Replaces the earlier Y-then-X sort.
 func orderedHoles(holes []DrillTarget) []DrillTarget {
 	remaining := append([]DrillTarget(nil), holes...)
 	if len(remaining) < 2 {

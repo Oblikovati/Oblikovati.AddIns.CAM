@@ -26,7 +26,7 @@ type TrochoidalParams struct {
 // GenerateTrochoidal walks the (radius-compensated) boundary as a chain of overlapping full
 // circles — one loop of LoopRadius at every Advance along the path — at each depth level. Each
 // loop is two 180° arcs about its centre, joined to the next by a short feed move. This is the
-// add-in's trochoidal-milling toolpath (FreeCAD's Path trochoid dressup applied along a contour).
+// add-in's trochoidal-milling toolpath (overlapping circular loops marching along a contour).
 func GenerateTrochoidal(boundary geom2d.Polygon, levels []float64, feeds Feeds, p TrochoidalParams) ([]gcode.Command, error) {
 	if p.LoopRadius <= 0 {
 		return nil, fmt.Errorf("trochoidal milling needs a positive loop radius, got %g", p.LoopRadius)

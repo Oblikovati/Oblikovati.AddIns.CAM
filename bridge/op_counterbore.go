@@ -12,7 +12,7 @@ import (
 // CounterboreOp cuts a flat-bottom cylindrical recess at the top of each detected hole so a
 // socket-head screw seats flush. It reuses the part's holes (like Drilling/Helix) but clears a
 // shallow recess of a set diameter and depth at the hole top rather than boring through. Ports
-// the role of FreeCAD's counterbore / spot-face.
+// a counterbore / spot-face.
 type CounterboreOp struct {
 	OpBase
 	Diameter float64 // mm — recess diameter

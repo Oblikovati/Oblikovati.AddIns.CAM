@@ -8,7 +8,7 @@ import (
 )
 
 // Pocket clearing patterns. The offset pattern walks concentric rings (the default); the zigzag
-// pattern sweeps parallel back-and-forth rows across the region, the libarea/FreeCAD ZigZag mode.
+// pattern sweeps parallel back-and-forth rows across the region (the ZigZag mode).
 const (
 	PocketOffset = "offset"
 	PocketZigzag = "zigzag"

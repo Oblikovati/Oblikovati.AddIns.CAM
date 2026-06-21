@@ -33,7 +33,7 @@ const maxChamferPasses = 100
 // boundary offset to the edge side by the chamfer width at the chamfer depth (width /
 // tan(halfAngle)) below the top. With Passes > 1 the bevel is roughed in flank passes that step
 // the offset and depth together from the top edge down to the full width — for a wide chamfer or
-// a deburr where one full-flank cut would overload the tool. Ports FreeCAD's chamfer / deburr op.
+// a deburr where one full-flank cut would overload the tool.
 func GenerateChamfer(boundary geom2d.Polygon, top float64, feeds Feeds, p ChamferParams) ([]gcode.Command, error) {
 	if p.Width <= 0 {
 		return nil, fmt.Errorf("chamfer needs a positive width, got %g", p.Width)

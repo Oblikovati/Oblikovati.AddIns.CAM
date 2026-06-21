@@ -26,9 +26,9 @@ const defaultStepOver = 0.5
 // GeneratePocket clears the interior of the boundary with concentric offset rings — the
 // boundary offset inward by the tool radius, then repeatedly by the step-over until the
 // rings collapse — walked at each depth level from the outermost ring inward. This is the
-// client-side area-clearing that stands in for libarea's makePocket (the offset-pattern
-// mode); the offset & slicing primitives it would use host-side exist in the API, but the
-// clearing pattern itself is add-in logic. See cam-port/gaps.md.
+// client-side area-clearing (the offset-pattern mode); the offset & slicing primitives it
+// would use host-side exist in the API, but the
+// clearing pattern itself is add-in logic.
 //
 // With a FinishAllowance the roughing rings stop that far short of every wall (outer boundary
 // and islands) and a single finishing pass is then run right at the walls, so the rough cut

@@ -11,7 +11,7 @@ import (
 )
 
 // MillFaceOp faces (clears the top of) the stock over a boundary region with a raster
-// pattern, stepping down in Z. Ports the role of FreeCAD's Path/Op/MillFace.
+// pattern, stepping down in Z.
 type MillFaceOp struct {
 	OpBase
 	StepOver float64        // pass spacing as a fraction of the tool diameter (0..1)
@@ -48,7 +48,7 @@ func (op *MillFaceOp) Execute(job *Job) (gcode.Path, error) {
 
 // EngraveOp follows a contour with the tool centred on the path (no radius compensation),
 // cutting to a single depth — for marking text/outlines. It is a profile with side "on", so
-// it reuses the profile generator. Ports the role of FreeCAD's Path/Op/Engrave.
+// it reuses the profile generator.
 type EngraveOp struct {
 	OpBase
 	StepDown float64        // max Z step per pass (mm); <=0 → single pass

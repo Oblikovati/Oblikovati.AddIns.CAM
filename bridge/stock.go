@@ -11,8 +11,7 @@ const cmToMM = 10.0
 
 // Stock is the raw material the Job machines from: an axis-aligned box in millimetres.
 // In milestone 1 it is derived directly from the part's range box (a tight billet);
-// box/cylinder/from-base stock with offsets is a later refinement. Mirrors FreeCAD's
-// Path/Main/Stock.
+// box/cylinder/from-base stock with offsets is a later refinement.
 type Stock struct {
 	Min gcode.Vector3 // mm
 	Max gcode.Vector3 // mm

@@ -21,7 +21,7 @@ const maxRampPasses = 100
 
 // ApplyRamp replaces each straight plunge (a G1 that lowers only Z) with a ramped descent along
 // the following cut's direction. A plunge with no subsequent cutting move, or zero params, is
-// left as a straight plunge. Ports FreeCAD's ramp-entry dressup.
+// left as a straight plunge.
 func ApplyRamp(path gcode.Path, p RampParams) gcode.Path {
 	if p.Length <= 0 || p.Angle <= 0 {
 		return path

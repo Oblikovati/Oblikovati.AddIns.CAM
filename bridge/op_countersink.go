@@ -12,7 +12,7 @@ import (
 // CountersinkOp cuts a conical recess at the top of each detected hole so a flat-head screw sits
 // flush, by spiralling a countersink/V-tool from the rim down to the centre. It reuses the part's
 // holes (like Drilling/Helix/Counterbore) but cuts a cone rather than a flat-bottom recess. Ports
-// the role of FreeCAD's countersink.
+// a countersink.
 type CountersinkOp struct {
 	OpBase
 	Diameter  float64 // mm — countersink rim diameter

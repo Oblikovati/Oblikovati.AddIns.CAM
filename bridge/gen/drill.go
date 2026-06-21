@@ -3,7 +3,7 @@
 // Package gen holds the pure toolpath generators: functions that turn a small geometric
 // input (a hole edge, a helix span, …) into a list of gcode.Commands with no host or
 // kernel dependency. They are the algorithmic primitives of the CAM add-in and the most
-// directly testable layer. Mirrors FreeCAD's Path/Base/Generator.
+// directly testable layer.
 package gen
 
 import (
@@ -27,7 +27,7 @@ type DrillParams struct {
 
 // drillTolAbs/drillTolRel reproduce numpy.isclose(rtol=1e-05, atol=1e-06): a point is
 // "on the Z axis" when its X/Y delta is within atol + rtol*|b| of zero. Same constants as
-// FreeCAD's drill generator so the alignment check accepts/rejects identically.
+// the numpy.isclose default, so the alignment check accepts/rejects identically.
 const (
 	drillTolAbs = 1e-06
 	drillTolRel = 1e-05
@@ -36,7 +36,7 @@ const (
 // GenerateDrill produces the G-code for drilling a single hole, given the hole's top
 // (start) and bottom (end) points. The edge must be aligned with the Z axis (X and Y of
 // start and end equal within tolerance) and the start must sit above the end. It is a
-// straight port of FreeCAD's Path.Base.Generator.drill.generate and emits exactly one
+// emits exactly one
 // canned-cycle command:
 //
 //	plain          → G81
@@ -69,8 +69,7 @@ func GenerateDrill(start, end gcode.Vector3, p DrillParams) ([]gcode.Command, er
 }
 
 // selectDrillCycle picks the canned-cycle code and adds the cycle-specific address (P for
-// dwell, Q for peck), following the same precedence as the upstream generator: feed-retract
-// first, then plain/dwell, then peck.
+// dwell, Q for peck), in precedence order: feed-retract first, then plain/dwell, then peck.
 func selectDrillCycle(p DrillParams, params map[string]float64) string {
 	switch {
 	case p.FeedRetract:
@@ -90,9 +89,8 @@ func selectDrillCycle(p DrillParams, params map[string]float64) string {
 	}
 }
 
-// validateDrill rejects the illegal parameter combinations and geometry, mirroring the
-// guards in the upstream generator (peck/dwell/feed-retract are mutually exclusive; repeat
-// ≥ 1; edge Z-aligned; start above end).
+// validateDrill rejects the illegal parameter combinations and geometry (peck/dwell/
+// feed-retract are mutually exclusive; repeat ≥ 1; edge Z-aligned; start above end).
 func validateDrill(start, end gcode.Vector3, p DrillParams) error {
 	if p.DwellTime > 0.0 && p.PeckDepth > 0.0 {
 		return errors.New("peck and dwell cannot be used together")
