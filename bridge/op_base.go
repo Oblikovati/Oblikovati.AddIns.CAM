@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"oblikovati.org/cam/bridge/gcode"
+	"oblikovati.org/cam/bridge/gen"
 )
 
 // FeatureFlag enumerates the property groups an operation uses: the fields always exist on the
@@ -55,8 +56,24 @@ type OpBase struct {
 	FinalDepth      float64 // bottom of cut (mm)
 	Coolant         string  // "none" | "flood" | "mist"
 	PauseAfter      bool    // emit an optional stop (M1) after this operation, e.g. to inspect
+	FeedScale       float64 // multiplier on the tool's cutting/plunge feed for this op (e.g. 0.5 for a finishing pass); 0 → full feed
 
 	Dressups []Dressup // toolpath post-processes applied after framing (tabs, dogbone, …)
+}
+
+// feedFactor returns the operation's feed multiplier, defaulting an unset (zero) FeedScale to 1.
+func (b *OpBase) feedFactor() float64 {
+	if b.FeedScale > 0 {
+		return b.FeedScale
+	}
+	return 1
+}
+
+// feeds packs the operation's clearance/safe heights and the controller's cutting/plunge feeds
+// (scaled by FeedScale) into the generator's Feeds — the shared feed set every milling op walks at.
+func (b *OpBase) feeds(tc ToolController) gen.Feeds {
+	f := b.feedFactor()
+	return gen.Feeds{Vert: tc.VertFeed * f, Horiz: tc.HorizFeed * f, ClearanceZ: b.ClearanceHeight, SafeZ: b.SafeHeight}
 }
 
 // CoolantMode returns the operation's coolant mode, defaulting an unset value to "none".

@@ -38,7 +38,7 @@ func (op *CountersinkOp) Execute(job *Job) (gcode.Path, error) {
 	var cutting []gcode.Command
 	for _, h := range orderedHoles(op.Holes) {
 		cmds, err := gen.GenerateCountersink(
-			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top}, tc.HorizFeed,
+			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top}, tc.HorizFeed*op.feedFactor(),
 			gen.CountersinkParams{Diameter: op.Diameter, ToolAngleDeg: op.ToolAngle, ToolDiameter: tc.Tool.Diameter},
 		)
 		if err != nil {

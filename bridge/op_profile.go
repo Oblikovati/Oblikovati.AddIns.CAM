@@ -58,8 +58,3 @@ func (op *ProfileOp) Execute(job *Job) (gcode.Path, error) {
 func (op *ProfileOp) depthLevels() []float64 {
 	return gen.DepthLevels(op.StartDepth, op.FinalDepth, op.StepDown)
 }
-
-// feeds packs the op's heights and the controller's feeds for the generator.
-func (op *ProfileOp) feeds(tc ToolController) gen.Feeds {
-	return gen.Feeds{Vert: tc.VertFeed, Horiz: tc.HorizFeed, ClearanceZ: op.ClearanceHeight, SafeZ: op.SafeHeight}
-}
