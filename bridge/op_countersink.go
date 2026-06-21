@@ -36,7 +36,7 @@ func (op *CountersinkOp) Execute(job *Job) (gcode.Path, error) {
 		return gcode.Path{}, fmt.Errorf("countersink operation %q has no holes to countersink", op.OpLabel)
 	}
 	var cutting []gcode.Command
-	for _, h := range sortedHoles(op.Holes) {
+	for _, h := range orderedHoles(op.Holes) {
 		cmds, err := gen.GenerateCountersink(
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top}, tc.HorizFeed,
 			gen.CountersinkParams{Diameter: op.Diameter, ToolAngleDeg: op.ToolAngle, ToolDiameter: tc.Tool.Diameter},

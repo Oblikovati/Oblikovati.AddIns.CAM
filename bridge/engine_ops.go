@@ -142,7 +142,7 @@ func (e *Engine) RunBoreProbeJobOnHost(bodyIndex int) (*JobResult, error) {
 // true centre). The probe retracts to clearance and re-approaches the centre between touches.
 func boreProbePoints(holes []DrillTarget) []gen.ProbePoint {
 	var pts []gen.ProbePoint
-	for _, h := range sortedHoles(holes) {
+	for _, h := range orderedHoles(holes) {
 		midZ := (h.Top + h.Bottom) / 2
 		centre := gcode.Vector3{X: h.X, Y: h.Y, Z: midZ}
 		for _, d := range [][2]float64{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {

@@ -5,7 +5,6 @@ package bridge
 import (
 	"fmt"
 	"math"
-	"sort"
 
 	"oblikovati.org/api/wire"
 	"oblikovati.org/cam/bridge/gcode"
@@ -23,7 +22,8 @@ type DrillTarget struct {
 
 // DrillingOp drills a set of circular holes with a canned cycle. It ports FreeCAD's
 // Path/Op/Drilling (CircularHoleBase): the holes are resolved from the part's cylindrical
-// faces, sorted, and each emitted as a G81/G82/G83/G85 cycle via the drill generator. The
+// faces, ordered into a short travel tour, and each emitted as a G81/G82/G83/G85 cycle via the
+// drill generator. The
 // peck/dwell/feed-retract knobs map straight onto gen.DrillParams.
 type DrillingOp struct {
 	OpBase
@@ -56,7 +56,7 @@ func (op *DrillingOp) Execute(job *Job) (gcode.Path, error) {
 		return gcode.Path{}, fmt.Errorf("drilling operation %q has no holes to drill", op.OpLabel)
 	}
 
-	holes := sortedHoles(op.Holes)
+	holes := orderedHoles(op.Holes)
 	repeat := op.Repeat
 	if repeat < 1 {
 		repeat = 1
@@ -92,18 +92,62 @@ func (op *DrillingOp) Execute(job *Job) (gcode.Path, error) {
 	return op.frame(cutting), nil
 }
 
-// sortedHoles returns the holes in a deterministic drilling order — by Y then X — so the
-// generated program is stable across runs (a proper nearest-neighbour/TSP ordering is a
-// later optimisation; FreeCAD's sort_locations does the same job).
-func sortedHoles(holes []DrillTarget) []DrillTarget {
-	out := append([]DrillTarget(nil), holes...)
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].Y != out[j].Y {
-			return out[i].Y < out[j].Y
+// orderedHoles returns the holes in a short, deterministic drilling order: a nearest-neighbour
+// tour that starts at the lowest hole (min Y, then min X) and repeatedly hops to the closest
+// remaining one, cutting the rapid travel between holes versus a plain row-by-row sort. Starting
+// from a fixed anchor and breaking distance ties by (Y, X) keeps the tour stable across runs.
+// FreeCAD's sort_locations does the same job. Replaces the earlier Y-then-X sort.
+func orderedHoles(holes []DrillTarget) []DrillTarget {
+	remaining := append([]DrillTarget(nil), holes...)
+	if len(remaining) < 2 {
+		return remaining
+	}
+	tour := make([]DrillTarget, 0, len(remaining))
+	tour = append(tour, takeAt(&remaining, anchorHole(remaining)))
+	for len(remaining) > 0 {
+		tour = append(tour, takeAt(&remaining, nearestHole(tour[len(tour)-1], remaining)))
+	}
+	return tour
+}
+
+// anchorHole returns the index of the tour's start: the lowest hole by Y, then by X.
+func anchorHole(holes []DrillTarget) int {
+	best := 0
+	for i, h := range holes {
+		if h.Y < holes[best].Y || (h.Y == holes[best].Y && h.X < holes[best].X) {
+			best = i
 		}
-		return out[i].X < out[j].X
-	})
-	return out
+	}
+	return best
+}
+
+// nearestHole returns the index of the hole in holes closest to from, breaking equal distances by
+// the lower (Y, X) so the tour is deterministic.
+func nearestHole(from DrillTarget, holes []DrillTarget) int {
+	best, bestD := 0, holeDist2(from, holes[0])
+	for i := 1; i < len(holes); i++ {
+		d := holeDist2(from, holes[i])
+		if d < bestD || (d == bestD && (holes[i].Y < holes[best].Y || (holes[i].Y == holes[best].Y && holes[i].X < holes[best].X))) {
+			best, bestD = i, d
+		}
+	}
+	return best
+}
+
+// holeDist2 is the squared XY distance between two holes (squared avoids a needless sqrt).
+func holeDist2(a, b DrillTarget) float64 {
+	dx, dy := a.X-b.X, a.Y-b.Y
+	return dx*dx + dy*dy
+}
+
+// takeAt removes and returns the hole at index i from *holes (order of the rest is not preserved,
+// which is fine — the tour re-picks by distance each step).
+func takeAt(holes *[]DrillTarget, i int) DrillTarget {
+	s := *holes
+	h := s[i]
+	s[i] = s[len(s)-1]
+	*holes = s[:len(s)-1]
+	return h
 }
 
 // holeDedupTol is the XY distance (mm) within which two cylindrical faces are treated as
@@ -142,7 +186,7 @@ func DetectDrillTargets(refs wire.ReferenceKeysResult, rbox wire.BodyRangeBoxRes
 	if len(targets) == 0 {
 		return nil, fmt.Errorf("body %d has no cylindrical faces to drill", bodyIndex)
 	}
-	return sortedHoles(targets), nil
+	return orderedHoles(targets), nil
 }
 
 // containsHole reports whether a coaxial hole is already present within holeDedupTol.

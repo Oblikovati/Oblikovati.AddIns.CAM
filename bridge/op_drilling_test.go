@@ -3,10 +3,49 @@
 package bridge
 
 import (
+	"math"
 	"testing"
 
 	"oblikovati.org/api/wire"
 )
+
+// tourTravel sums the XY rapid travel of an ordered hole list.
+func tourTravel(holes []DrillTarget) float64 {
+	total := 0.0
+	for i := 1; i < len(holes); i++ {
+		total += math.Hypot(holes[i].X-holes[i-1].X, holes[i].Y-holes[i-1].Y)
+	}
+	return total
+}
+
+// TestOrderedHolesShortensTravel checks the nearest-neighbour tour beats a naive row-by-row
+// (Y-then-X) order on a scattered pattern, and is deterministic (same order on a reshuffle).
+func TestOrderedHolesShortensTravel(t *testing.T) {
+	// A 3×3 grid: row-major Y-then-X snakes back across the full width between rows; the tour
+	// should boustrophedon instead and travel less.
+	var grid []DrillTarget
+	for y := 0; y < 3; y++ {
+		for x := 0; x < 3; x++ {
+			grid = append(grid, DrillTarget{X: float64(x) * 10, Y: float64(y) * 10})
+		}
+	}
+	rowMajor := append([]DrillTarget(nil), grid...) // already in Y-then-X order
+	tour := orderedHoles(grid)
+	if tourTravel(tour) >= tourTravel(rowMajor) {
+		t.Errorf("tour travel %g should beat row-major %g", tourTravel(tour), tourTravel(rowMajor))
+	}
+	// Deterministic: reversing the input yields the same tour.
+	reversed := make([]DrillTarget, len(grid))
+	for i := range grid {
+		reversed[i] = grid[len(grid)-1-i]
+	}
+	a, b := orderedHoles(grid), orderedHoles(reversed)
+	for i := range a {
+		if a[i] != b[i] {
+			t.Fatalf("tour not deterministic at %d: %+v vs %+v", i, a[i], b[i])
+		}
+	}
+}
 
 // drillJob builds a one-controller job for exercising the drilling op.
 func drillJob() *Job {
