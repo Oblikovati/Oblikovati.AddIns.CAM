@@ -37,7 +37,7 @@ func (op *CounterboreOp) Execute(job *Job) (gcode.Path, error) {
 		return gcode.Path{}, fmt.Errorf("counterbore operation %q has no holes to spot-face", op.OpLabel)
 	}
 	var cutting []gcode.Command
-	for _, h := range sortedHoles(op.Holes) {
+	for _, h := range orderedHoles(op.Holes) {
 		cmds, err := gen.GenerateCounterbore(
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top}, gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top - op.Depth},
 			gen.CounterboreParams{Diameter: op.Diameter, ToolDiameter: tc.Tool.Diameter, Pitch: op.Pitch},

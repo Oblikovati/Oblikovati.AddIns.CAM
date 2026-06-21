@@ -46,7 +46,7 @@ func (op *TappingOp) Execute(job *Job) (gcode.Path, error) {
 	feed := op.Pitch * tc.SpindleSpeed // synchronised feed: one pitch advance per revolution
 
 	cutting := []gcode.Command{gcode.NewCommand("G0", map[string]float64{"Z": op.ClearanceHeight})}
-	for _, h := range sortedHoles(op.Holes) {
+	for _, h := range orderedHoles(op.Holes) {
 		cmds, err := gen.GenerateTap(
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top},
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Bottom},

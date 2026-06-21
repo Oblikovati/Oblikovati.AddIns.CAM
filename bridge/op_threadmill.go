@@ -38,7 +38,7 @@ func (op *ThreadMillOp) Execute(job *Job) (gcode.Path, error) {
 		return gcode.Path{}, fmt.Errorf("thread mill operation %q has no holes to thread", op.OpLabel)
 	}
 	var cutting []gcode.Command
-	for _, h := range sortedHoles(op.Holes) {
+	for _, h := range orderedHoles(op.Holes) {
 		cmds, err := gen.GenerateThreadMill(
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top}, gcode.Vector3{X: h.X, Y: h.Y, Z: h.Bottom},
 			gen.ThreadMillParams{

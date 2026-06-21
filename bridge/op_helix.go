@@ -44,7 +44,7 @@ func (op *HelixOp) Execute(job *Job) (gcode.Path, error) {
 	}
 
 	var cutting []gcode.Command
-	for _, h := range sortedHoles(op.Holes) {
+	for _, h := range orderedHoles(op.Holes) {
 		cmds, err := gen.GenerateHelix(
 			gcode.Vector3{X: h.X, Y: h.Y, Z: h.Top}, gcode.Vector3{X: h.X, Y: h.Y, Z: h.Bottom},
 			gen.HelixParams{
