@@ -17,10 +17,10 @@ package adaptive
 type MotionType int
 
 const (
-	MotionCutting           MotionType = iota // engaged cutting move
-	MotionLinkClear                           // rapid/link over already-cleared area
-	MotionLinkNotClear                        // link that may still touch uncut stock
-	MotionLinkClearAtPrevPass                 // unused; kept for value parity
+	MotionCutting             MotionType = iota // engaged cutting move
+	MotionLinkClear                             // rapid/link over already-cleared area
+	MotionLinkNotClear                          // link that may still touch uncut stock
+	MotionLinkClearAtPrevPass                   // unused; kept for value parity
 )
 
 // OperationType selects what the solver clears: the inside or the outside of the driving
