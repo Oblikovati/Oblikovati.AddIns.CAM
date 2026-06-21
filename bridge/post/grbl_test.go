@@ -88,14 +88,28 @@ func TestGRBLPreamblePostamble(t *testing.T) {
 	}
 }
 
-// TestGRBLToolChange ports test080: M6 is commented out (GRBL ignores it).
+// TestGRBLToolChange checks M6 is commented out (GRBL ignores it), the spindle is stopped (M5)
+// before the change, and restarted (M3) after.
 func TestGRBLToolChange(t *testing.T) {
-	if got := grblLine(t, 6, "--no-header --no-show-editor", "M6 T2", "M3 S3000"); got != "( M6 T2 )" {
-		t.Errorf("toolchange = %q, want %q", got, "( M6 T2 )")
+	out := ExportGRBL(grblObject("op", "M6 T2", "M3 S3000"), "--no-header --no-comments --no-show-editor")
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	m5, m6, m3 := indexOfLine(lines, "M5"), indexOfLine(lines, "( M6 T2 )"), indexOfLine(lines, "M3 S3000")
+	if m5 < 0 || m6 < 0 || m3 < 0 {
+		t.Fatalf("missing M5/M6/M3 in:\n%s", out)
 	}
-	if got := grblLine(t, 7, "--no-header --no-show-editor", "M6 T2", "M3 S3000"); got != "M3 S3000" {
-		t.Errorf("spindle = %q, want M3 S3000", got)
+	if m5 >= m6 || m6 >= m3 {
+		t.Errorf("want M5 before the commented M6 before M3, got indices M5=%d M6=%d M3=%d", m5, m6, m3)
 	}
+}
+
+// indexOfLine returns the index of the first line equal to want, or -1.
+func indexOfLine(lines []string, want string) int {
+	for i, l := range lines {
+		if l == want {
+			return i
+		}
+	}
+	return -1
 }
 
 // TestGRBLComment ports test090.

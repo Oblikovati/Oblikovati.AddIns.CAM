@@ -57,6 +57,35 @@ func TestToolLengthOffset(t *testing.T) {
 	}
 }
 
+// TestSpindleStopsBeforeToolChange checks the spindle is stopped (M5) before a tool change on the
+// ISO posts (before M6) and Marlin (before the manual-swap M0 pause).
+func TestSpindleStopsBeforeToolChange(t *testing.T) {
+	change := []Object{{Label: "op", Path: gcode.NewPath([]gcode.Command{
+		gcode.NewCommand("M6", map[string]float64{"T": 1}),
+		gcode.NewCommand("M3", map[string]float64{"S": 5000}),
+	})}}
+	for _, post := range []string{"fanuc", "haas"} {
+		out, _ := Export(post, change, "--no-comments --no-sequence-numbers")
+		if i, j := lineIndex(out, "M5"), lineIndex(out, "M6 T1"); i < 0 || j < 0 || i > j {
+			t.Errorf("%s should stop the spindle (M5) before the M6 tool change, got:\n%s", post, out)
+		}
+	}
+	out, _ := Export("marlin", change, "--no-comments")
+	if i, j := lineIndex(out, "M5"), lineIndex(out, "M0"); i < 0 || j < 0 || i > j {
+		t.Errorf("marlin should stop the spindle before the manual-swap M0, got:\n%s", out)
+	}
+}
+
+// lineIndex returns the index of the first line whose trimmed text equals want, or -1.
+func lineIndex(out, want string) int {
+	for i, l := range strings.Split(out, "\n") {
+		if strings.TrimSpace(l) == want {
+			return i
+		}
+	}
+	return -1
+}
+
 // TestWorkOffsetGarbageDefaultsToG54 checks an invalid offset falls back to G54.
 func TestWorkOffsetGarbageDefaultsToG54(t *testing.T) {
 	out, err := Export("fanuc", woObject(), "--no-comments --work-offset=G99")
