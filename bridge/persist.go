@@ -96,16 +96,17 @@ type opDoc struct {
 	RetractToR  bool    `json:"retractToR,omitempty"`
 
 	// Profile / Engrave / Pocket / MillFace
-	Side            string  `json:"side,omitempty"`
-	OffsetExtra     float64 `json:"offsetExtra,omitempty"`
-	Climb           bool    `json:"climb,omitempty"`
-	StepDown        float64 `json:"stepDown,omitempty"`
-	StepOver        float64 `json:"stepOver,omitempty"`
-	FinishAllowance float64 `json:"finishAllowance,omitempty"`
-	RoughingPasses  int     `json:"roughingPasses,omitempty"`
-	RoughStep       float64 `json:"roughStep,omitempty"`
-	Pattern         string  `json:"pattern,omitempty"`
-	OneWay          bool    `json:"oneWay,omitempty"`
+	Side             string  `json:"side,omitempty"`
+	OffsetExtra      float64 `json:"offsetExtra,omitempty"`
+	Climb            bool    `json:"climb,omitempty"`
+	StepDown         float64 `json:"stepDown,omitempty"`
+	StepOver         float64 `json:"stepOver,omitempty"`
+	FinishAllowance  float64 `json:"finishAllowance,omitempty"`
+	RoughingPasses   int     `json:"roughingPasses,omitempty"`
+	RoughStep        float64 `json:"roughStep,omitempty"`
+	Pattern          string  `json:"pattern,omitempty"`
+	OneWay           bool    `json:"oneWay,omitempty"`
+	RetractThreshold float64 `json:"retractThreshold,omitempty"`
 
 	// Helix
 	HoleRadius float64 `json:"holeRadius,omitempty"`
@@ -284,7 +285,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 	case *PocketOp:
 		d := baseDoc("pocket", o.OpBase)
 		d.StepOver, d.Climb, d.StepDown, d.FinishAllowance = o.StepOver, o.Climb, o.StepDown, o.FinishAllowance
-		d.Pattern, d.OneWay = o.Pattern, o.OneWay
+		d.Pattern, d.OneWay, d.RetractThreshold = o.Pattern, o.OneWay, o.RetractThreshold
 		return d, nil
 	case *AdaptiveOp:
 		d := baseDoc("adaptive", o.OpBase)
@@ -372,7 +373,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "profile":
 		return &ProfileOp{OpBase: opBaseFrom(d), Side: d.Side, OffsetExtra: d.OffsetExtra, Climb: d.Climb, StepDown: d.StepDown, RoughingPasses: d.RoughingPasses, RoughStep: d.RoughStep}, nil
 	case "pocket":
-		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown, FinishAllowance: d.FinishAllowance, Pattern: d.Pattern, OneWay: d.OneWay}, nil
+		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown, FinishAllowance: d.FinishAllowance, Pattern: d.Pattern, OneWay: d.OneWay, RetractThreshold: d.RetractThreshold}, nil
 	case "adaptive":
 		return &AdaptiveOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown, FinishAllowance: d.FinishAllowance}, nil
 	case "rest":

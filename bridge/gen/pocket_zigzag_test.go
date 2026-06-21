@@ -115,6 +115,55 @@ func TestZigzagPocketOneWay(t *testing.T) {
 	}
 }
 
+// TestZigzagRetractThresholdGatesKeepDown checks the FreeCAD-style RetractThreshold: rows are
+// 2 mm apart (StepOver 0.5 × ⌀4), so the default threshold (one tool diameter, 4 mm) keeps every
+// row link down — one plunge — while a threshold below the row spacing forces a retract and
+// re-plunge at each link.
+func TestZigzagRetractThresholdGatesKeepDown(t *testing.T) {
+	boundary := square(40)
+	base := PocketParams{ToolRadius: 2, StepOver: 0.5, Pattern: PocketZigzag} // rows 2 mm apart; default threshold 4 mm
+
+	def, err := GeneratePocket(boundary, []float64{0}, testFeeds, base)
+	if err != nil {
+		t.Fatalf("default-threshold pocket: %v", err)
+	}
+	if pl := countPlunges(def); pl != 1 {
+		t.Fatalf("default threshold should link the 2 mm row hops down with one plunge, got %d", pl)
+	}
+
+	tight := base
+	tight.RetractThreshold = 1 // below the 2 mm row spacing
+	tightCmds, err := GeneratePocket(boundary, []float64{0}, testFeeds, tight)
+	if err != nil {
+		t.Fatalf("tight-threshold pocket: %v", err)
+	}
+	if countPlunges(tightCmds) <= countPlunges(def) {
+		t.Errorf("a threshold below the row spacing must retract between rows: plunges %d should exceed %d",
+			countPlunges(tightCmds), countPlunges(def))
+	}
+}
+
+// TestKeepDownLinkRespectsThresholdAndClearance pins the two gates of the keep-down decision: the
+// hop must be within the threshold AND stay inside the cleared pocket. A long-but-inside link
+// retracts (faster as a rapid), and a short link crossing an island wall retracts (it would gouge).
+func TestKeepDownLinkRespectsThresholdAndClearance(t *testing.T) {
+	inset := square(40)
+	a := geom2d.Point2{X: 5, Y: 5}
+	near := geom2d.Point2{X: 8, Y: 5} // 3 mm away
+	far := geom2d.Point2{X: 30, Y: 5} // 25 mm away, still inside the pocket
+
+	if !keepDownLink(a, near, inset, nil, 5) {
+		t.Error("a short link inside the pocket should keep the tool down")
+	}
+	if keepDownLink(a, far, inset, nil, 5) {
+		t.Error("a link longer than the threshold should retract even when it stays inside")
+	}
+	island := geom2d.Polygon{{X: 6, Y: 4}, {X: 7, Y: 4}, {X: 7, Y: 6}, {X: 6, Y: 6}}
+	if keepDownLink(a, near, inset, []geom2d.Polygon{island}, 5) {
+		t.Error("a link crossing an island wall must retract even within the threshold")
+	}
+}
+
 // TestZigzagPocketTooSmall errors when the tool cannot enter the region.
 func TestZigzagPocketTooSmall(t *testing.T) {
 	if _, err := GeneratePocket(square(3), []float64{0}, testFeeds, PocketParams{ToolRadius: 2, Pattern: PocketZigzag}); err == nil {

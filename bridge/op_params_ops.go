@@ -49,6 +49,7 @@ func (op *PocketOp) Parameters() []OpParam {
 		numberParam("finishAllowance", "Finish allowance (mm)", op.FinishAllowance),
 		choiceParam("pattern", "Pattern", pocketPatternOf(op.Pattern), gen.PocketOffset, gen.PocketZigzag),
 		boolParam("oneWay", "One-direction (zigzag)", op.OneWay),
+		numberParam("retractThreshold", "Keep-down threshold (mm)", op.RetractThreshold),
 		boolParam("climb", "Climb", op.Climb),
 	}, depthParams(op.OpBase)...)
 }
@@ -74,6 +75,8 @@ func (op *PocketOp) SetParameter(id, value string) bool {
 		op.Pattern = value
 	case "oneWay":
 		op.OneWay = parseBool(value)
+	case "retractThreshold":
+		op.RetractThreshold = panelNum(value, op.RetractThreshold)
 	case "climb":
 		op.Climb = parseBool(value)
 	default:

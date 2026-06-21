@@ -11,13 +11,14 @@ import (
 
 // PocketParams configure an area-clearing (pocket) pass.
 type PocketParams struct {
-	ToolRadius      float64          // mm
-	StepOver        float64          // fraction of the tool diameter to step between rings (0..1); 0 → 0.5
-	Climb           bool             // climb vs conventional
-	Islands         []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
-	FinishAllowance float64          // mm of stock to leave on the walls when roughing; >0 adds a final wall pass
-	Pattern         string           // PocketOffset (default) | PocketZigzag
-	OneWay          bool             // zigzag only: cut every row the same direction (rapid back) instead of back-and-forth
+	ToolRadius       float64          // mm
+	StepOver         float64          // fraction of the tool diameter to step between rings (0..1); 0 → 0.5
+	Climb            bool             // climb vs conventional
+	Islands          []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
+	FinishAllowance  float64          // mm of stock to leave on the walls when roughing; >0 adds a final wall pass
+	Pattern          string           // PocketOffset (default) | PocketZigzag
+	OneWay           bool             // zigzag only: cut every row the same direction (rapid back) instead of back-and-forth
+	RetractThreshold float64          // mm; keep the tool down across a link only when the horizontal hop is within this — 0 → one tool diameter
 }
 
 // defaultStepOver is the ring step (fraction of tool diameter) used when StepOver is unset.
@@ -147,6 +148,17 @@ func clipRingAroundIslands(ring geom2d.Polygon, keepouts []geom2d.Polygon) [][]g
 // closed path.
 func closeLoop(poly geom2d.Polygon) []geom2d.Point2 {
 	return append(append([]geom2d.Point2{}, poly...), poly[0])
+}
+
+// retractThreshold is the maximum horizontal link distance (mm) for which the tool is kept
+// down at cutting depth between consecutive cut runs; beyond it the tool retracts, rapids,
+// and re-plunges. Defaults to one tool diameter when unset — FreeCAD's "1 * OpToolDiameter"
+// migration of the old KeepToolDown flag (see App/Area.cpp toPath threshold).
+func (p PocketParams) retractThreshold() float64 {
+	if p.RetractThreshold > 0 {
+		return p.RetractThreshold
+	}
+	return 2 * p.ToolRadius
 }
 
 // stepDistance is the spacing between concentric rings in millimetres (step-over fraction ×
