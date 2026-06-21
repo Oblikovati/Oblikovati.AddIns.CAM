@@ -21,6 +21,7 @@ type ChamferOp struct {
 	ToolAngle float64        // included angle of the V-tool (degrees); <=0 → 90°
 	Side      string         // gen.SideOutside | gen.SideInside | gen.SideOn
 	Climb     bool           // climb vs conventional milling
+	Passes    int            // flank passes to reach full width (>1 roughs a wide bevel); 0/1 → single
 	Boundary  geom2d.Polygon // driving contour (mm), populated by the engine
 }
 
@@ -41,7 +42,7 @@ func (op *ChamferOp) Execute(job *Job) (gcode.Path, error) {
 	}
 	feeds := gen.Feeds{Vert: tc.VertFeed, Horiz: tc.HorizFeed, ClearanceZ: op.ClearanceHeight, SafeZ: op.SafeHeight}
 	cmds, err := gen.GenerateChamfer(op.Boundary, op.StartDepth, feeds, gen.ChamferParams{
-		Width: op.Width, ToolAngleDeg: op.ToolAngle, Side: op.Side, Climb: op.Climb,
+		Width: op.Width, ToolAngleDeg: op.ToolAngle, Side: op.Side, Climb: op.Climb, Passes: op.Passes,
 	})
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("chamfer operation %q: %w", op.OpLabel, err)

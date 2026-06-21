@@ -52,6 +52,31 @@ func TestChamferOffsetSide(t *testing.T) {
 	}
 }
 
+// TestChamferMultiPass checks flank passes step the bevel from the top edge down to full width:
+// three passes give three loops, the innermost (first, j=1) narrower than the final at-width loop.
+func TestChamferMultiPass(t *testing.T) {
+	cmds, err := GenerateChamfer(square(20), 0, testFeeds, ChamferParams{Width: 3, ToolAngleDeg: 90, Side: SideOutside, Climb: true, Passes: 3})
+	if err != nil {
+		t.Fatalf("GenerateChamfer multi-pass: %v", err)
+	}
+	if got := countPlunges(cmds); got != 3 {
+		t.Errorf("three flank passes → three plunges, got %d", got)
+	}
+	// The first (shallowest) pass offsets by width·1/3 = 1 → 22×22 = 484; the last by 3 → 26×26 = 676.
+	if a := cutPolygon(cmds).Area(); !approx(a, 484) {
+		t.Errorf("first flank pass area = %g, want 484 (22×22)", a)
+	}
+	if a := lastLoopArea(cmds); !approx(a, 676) {
+		t.Errorf("final flank pass area = %g, want 676 (26×26, the full chamfer)", a)
+	}
+	// One pass is byte-identical to the plain single chamfer.
+	single, _ := GenerateChamfer(square(20), 0, testFeeds, ChamferParams{Width: 3, ToolAngleDeg: 90, Side: SideOutside, Climb: true})
+	one, _ := GenerateChamfer(square(20), 0, testFeeds, ChamferParams{Width: 3, ToolAngleDeg: 90, Side: SideOutside, Climb: true, Passes: 1})
+	if len(single) != len(one) {
+		t.Errorf("Passes=1 should match the single-pass chamfer: %d vs %d", len(one), len(single))
+	}
+}
+
 // TestChamferErrors covers the degenerate width and oversized-inside cases.
 func TestChamferErrors(t *testing.T) {
 	if _, err := GenerateChamfer(square(10), 0, testFeeds, ChamferParams{Width: 0, Side: SideOutside}); err == nil {

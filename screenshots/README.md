@@ -34,6 +34,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `millface-spiral.png` | Facing (spiral pattern): one continuous inward spiral over the region, constant climb direction and a single plunge. |
 | `engrave.png` | Engraving: the contour run on the tool centre (no compensation). |
 | `chamfer.png` | Chamfer / edge-break: a single bevel pass offset by the chamfer width at the angle-derived depth. |
+| `chamfer-multipass.png` | Chamfer roughing: a wide bevel cut in flank passes stepping out and down from the top edge to the full width (depth shade traces the flank). |
 | `vcarve.png` | V-carve: nested contours deepening inward (the depth shade traces the V valley toward the spine). |
 | `custom.png` | Custom operation: raw operator-typed G-code emitted verbatim (here a triangle) — the escape hatch for moves no generator produces. |
 | `dressup-tabs.png` | Holding tabs lifting the tool over the boundary. |
