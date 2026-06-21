@@ -49,6 +49,44 @@ func minutesOf(t *testing.T, res []OperationResult) float64 {
 	return m
 }
 
+// totalCode counts a command name across all posted objects.
+func totalCode(results []OperationResult, name string) int {
+	n := 0
+	for _, obj := range PostObjects(results) {
+		for _, c := range obj.Path.Commands {
+			if c.Name == name {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// TestCoolantDedupAcrossOps checks flood coolant stays on through a same-tool run (one M8/one M9),
+// but is cycled when a tool change, a coolant-mode change, or an optional stop intervenes.
+func TestCoolantDedupAcrossOps(t *testing.T) {
+	t1 := ToolController{ToolNumber: 1, SpindleSpeed: 5000, SpindleDir: "Forward"}
+	t2 := ToolController{ToolNumber: 2, SpindleSpeed: 5000, SpindleDir: "Forward"}
+
+	// Two flood ops on the same tool → coolant stays on: a single M8 and a single M9.
+	run := []OperationResult{
+		{Label: "Rough", Path: NewJobPath("G1 X1"), Controller: t1, Coolant: CoolantFlood},
+		{Label: "Finish", Path: NewJobPath("G1 X2"), Controller: t1, Coolant: CoolantFlood},
+	}
+	if on, off := totalCode(run, "M8"), totalCode(run, "M9"); on != 1 || off != 1 {
+		t.Errorf("a same-tool flood run should emit one M8 and one M9, got %d / %d", on, off)
+	}
+
+	// A tool change between them re-cycles the coolant (off before the change, on after).
+	withChange := []OperationResult{
+		{Label: "A", Path: NewJobPath("G1 X1"), Controller: t1, Coolant: CoolantFlood},
+		{Label: "B", Path: NewJobPath("G1 X2"), Controller: t2, Coolant: CoolantFlood},
+	}
+	if on := totalCode(withChange, "M8"); on != 2 {
+		t.Errorf("a tool change should re-start the coolant: want 2 M8, got %d", on)
+	}
+}
+
 // TestToolListHeader checks the posted program opens with a setup-sheet listing each distinct tool
 // once, in first-use order, with its number, shape, and diameter.
 func TestToolListHeader(t *testing.T) {

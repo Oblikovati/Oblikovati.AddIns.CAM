@@ -27,15 +27,37 @@ func PostObjects(results []OperationResult) []post.Object {
 		if changes[i] {
 			commands = append(commands, toolChangeBlock(res.Controller)...)
 		}
-		commands = append(commands, coolantOn(res.Coolant)...)
+		if coolantStartsAt(results, changes, i) {
+			commands = append(commands, coolantOn(res.Coolant)...)
+		}
 		commands = append(commands, res.Path.Commands...)
-		commands = append(commands, coolantOff(res.Coolant)...)
+		if coolantEndsAt(results, changes, i) {
+			commands = append(commands, coolantOff(res.Coolant)...)
+		}
 		if res.PauseAfter {
 			commands = append(commands, gcode.NewCommand("M1", nil)) // optional stop — inspect before continuing
 		}
 		objects = append(objects, post.Object{Label: res.Label, Path: gcode.NewPath(commands)})
 	}
 	return objects
+}
+
+// coolantStartsAt reports whether the coolant should be (re)started before operation i: the first
+// op, an op whose coolant differs from the previous one, or an op that begins with a tool change
+// (which turns the coolant off). Within a same-tool, same-coolant run the coolant stays on rather
+// than toggling off and back on between operations.
+func coolantStartsAt(results []OperationResult, changes []bool, i int) bool {
+	return i == 0 || changes[i] || results[i-1].Coolant != results[i].Coolant
+}
+
+// coolantEndsAt reports whether the coolant should be stopped after operation i: the last op, an op
+// before a coolant change, an op before a tool change (coolant must be off during the change), or
+// an op with an optional stop (coolant off while the operator inspects).
+func coolantEndsAt(results []OperationResult, changes []bool, i int) bool {
+	if i == len(results)-1 || results[i].PauseAfter {
+		return true
+	}
+	return changes[i+1] || results[i+1].Coolant != results[i].Coolant
 }
 
 // estimateComment is a whole-line comment with the operation's estimated cut time (the toolpath
