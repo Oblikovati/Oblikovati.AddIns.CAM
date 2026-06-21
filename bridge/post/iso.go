@@ -102,6 +102,9 @@ func (r *isoRenderer) writeOperation(b *strings.Builder, obj Object) {
 		r.line(b, "("+obj.Label+")")
 	}
 	for _, c := range obj.Path.Commands {
+		if c.Name == "M6" || c.Name == "M06" {
+			r.line(b, "M5") // stop the spindle before the tool change
+		}
 		if tokens := r.commandTokens(c); len(tokens) > 0 {
 			r.line(b, formatOutstring(tokens))
 		}

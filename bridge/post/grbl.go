@@ -266,6 +266,7 @@ func (r *grblRenderer) applyToolChange(out *strings.Builder, c gcode.Command, to
 	if c.Name != "M6" && c.Name != "M06" {
 		return
 	}
+	out.WriteString(r.lineNumber() + "M5\n") // stop the spindle before the (manual) tool change
 	if r.opts.OutputComments {
 		out.WriteString(r.lineNumber() + "(Begin toolchange)\n")
 	}

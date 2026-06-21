@@ -71,6 +71,7 @@ func (r *marlinRenderer) writePath(b *strings.Builder, obj Object) {
 		case c.Name == "G84" || c.Name == "G74":
 			r.tapTranslate(b, c)
 		case c.Name == "M6" || c.Name == "M06":
+			b.WriteString("M5\n") // stop the spindle before the operator swaps the tool by hand
 			r.comment(b, "tool change — pausing for a manual swap")
 			b.WriteString("M0\n")
 		case strings.HasPrefix(c.Name, "("):
