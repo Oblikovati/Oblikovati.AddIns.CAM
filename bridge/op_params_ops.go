@@ -364,6 +364,7 @@ func (op *ChamferOp) Parameters() []OpParam {
 		numberParam("width", "Width (mm)", op.Width),
 		numberParam("toolAngle", "Tool angle (°)", op.ToolAngle),
 		choiceParam("side", "Side", op.Side, gen.SideOutside, gen.SideInside, gen.SideOn),
+		numberParam("passes", "Flank passes", float64(op.Passes)),
 		boolParam("climb", "Climb", op.Climb),
 	}, depthParams(op.OpBase)...)
 }
@@ -377,6 +378,8 @@ func (op *ChamferOp) SetParameter(id, value string) bool {
 		op.ToolAngle = panelNum(value, op.ToolAngle)
 	case "side":
 		op.Side = value
+	case "passes":
+		op.Passes = int(panelNum(value, float64(op.Passes)))
 	case "climb":
 		op.Climb = parseBool(value)
 	default:

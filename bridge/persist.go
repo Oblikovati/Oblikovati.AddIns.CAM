@@ -307,6 +307,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 	case *ChamferOp:
 		d := baseDoc("chamfer", o.OpBase)
 		d.Width, d.ToolAngle, d.Side, d.Climb = o.Width, o.ToolAngle, o.Side, o.Climb
+		d.RoughingPasses = o.Passes
 		return d, nil
 	case *VCarveOp:
 		d := baseDoc("vcarve", o.OpBase)
@@ -381,7 +382,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "engrave":
 		return &EngraveOp{OpBase: opBaseFrom(d), Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "chamfer":
-		return &ChamferOp{OpBase: opBaseFrom(d), Width: d.Width, ToolAngle: d.ToolAngle, Side: d.Side, Climb: d.Climb}, nil
+		return &ChamferOp{OpBase: opBaseFrom(d), Width: d.Width, ToolAngle: d.ToolAngle, Side: d.Side, Climb: d.Climb, Passes: d.RoughingPasses}, nil
 	case "vcarve":
 		return &VCarveOp{OpBase: opBaseFrom(d), ToolAngle: d.ToolAngle, StepOver: d.StepOver}, nil
 	case "slot":

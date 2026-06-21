@@ -19,16 +19,21 @@ type ChamferParams struct {
 	ToolAngleDeg float64 // included angle of the V-tool (degrees); <=0 → 90°
 	Side         string  // SideOutside | SideInside | SideOn — which side of the boundary the edge faces
 	Climb        bool    // climb vs conventional milling
+	Passes       int     // number of flank passes to reach full width (>1 roughs a wide bevel); 0/1 → single pass
 }
 
 // defaultChamferAngleDeg is the V-tool included angle used when ToolAngleDeg is unset — 90°,
 // whose 45° half-angle makes the chamfer depth equal its width.
 const defaultChamferAngleDeg = 90.0
 
-// GenerateChamfer cuts a single bevel pass around the boundary: the tip path is the boundary
-// offset to the edge side by the chamfer width, walked once at the chamfer depth
-// (width / tan(halfAngle)) below the top. This is the add-in analogue of FreeCAD's chamfer /
-// deburr operation (the single-flank bevel).
+// maxChamferPasses caps the flank passes so a huge count can't explode the path.
+const maxChamferPasses = 100
+
+// GenerateChamfer cuts the bevel around the boundary with a V-tool. A single pass traces the
+// boundary offset to the edge side by the chamfer width at the chamfer depth (width /
+// tan(halfAngle)) below the top. With Passes > 1 the bevel is roughed in flank passes that step
+// the offset and depth together from the top edge down to the full width — for a wide chamfer or
+// a deburr where one full-flank cut would overload the tool. Ports FreeCAD's chamfer / deburr op.
 func GenerateChamfer(boundary geom2d.Polygon, top float64, feeds Feeds, p ChamferParams) ([]gcode.Command, error) {
 	if p.Width <= 0 {
 		return nil, fmt.Errorf("chamfer needs a positive width, got %g", p.Width)
@@ -36,13 +41,35 @@ func GenerateChamfer(boundary geom2d.Polygon, top float64, feeds Feeds, p Chamfe
 	if len(boundary) < 3 {
 		return nil, fmt.Errorf("chamfer boundary needs at least 3 points, got %d", len(boundary))
 	}
-	half := chamferHalfAngle(p.ToolAngleDeg)
-	z := top - p.Width/math.Tan(half)
-	tip, err := chamferTipPath(boundary, p)
-	if err != nil {
+	if _, err := chamferTipPath(boundary, p); err != nil { // the full-width pass must fit
 		return nil, err
 	}
-	return walkLoop(orient(tip, p.Climb), z, feeds), nil
+	fullDepth := p.Width / math.Tan(chamferHalfAngle(p.ToolAngleDeg))
+	n := chamferPasses(p.Passes)
+
+	var cmds []gcode.Command
+	for j := 1; j <= n; j++ {
+		frac := float64(j) / float64(n)
+		pass := p
+		pass.Width = p.Width * frac // narrower offset than the validated full pass, so it fits
+		tip, err := chamferTipPath(boundary, pass)
+		if err != nil {
+			continue
+		}
+		cmds = append(cmds, walkLoop(orient(tip, p.Climb), top-fullDepth*frac, feeds)...)
+	}
+	return cmds, nil
+}
+
+// chamferPasses clamps the flank-pass count to at least one and no more than the cap.
+func chamferPasses(passes int) int {
+	if passes < 1 {
+		return 1
+	}
+	if passes > maxChamferPasses {
+		return maxChamferPasses
+	}
+	return passes
 }
 
 // chamferHalfAngle returns the V-tool half-angle in radians, defaulting to 45° (a 90° tool).
