@@ -11,7 +11,7 @@ import (
 
 // rect builds a CCW axis-aligned rectangle from (x0,y0) to (x1,y1).
 func rect(x0, y0, x1, y1 int64) Path {
-	return Path{{x0, y0}, {x1, y0}, {x1, y1}, {x0, y1}}
+	return Path{{x0, y0, 0}, {x1, y0, 0}, {x1, y1, 0}, {x0, y1, 0}}
 }
 
 // sumArea totals the signed areas of a path set (holes count negative).
@@ -34,6 +34,40 @@ func TestBooleanUnion(t *testing.T) {
 	}
 	if a := math.Abs(Area(got[0])); a != 17500 {
 		t.Fatalf("union area = %g, want 17500", a)
+	}
+}
+
+// TestZTagSurvivesUnion proves the use_xyz tag the adaptive solver threads survives a boolean and
+// the cgo round trip: a retained subject vertex keeps its Z, while the clip vertices and any new
+// intersection points stay at 0 (no fill callback) — exactly what Execute steps 4–5 rely on to
+// distinguish profile walls (Z=1, needs finishing) from stock boundaries (Z=0).
+func TestZTagSurvivesUnion(t *testing.T) {
+	subject := rect(0, 0, 100, 100)
+	for i := range subject {
+		subject[i].Z = 1 // tag the whole profile wall as needing a finishing pass
+	}
+	clip := rect(50, 50, 150, 150) // a stock boundary at the default Z=0
+
+	got, err := Unite(Paths{subject}, Paths{clip})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sawOne, sawZero := false, false
+	for _, p := range got {
+		for _, pt := range p {
+			switch pt.Z {
+			case 1:
+				sawOne = true
+			case 0:
+				sawZero = true
+			}
+		}
+	}
+	if !sawOne {
+		t.Error("a retained subject vertex should keep its Z=1 tag through the union")
+	}
+	if !sawZero {
+		t.Error("clip vertices and new intersection points should carry Z=0")
 	}
 }
 
@@ -63,7 +97,7 @@ func TestBooleanIntersection(t *testing.T) {
 
 func TestBooleanOpenPathClippedToRegion(t *testing.T) {
 	// A horizontal open polyline crossing a 100x100 region: the inside segment is x in [0,100].
-	open := Paths{{{-50, 50}, {150, 50}}}
+	open := Paths{{{-50, 50, 0}, {150, 50, 0}}}
 	got, err := Boolean(Intersection, EvenOdd, open, false, Paths{rect(0, 0, 100, 100)}, true)
 	if err != nil {
 		t.Fatal(err)
@@ -108,7 +142,7 @@ func TestOffsetTooSmallVanishes(t *testing.T) {
 
 func TestSimplifyResolvesSelfIntersection(t *testing.T) {
 	// A bowtie (self-intersecting quad) resolves into two triangles under even-odd fill.
-	bowtie := Paths{{{0, 0}, {100, 0}, {0, 100}, {100, 100}}}
+	bowtie := Paths{{{0, 0, 0}, {100, 0, 0}, {0, 100, 0}, {100, 100, 0}}}
 	got, err := Simplify(bowtie, EvenOdd)
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +165,7 @@ func TestEmptyInputsAreSafe(t *testing.T) {
 func TestPathIntersectAreaWholeRingInside(t *testing.T) {
 	// An engage-style closed ring fully inside the region comes back as one open path (rejoined
 	// across the closing seam) that visits all the ring's vertices in order.
-	ring := Path{{20, 20}, {80, 20}, {80, 80}, {20, 80}}
+	ring := Path{{20, 20, 0}, {80, 20, 0}, {80, 80, 0}, {20, 80, 0}}
 	got, err := PathIntersectArea(ring, Paths{rect(0, 0, 100, 100)})
 	if err != nil {
 		t.Fatal(err)
@@ -147,7 +181,7 @@ func TestPathIntersectAreaWholeRingInside(t *testing.T) {
 func TestPathIntersectAreaClipsRingToRegion(t *testing.T) {
 	// A ring straddling the region edge keeps only its inside portion; every returned point lies
 	// within the region (x,y in [0,100]).
-	ring := Path{{50, 50}, {200, 50}, {200, 200}, {50, 200}}
+	ring := Path{{50, 50, 0}, {200, 50, 0}, {200, 200, 0}, {50, 200, 0}}
 	got, err := PathIntersectArea(ring, Paths{rect(0, 0, 100, 100)})
 	if err != nil {
 		t.Fatal(err)
@@ -165,7 +199,7 @@ func TestPathIntersectAreaClipsRingToRegion(t *testing.T) {
 }
 
 func TestPathIntersectAreaOutsideIsEmpty(t *testing.T) {
-	ring := Path{{200, 200}, {300, 200}, {300, 300}, {200, 300}}
+	ring := Path{{200, 200, 0}, {300, 200, 0}, {300, 300, 0}, {200, 300, 0}}
 	got, err := PathIntersectArea(ring, Paths{rect(0, 0, 100, 100)})
 	if err != nil {
 		t.Fatal(err)

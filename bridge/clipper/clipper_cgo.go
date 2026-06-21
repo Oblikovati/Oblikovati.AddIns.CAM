@@ -89,15 +89,15 @@ func PathIntersectArea(subject Path, obj Paths) (Paths, error) {
 	return collect(outCounts, outCoords, int(n)), nil
 }
 
-// flatten packs a Paths set into the (coords, counts) layout the C side expects: coords holds 2
-// int64 per point (x,y interleaved), counts holds each path's point count. Empty input yields
+// flatten packs a Paths set into the (coords, counts) layout the C side expects: coords holds 3
+// int64 per point (x,y,z interleaved), counts holds each path's point count. Empty input yields
 // one-element slices so &slice[0] is always addressable for the cgo call.
 func flatten(paths Paths) ([]C.longlong, []C.int) {
 	total := 0
 	for _, p := range paths {
 		total += len(p)
 	}
-	coords := make([]C.longlong, max1(total*2))
+	coords := make([]C.longlong, max1(total*3))
 	counts := make([]C.int, max1(len(paths)))
 	k := 0
 	for i, p := range paths {
@@ -105,7 +105,8 @@ func flatten(paths Paths) ([]C.longlong, []C.int) {
 		for _, pt := range p {
 			coords[k] = C.longlong(pt.X)
 			coords[k+1] = C.longlong(pt.Y)
-			k += 2
+			coords[k+2] = C.longlong(pt.Z)
+			k += 3
 		}
 	}
 	return coords, counts
@@ -123,14 +124,14 @@ func collect(outCounts *C.int, outCoords *C.longlong, npaths int) Paths {
 	for _, c := range counts {
 		total += int(c)
 	}
-	coords := unsafe.Slice((*int64)(unsafe.Pointer(outCoords)), total*2)
+	coords := unsafe.Slice((*int64)(unsafe.Pointer(outCoords)), total*3)
 	result := make(Paths, npaths)
 	idx := 0
 	for i := 0; i < npaths; i++ {
 		c := int(counts[i])
 		path := make(Path, c)
 		for j := 0; j < c; j++ {
-			path[j] = IntPoint{X: coords[idx*2], Y: coords[idx*2+1]}
+			path[j] = IntPoint{X: coords[idx*3], Y: coords[idx*3+1], Z: coords[idx*3+2]}
 			idx++
 		}
 		result[i] = path

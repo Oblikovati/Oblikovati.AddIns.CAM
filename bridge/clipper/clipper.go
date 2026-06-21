@@ -18,7 +18,14 @@ package clipper
 // IntPoint is a point in the engine's scaled integer plane. Real millimetres are mapped in
 // by multiplying with a scale factor (the solver uses 100), which is what makes the boolean
 // arithmetic exact.
-type IntPoint struct{ X, Y int64 }
+//
+// Z is the engine's extra per-vertex tag (the library is built with use_xyz). The adaptive
+// solver uses it as a "needs finishing" flag through Execute steps 3–8 (Z=1 a real profile wall
+// that wants a finishing pass, Z=0 a stock boundary that does not). It survives a boolean: the
+// engine copies a retained vertex's Z and leaves a new intersection vertex at Z=0 (no fill
+// callback), exactly matching the upstream union behaviour. An offset drops Z (returns 0), so the
+// solver re-stamps it per curve, as upstream does.
+type IntPoint struct{ X, Y, Z int64 }
 
 // Path is a single polygon or open polyline as an ordered vertex list; Paths is a set of
 // them (an outer contour plus holes, or the disjoint pieces a boolean produced).

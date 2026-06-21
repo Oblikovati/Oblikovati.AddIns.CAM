@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* C ABI over the integer polygon-clipping engine, so cgo can call it. The C++ side is the
    Clipper library (BSL-1.0, see COPYING.clipper / NOTICE.md); this shim is the project's thin
-   owned interface. Polygon sets cross the boundary flattened: `coords` holds 2 int64 per point
-   (x,y interleaved), `counts` holds the point count of each of `npaths` paths. Every out array
-   is malloc'd and the caller frees it with obk_clipper_free_i / obk_clipper_free_ll. */
+   owned interface. Polygon sets cross the boundary flattened: `coords` holds 3 int64 per point
+   (x,y,z interleaved — z is the use_xyz tag the adaptive solver threads), `counts` holds the
+   point count of each of `npaths` paths. Every out array is malloc'd and the caller frees it
+   with obk_clipper_free_i / obk_clipper_free_ll. */
 #ifndef OBK_CLIPPER_WRAPPER_H
 #define OBK_CLIPPER_WRAPPER_H
 
@@ -18,7 +19,7 @@ extern "C" {
      return_open : 0 => the closed-polygon solution; 1 => the OPEN paths the boolean produced
                    (executed via a PolyTree, used to clip an open path against a region)
    On success returns the number of result paths (>=0), writes their point counts to *out_counts
-   (that many ints) and their x,y pairs to *out_coords (2*sum(counts) int64). Returns -1 on bad
+   (that many ints) and their x,y,z triples to *out_coords (3*sum(counts) int64). Returns -1 on bad
    input or an internal failure. */
 int obk_clipper_boolean(int clip_type, int fill_type,
                         const long long *subj, const int *subj_counts, int n_subj, int subj_closed,
@@ -50,7 +51,7 @@ int obk_clipper_simplify(const long long *paths, const int *counts, int npaths, 
    per-vertex order data so fragments that come out of the clip reversed are flipped back, and the
    two fragments that straddle the artificial closing seam are rejoined; the order data uses the
    engine's Z field (built with use_xyz) and never reaches the caller — results are plain x,y.
-     subj        : 2*subj_count int64 (x,y interleaved) of the open subject path
+     subj        : 3*subj_count int64 (x,y,z interleaved; z ignored) of the open subject path
      obj/obj_counts/n_obj : the closed clip area, flattened as elsewhere
    Returns the result-path count and writes counts/coords like obk_clipper_boolean; -1 on failure. */
 int obk_clipper_path_intersect_area(const long long *subj, int subj_count,

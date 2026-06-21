@@ -62,11 +62,19 @@ func TestExecuteSkipsFullyClearedPocket(t *testing.T) {
 	}
 }
 
-func TestExecuteRejectsProfiling(t *testing.T) {
+func TestExecuteSupportsProfiling(t *testing.T) {
+	// Profiling is a supported op type (Execute step 4): it turns the profile into a band area and
+	// clears it, producing at least one region. The cleared-area accuracy is asserted by the
+	// profiling oracle tests; this just guards that the op type runs.
 	cfg := DefaultConfig()
 	cfg.OpType = ProfilingInside
-	if _, err := Execute(cfg, nil, []DPath{squareDPath(10)}, nil); err == nil {
-		t.Fatal("profiling op types should be rejected (clearing only)")
+	cfg.StepOverFactor = 0.5
+	out, err := Execute(cfg, []DPath{squareDPath(50)}, []DPath{squareDPath(40)}, nil)
+	if err != nil {
+		t.Fatalf("profiling should run, got error: %v", err)
+	}
+	if len(out) == 0 {
+		t.Fatal("profiling should produce at least one cleared region")
 	}
 }
 
@@ -84,7 +92,7 @@ func TestPerCurveOffsetShrinksExterior(t *testing.T) {
 	sq := clipper.Path{{X: 0, Y: 0}, {X: 1000, Y: 0}, {X: 1000, Y: 1000}, {X: 0, Y: 1000}}
 	paths := clipper.Paths{sq}
 	// delta -100 with exterior direction +1 shrinks the square.
-	out, err := perCurveOffset(paths, paths, -100)
+	out, err := perCurveOffset(paths, paths, -100, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}

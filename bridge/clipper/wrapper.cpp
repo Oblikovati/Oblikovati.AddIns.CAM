@@ -4,7 +4,8 @@
 // see COPYING.clipper / NOTICE.md). It marshals the flat (counts, coords) representation the Go
 // side uses into ClipperLib's Paths and back, and runs the boolean / offset / simplify the
 // adaptive-clearing solver needs. The library is built with use_xyz (a Z member on IntPoint);
-// the wrapper carries only X,Y and leaves Z at its 0 default, since 2D clearing does not use it.
+// the wrapper carries X,Y,Z (3 int64 per point) so the solver's "needs finishing" Z tag survives
+// the round trip and the union the profiling / stock-overshoot steps depend on.
 
 #include "wrapper.h"
 
@@ -18,8 +19,8 @@ using namespace ClipperLib;
 
 namespace
 {
-// toPaths rebuilds the flat (coords,counts) pair into ClipperLib Paths. coords holds 2 int64 per
-// point; counts[i] is the point count of path i.
+// toPaths rebuilds the flat (coords,counts) pair into ClipperLib Paths. coords holds 3 int64 per
+// point (x,y,z interleaved); counts[i] is the point count of path i.
 Paths toPaths(const long long *coords, const int *counts, int npaths)
 {
     Paths out(npaths);
@@ -27,8 +28,8 @@ Paths toPaths(const long long *coords, const int *counts, int npaths)
     for (int i = 0; i < npaths; ++i) {
         out[i].reserve(counts[i]);
         for (int j = 0; j < counts[i]; ++j) {
-            out[i].push_back(IntPoint(static_cast<cInt>(c[0]), static_cast<cInt>(c[1])));
-            c += 2;
+            out[i].push_back(IntPoint(static_cast<cInt>(c[0]), static_cast<cInt>(c[1]), static_cast<cInt>(c[2])));
+            c += 3;
         }
     }
     return out;
@@ -45,7 +46,7 @@ int emit(const Paths &paths, int **out_counts, long long **out_coords)
     }
     // Always allocate at least one element so the malloc never returns NULL for an empty result.
     int *oc = static_cast<int *>(std::malloc((npaths ? npaths : 1) * sizeof(int)));
-    long long *ox = static_cast<long long *>(std::malloc((totalPts ? totalPts * 2 : 1) * sizeof(long long)));
+    long long *ox = static_cast<long long *>(std::malloc((totalPts ? totalPts * 3 : 1) * sizeof(long long)));
     if (!oc || !ox) {
         std::free(oc);
         std::free(ox);
@@ -57,6 +58,7 @@ int emit(const Paths &paths, int **out_counts, long long **out_coords)
         for (const IntPoint &pt : paths[i]) {
             *x++ = static_cast<long long>(pt.X);
             *x++ = static_cast<long long>(pt.Y);
+            *x++ = static_cast<long long>(pt.Z);
         }
     }
     *out_counts = oc;
@@ -173,7 +175,7 @@ extern "C" int obk_clipper_path_intersect_area(const long long *subj, int subj_c
         const long long *c = subj;
         for (int i = 0; i < subj_count; ++i) {
             subject.push_back(IntPoint(static_cast<cInt>(c[0]), static_cast<cInt>(c[1])));
-            c += 2;
+            c += 3;
         }
         subject.push_back(subject[0]);
         for (size_t i = 0; i < subject.size(); ++i) {
@@ -242,6 +244,13 @@ extern "C" int obk_clipper_path_intersect_area(const long long *subj, int subj_c
             }
             if (haveEnd) {
                 result.push_back(endPath);
+            }
+        }
+        // The Z field was an internal ordering tag; zero it so the open toolpath fragments reach
+        // the caller as plain x,y (this primitive's contract — see wrapper.h).
+        for (Path &p : result) {
+            for (IntPoint &pt : p) {
+                pt.Z = 0;
             }
         }
         return emit(result, out_counts, out_coords);

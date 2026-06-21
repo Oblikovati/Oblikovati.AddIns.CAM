@@ -91,13 +91,106 @@ func TestOracleClearInsideRestMachining(t *testing.T) {
 	}
 }
 
-// TestOracleClearOutside documents the upstream testClearOutside case. It is SKIPPED: that test
-// runs with forceInsideOut=false, whose stock-overshoot containment (Execute step 5) is the
-// deferred fidelity gap F6. Outside clearing without it is not bounded to the stock, so the area
-// assertion does not hold. The shipped scope is adaptive pocketing (clearing inside), validated by
-// the two tests above; this is kept as a marker of the remaining work.
+// TestOracleClearOutside mirrors the upstream testClearOutside: 50×50 stock, 40×40 part centred,
+// clearing OUTSIDE the part with forceInsideOut=false. The stock-overshoot path (Execute step 5)
+// bounds the cut to a frame around the stock, so the cleared area is stock − part = 2500 − 1600,
+// within half a tool corner.
 func TestOracleClearOutside(t *testing.T) {
-	t.Skip("clearing outside with forceInsideOut=false needs the stock-overshoot path (gap F6)")
+	cfg := oracleConfig()
+	cfg.OpType = ClearingOutside
+	stock := []DPath{rectDPath(0, 0, 50, 50)}
+	part := []DPath{rectDPath(5, 5, 45, 45)}
+	outputs, err := Execute(cfg, stock, part, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertNoErrorFlags(t, outputs)
+
+	expected := 50.0*50.0 - 40.0*40.0
+	delta := cornerUnclearable(5.0) / 2
+	if got := totalCleared(outputs); math.Abs(got-expected) > delta {
+		t.Fatalf("cleared outside = %.3f, want %.3f ± %.3f", got, expected, delta)
+	}
+}
+
+// profilingConfig is the upstream profiling configuration (stepOverFactor 0.5, the rest as the
+// clearing oracle).
+func profilingConfig(op OperationType) Config {
+	cfg := oracleConfig()
+	cfg.OpType = op
+	cfg.StepOverFactor = 0.5
+	return cfg
+}
+
+// TestOracleProfilingInside mirrors the upstream testProfilingInside: profiling INSIDE a 40×40 path
+// (in 50×50 stock) clears a band 2–3 tool diameters deep along the inside of the path wall. The
+// cleared area must fall between (outer − inner@3⌀) and (outer − inner@2⌀). Exact port of the
+// upstream area-band assertion (no magic numbers — the same formula).
+func TestOracleProfilingInside(t *testing.T) {
+	stock := []DPath{rectDPath(0, 0, 50, 50)}
+	path := []DPath{rectDPath(5, 5, 45, 45)} // 40×40 centred
+	outputs, err := Execute(profilingConfig(ProfilingInside), stock, path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertNoErrorFlags(t, outputs)
+
+	const d = 5.0 // tool diameter
+	outerArea := 40.0 * 40.0
+	innerAreaMax := bandInnerArea(40.0, 2*d) // 2 diameters deep leaves the largest island
+	innerAreaMin := bandInnerArea(40.0, 3*d) // 3 diameters deep leaves the smallest
+	minArea := outerArea - innerAreaMax
+	maxArea := outerArea - innerAreaMin
+
+	if got := totalCleared(outputs); got < minArea || got > maxArea {
+		t.Fatalf("profiling-inside cleared = %.3f, want in [%.3f, %.3f] (2–3 tool diameters)", got, minArea, maxArea)
+	}
+}
+
+// TestOracleProfilingOutside mirrors the upstream testProfilingOutside: profiling OUTSIDE a 15×15
+// path (in 50×50 stock) clears a band 2–3 tool diameters wide around the path, bounded to the stock.
+// The band math accounts for the rounded outer corners the round tool leaves and the inner corners
+// it cannot reach. Exact port of the upstream formula.
+func TestOracleProfilingOutside(t *testing.T) {
+	stock := []DPath{rectDPath(0, 0, 50, 50)}
+	path := []DPath{rectDPath(17.5, 17.5, 32.5, 32.5)} // 15×15 centred
+	outputs, err := Execute(profilingConfig(ProfilingOutside), stock, path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertNoErrorFlags(t, outputs)
+
+	const d, stockSide = 5.0, 50.0
+	innerArea := 15.0 * 15.0
+
+	outerAreaMin := bandOuterArea(15.0, 2*d, stockSide)
+	outerAreaMax := bandOuterArea(15.0, 3*d, stockSide)
+	roundCorner := func(off float64) float64 { return 4 * off * off * (1 - math.Pi/4) }
+	innerUnclearable := 4 * cornerUnclearable(d)
+
+	minArea := outerAreaMin - innerArea - roundCorner(2*d) - innerUnclearable
+	maxArea := outerAreaMax - innerArea - roundCorner(3*d)
+
+	if got := totalCleared(outputs); got < minArea || got > maxArea {
+		t.Fatalf("profiling-outside cleared = %.3f, want in [%.3f, %.3f] (2–3 tool diameters)", got, minArea, maxArea)
+	}
+}
+
+// bandInnerArea is the area of the square island left inside a side-length square when a band of the
+// given one-sided offset is taken off each edge; zero once the offsets meet.
+func bandInnerArea(side, offset float64) float64 {
+	inner := side - 2*offset
+	if inner <= 0 {
+		return 0
+	}
+	return inner * inner
+}
+
+// bandOuterArea is the area of the square reached offsetting a side-length square outward on each
+// edge, clamped to the stock side.
+func bandOuterArea(side, offset, stockSide float64) float64 {
+	outer := math.Min(side+2*offset, stockSide)
+	return outer * outer
 }
 
 func assertNoErrorFlags(t *testing.T, outputs []Output) {

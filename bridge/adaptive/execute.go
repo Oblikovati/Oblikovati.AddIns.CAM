@@ -3,17 +3,13 @@
 //go:build cgo
 
 // Execute is the public entry point: it prepares the input geometry, splits it into connected
-// regions, and clears each one. It drives the clipping engine throughout (cgo only). Profiling op
-// types and the !forceInsideOut stock-overshoot path are not yet supported (see the fidelity notes);
-// the supported set — inside/outside clearing with forceInsideOut — covers adaptive pocketing.
+// regions, and clears each one. It drives the clipping engine throughout (cgo only). It supports the
+// clearing op types (inside/outside) with the !forceInsideOut stock-overshoot path (step 5); the
+// profiling op types (step 4) are handled in profiling.go.
 
 package adaptive
 
-import (
-	"fmt"
-
-	"oblikovati.org/cam/bridge/clipper"
-)
+import "oblikovati.org/cam/bridge/clipper"
 
 // boundShrinkGuard shrinks the region boundary by a few units so rounding in the offset chain can
 // only ever shrink it — important when filtering out regions already covered by the cleared area.
@@ -25,9 +21,6 @@ const boundShrinkGuard = 3
 // skip finishing cuts in thin air); clearedPaths is material already removed. Exact port of
 // Adaptive2d::Execute for the clearing op types.
 func Execute(cfg Config, stockPaths, paths, clearedPaths []DPath) ([]Output, error) {
-	if cfg.OpType == ProfilingInside || cfg.OpType == ProfilingOutside {
-		return nil, fmt.Errorf("adaptive.Execute: profiling op type %d not supported (clearing only)", cfg.OpType)
-	}
 	s := newSolver(cfg)
 	if err := s.buildToolGeometry(); err != nil {
 		return nil, err
@@ -51,13 +44,98 @@ func Execute(cfg Config, stockPaths, paths, clearedPaths []DPath) ([]Output, err
 	}
 	fixOrientation(inputPaths)
 
-	// every input path needs a finishing pass (upstream tags them Z=1); the only paths that would be
-	// exempt come from the profiling / !forceInsideOut branches, which are not ported here.
-	toolBounds, err := perCurveOffset(inputPaths, inputPaths, -float64(s.toolRadiusScaled+s.finishPassOffsetScaled))
+	// 3) Tag every input path Z=1: it is a real profile wall that wants a finishing pass. The
+	// stock-overshoot (step 5) branch adds Z=0 paths for stock boundaries that must NOT be finished;
+	// the Z tag is what tells the two apart through the per-curve offset (step 6) and the finishing
+	// filter (step 8).
+	tagZ(inputPaths, 1)
+
+	// 4) Profiling op types turn each profile curve into a band area between the profile (Z=1) and
+	// its 2–3 tool-diameter offset (Z=0), so the same region loop that clears a pocket rides the
+	// band instead.
+	if cfg.OpType == ProfilingInside || cfg.OpType == ProfilingOutside {
+		inputPaths, err = s.profileToAreas(inputPaths)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 5) When overshooting the stock is allowed (the upstream default), union the stock-overshoot
+	// region (tagged Z=0) into both the input paths and the cleared area so outside clearing is
+	// bounded to a frame around the stock instead of running unbounded.
+	if !cfg.ForceInsideOut {
+		inputPaths, initialCleared, err = s.applyStockOvershoot(inputPaths, stockInputPaths, initialCleared)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 6) Tool bounds: offset each input path in by (toolRadius + finishOffset), carrying the Z tag so
+	// the finishing filter downstream can see which bounds came from a real wall.
+	toolBounds, err := perCurveOffset(inputPaths, inputPaths, -float64(s.toolRadiusScaled+s.finishPassOffsetScaled), false, true)
 	if err != nil {
 		return nil, err
 	}
 	return s.clearRegions(toolBounds, stockInputPaths, initialCleared)
+}
+
+// applyStockOvershoot ports Execute step 5 (the !forceInsideOut path). It builds the region just
+// outside the stock — the reversed, slightly-shrunk stock (stockRev) plus the stock grown outward by
+// an overshoot — and unions it into the input paths and the cleared area, tagged Z=0 (a stock
+// boundary that needs no finishing). The cleared-area overshoot grows far larger so the tool may
+// travel well past the stock edge. Exact port.
+func (s *solver) applyStockOvershoot(inputPaths, stockInputPaths, initialCleared clipper.Paths) (clipper.Paths, clipper.Paths, error) {
+	stockRev, err := clipper.Offset(stockInputPaths, clipper.Round, clipper.ClosedPolygon, -2, 0, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	clipper.ReversePaths(stockRev)
+
+	overshoot := 4*float64(s.toolRadiusScaled) + s.cfg.StockToLeave*float64(s.scaleFactor)
+	outsideInputs, err := clipper.Offset(stockInputPaths, clipper.Square, clipper.ClosedPolygon, overshoot, 0, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	newInputs, err := clipper.Unite(inputPaths, concatPaths(stockRev, outsideInputs))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outsideCleared, err := clipper.Offset(stockInputPaths, clipper.Square, clipper.ClosedPolygon, 100*float64(s.toolRadiusScaled), 0, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	newCleared, err := clipper.Unite(initialCleared, concatPaths(stockRev, outsideCleared))
+	if err != nil {
+		return nil, nil, err
+	}
+	return newInputs, newCleared, nil
+}
+
+// concatPaths joins two path sets into one (the two clip sets the upstream adds separately to a
+// single union).
+func concatPaths(a, b clipper.Paths) clipper.Paths {
+	return append(append(clipper.Paths{}, a...), b...)
+}
+
+// tagZ stamps the Z tag on every vertex of every path — Execute's "needs finishing" marker (Z=1) or
+// the stock-boundary marker (Z=0).
+func tagZ(paths clipper.Paths, z int64) {
+	for _, p := range paths {
+		for i := range p {
+			p[i].Z = z
+		}
+	}
+}
+
+// pathHasZ1 reports whether any vertex of the path carries the Z=1 finishing tag.
+func pathHasZ1(path clipper.Path) bool {
+	for _, p := range path {
+		if p.Z == 1 {
+			return true
+		}
+	}
+	return false
 }
 
 // clearRegions walks the connected components of the tool bounds (each exterior ring with its
@@ -71,7 +149,9 @@ func (s *solver) clearRegions(toolBounds, stockInputPaths, initialCleared clippe
 			continue // a hole, not an exterior boundary
 		}
 		currentTBP := directChildRegion(current, toolBounds, nesting)
-		finishingPass, err := perCurveOffset(currentTBP, toolBounds, float64(s.finishPassOffsetScaled))
+		// 8) Finishing pass: offset only the bounds that came from a real wall (Z=1), skipping the
+		// stock-overshoot boundaries, so the finish cut never runs along the artificial stock frame.
+		finishingPass, err := perCurveOffset(currentTBP, toolBounds, float64(s.finishPassOffsetScaled), true, false)
 		if err != nil {
 			return nil, err
 		}
@@ -177,11 +257,19 @@ func fixOrientation(inputPaths clipper.Paths) {
 
 // perCurveOffset offsets each path individually by delta scaled by its nesting direction (+1 for
 // exterior, −1 for holes), restoring the source orientation on the result. Offsetting per curve
-// (rather than the whole set) matches the upstream, which does it that way to preserve per-path
-// data the set offset would drop. reference supplies the nesting context.
-func perCurveOffset(paths, reference clipper.Paths, delta float64) (clipper.Paths, error) {
+// (rather than the whole set) matches the upstream, which does it that way because Clipper drops the
+// Z tag on a set offset. reference supplies the nesting context.
+//
+// onlyFinishing skips any path with no Z=1 vertex — the step-8 finishing-pass filter, so a stock
+// boundary (all Z=0) is never finished. keepZ1 re-stamps the offset result Z=1 when the source path
+// carried the tag — the step-6 tag carry, so the finishing filter can still see it downstream.
+func perCurveOffset(paths, reference clipper.Paths, delta float64, onlyFinishing, keepZ1 bool) (clipper.Paths, error) {
 	var out clipper.Paths
 	for _, path := range paths {
+		hasZ1 := pathHasZ1(path)
+		if onlyFinishing && !hasZ1 {
+			continue
+		}
 		orientation := clipper.Orientation(path)
 		direction := -1.0
 		if getPathNestingLevel(path, reference)%2 == 1 {
@@ -194,6 +282,9 @@ func perCurveOffset(paths, reference clipper.Paths, delta float64) (clipper.Path
 		for _, p := range res {
 			if clipper.Orientation(p) != orientation {
 				clipper.ReversePath(p)
+			}
+			if keepZ1 && hasZ1 {
+				tagZ(clipper.Paths{p}, 1)
 			}
 			out = append(out, p)
 		}
