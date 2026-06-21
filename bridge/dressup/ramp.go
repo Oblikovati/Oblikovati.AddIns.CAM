@@ -31,9 +31,13 @@ func ApplyRamp(path gcode.Path, p RampParams) gcode.Path {
 	posKnown := false
 	for i, c := range path.Commands {
 		if posKnown && isPlunge(c, px, py, pz) {
-			if dx, dy, ok := nextCutDir(path.Commands[i+1:], px, py); ok {
+			if dx, dy, dist, ok := nextCutDir(path.Commands[i+1:], px, py); ok {
 				toZ := c.Params["Z"]
-				out.Commands = append(out.Commands, rampMoves(px, py, pz, toZ, dx, dy, feedOf(c), p)...)
+				pass := p
+				if pass.Length > dist { // never run the ramp past the first cut, into a corner/wall
+					pass.Length = dist
+				}
+				out.Commands = append(out.Commands, rampMoves(px, py, pz, toZ, dx, dy, feedOf(c), pass)...)
 				pz = toZ
 				continue
 			}
@@ -58,8 +62,9 @@ func isPlunge(c gcode.Command, px, py, pz float64) bool {
 }
 
 // nextCutDir returns the unit XY direction from (px,py) toward the first following move that has
-// an X or Y, or ok=false when there is none / it is coincident.
-func nextCutDir(rest []gcode.Command, px, py float64) (dx, dy float64, ok bool) {
+// an X or Y, and the distance to it, or ok=false when there is none / it is coincident. The
+// distance lets a ramp clamp its run to the first cut segment so it never overshoots into a corner.
+func nextCutDir(rest []gcode.Command, px, py float64) (dx, dy, dist float64, ok bool) {
 	for _, c := range rest {
 		nx, ny, _, hasXY := endpoint(c, px, py, 0)
 		if !hasXY {
@@ -68,11 +73,11 @@ func nextCutDir(rest []gcode.Command, px, py float64) (dx, dy float64, ok bool) 
 		ex, ey := nx-px, ny-py
 		d := math.Hypot(ex, ey)
 		if d < 1e-9 {
-			return 0, 0, false
+			return 0, 0, 0, false
 		}
-		return ex / d, ey / d, true
+		return ex / d, ey / d, d, true
 	}
-	return 0, 0, false
+	return 0, 0, 0, false
 }
 
 // rampMoves builds the zig-zag descent from fromZ to toZ along (dx,dy), ending back at (px,py).

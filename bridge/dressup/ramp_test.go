@@ -22,6 +22,30 @@ func plungeLoop() gcode.Path {
 	}}
 }
 
+// shortFirstCutLoop is a plunge whose first cut runs only 2mm before the contour turns — so a ramp
+// longer than 2mm would overshoot past the corner if not clamped.
+func shortFirstCutLoop() gcode.Path {
+	g := func(name string, p map[string]float64) gcode.Command { return gcode.NewCommand(name, p) }
+	return gcode.Path{Commands: []gcode.Command{
+		g("G0", map[string]float64{"Z": 5}),
+		g("G0", map[string]float64{"X": 0, "Y": 0}),
+		g("G1", map[string]float64{"Z": -2, "F": 100}),        // plunge
+		g("G1", map[string]float64{"X": 2, "Y": 0, "F": 200}), // first cut: only 2mm, then turns
+		g("G1", map[string]float64{"X": 2, "Y": 8, "F": 200}),
+	}}
+}
+
+// TestApplyRampClampsToFirstCut checks the ramp run is shortened to the first cut segment so it
+// never overshoots past the corner: a 5mm ramp on a 2mm first cut reaches no further than X=2.
+func TestApplyRampClampsToFirstCut(t *testing.T) {
+	out := ApplyRamp(shortFirstCutLoop(), RampParams{Length: 5, Angle: math.Pi / 12})
+	for _, c := range out.Commands {
+		if x, ok := c.Params["X"]; ok && x > 2+1e-9 {
+			t.Errorf("ramp reached X=%g, past the 2mm first cut — it overshot the corner", x)
+		}
+	}
+}
+
 // TestApplyRampReplacesPlunge replaces the straight plunge with a ramped descent that ends at
 // the plunge point at depth.
 func TestApplyRampReplacesPlunge(t *testing.T) {

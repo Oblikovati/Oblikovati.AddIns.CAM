@@ -47,7 +47,7 @@ func ApplyHelicalRampBounded(path gcode.Path, p HelicalRampParams, roomAt func(x
 	posKnown := false
 	for i, c := range path.Commands {
 		if posKnown && isPlunge(c, px, py, pz) {
-			if dx, dy, ok := nextCutDir(path.Commands[i+1:], px, py); ok {
+			if dx, dy, _, ok := nextCutDir(path.Commands[i+1:], px, py); ok {
 				toZ := c.Params["Z"]
 				pass := p
 				pass.Radius = clampHelixRadius(px, py, dx, dy, p.Radius, roomAt)
