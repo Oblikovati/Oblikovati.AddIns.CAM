@@ -35,6 +35,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `engrave.png` | Engraving: the contour run on the tool centre (no compensation). |
 | `chamfer.png` | Chamfer / edge-break: a single bevel pass offset by the chamfer width at the angle-derived depth. |
 | `vcarve.png` | V-carve: nested contours deepening inward (the depth shade traces the V valley toward the spine). |
+| `custom.png` | Custom operation: raw operator-typed G-code emitted verbatim (here a triangle) — the escape hatch for moves no generator produces. |
 | `dressup-tabs.png` | Holding tabs lifting the tool over the boundary. |
 | `dressup-dogbone.png` | Dogbone corner relief: 45° bones at the corners. |
 | `dressup-ramp.png` | Ramp entry: the straight plunge replaced by an angled descent. |

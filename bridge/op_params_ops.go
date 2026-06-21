@@ -540,6 +540,27 @@ func (op *SurfaceOp) SetParameter(id, value string) bool {
 
 // --- Waterline ---
 
+// --- Custom ---
+
+// Parameters lists the editable custom-operation parameters: the raw G-code plus the common
+// envelope (the depth/clearance rows are inert for a custom op but keep the editor uniform).
+func (op *CustomOp) Parameters() []OpParam {
+	return append([]OpParam{
+		{ID: "gcode", Label: "G-code", Value: op.GCode, Kind: "text"},
+	}, depthParams(op.OpBase)...)
+}
+
+// SetParameter applies one custom-operation parameter edit.
+func (op *CustomOp) SetParameter(id, value string) bool {
+	if id == "gcode" {
+		op.GCode = value
+		return true
+	}
+	return setDepthParam(&op.OpBase, id, value)
+}
+
+// --- Waterline ---
+
 // Parameters lists the editable waterline parameters.
 func (op *WaterlineOp) Parameters() []OpParam {
 	return append([]OpParam{

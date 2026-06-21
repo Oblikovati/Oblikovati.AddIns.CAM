@@ -126,6 +126,7 @@ const (
 	MoveOpDownCommandID          = "CAM.MoveOperationDown"   // move the selected operation later
 	DeleteOpCommandID            = "CAM.DeleteOperation"     // remove the selected operation
 	DuplicateOpCommandID         = "CAM.DuplicateOperation"  // copy the selected operation
+	AddCustomOpCommandID         = "CAM.AddCustomOperation"  // insert a raw-G-code custom operation
 	AddTabsCommandID             = "CAM.AddTabs"             // add holding tabs to the selected operation
 	AddDogboneCommandID          = "CAM.AddDogbone"          // add dogbone relief to the selected operation
 	AddRampCommandID             = "CAM.AddRamp"             // add ramp entry to the selected operation
@@ -180,6 +181,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{MoveOpDownCommandID, "Move Operation Down", "Run the selected operation later in the program."},
 	{DeleteOpCommandID, "Delete Operation", "Remove the selected operation from the job."},
 	{DuplicateOpCommandID, "Duplicate Operation", "Insert a copy of the selected operation."},
+	{AddCustomOpCommandID, "Add Custom Operation", "Insert a raw-G-code operation after the selected one."},
 	{AddTabsCommandID, "Add Holding Tabs", "Add holding tabs to the selected operation."},
 	{AddDogboneCommandID, "Add Dogbone", "Add dogbone corner relief to the selected operation."},
 	{AddRampCommandID, "Add Ramp Entry", "Replace straight plunges with a ramped descent on the selected operation."},
@@ -326,6 +328,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.deleteOpAction)
 	case DuplicateOpCommandID:
 		e.launchRun(e.duplicateOpAction)
+	case AddCustomOpCommandID:
+		e.launchRun(e.addCustomOpAction)
 	case AddTabsCommandID:
 		e.launchRun(e.addTabsAction)
 	case AddDogboneCommandID:

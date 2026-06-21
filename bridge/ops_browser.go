@@ -97,6 +97,8 @@ func operationKind(op Operation) string {
 		return "Counterbore"
 	case *TappingOp:
 		return "Tapping"
+	case *CustomOp:
+		return "Custom"
 	case *CountersinkOp:
 		return "Countersink"
 	case *SurfaceOp:
