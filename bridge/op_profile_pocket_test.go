@@ -73,6 +73,36 @@ func TestProfileOpErrors(t *testing.T) {
 	}
 }
 
+// TestPocketHelicalRampStaysInsideNarrowSlot checks the pocket op wires its boundary into a
+// helical-ramp dressup so the entry helix is shrunk to fit: a 3mm helix in a 6mm-wide slot (only
+// ~3mm of half-width) would swing outside the slot if unguarded, but every toolpath point stays
+// inside the boundary because the op supplies the wall-clearance room.
+func TestPocketHelicalRampStaysInsideNarrowSlot(t *testing.T) {
+	slot := geom2d.Polygon{{X: 0, Y: 0}, {X: 40, Y: 0}, {X: 40, Y: 6}, {X: 0, Y: 6}}
+	op := &PocketOp{
+		OpBase:   OpBase{OpLabel: "Slot", IsActive: true, ClearanceHeight: 15, SafeHeight: 2, StartDepth: 0, FinalDepth: -2},
+		StepOver: 0.5,
+		Climb:    true,
+		Boundary: slot,
+	}
+	op.AppendDressup(NewHelicalRampDressup(3, 1)) // a 3mm helix the 6mm slot cannot fully fit
+	path, err := op.Execute(millJob(4))
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	for _, c := range path.Commands {
+		x, okx := c.Params["X"]
+		y, oky := c.Params["Y"]
+		if !okx || !oky {
+			continue
+		}
+		pt := geom2d.Point2{X: x, Y: y}
+		if !slot.Contains(pt) && geom2d.DistanceToBoundary(pt, slot) > 1e-6 {
+			t.Errorf("toolpath point (%g,%g) escaped the slot — the helix entry was not clamped to fit", x, y)
+		}
+	}
+}
+
 // TestPocketOpExecute checks a pocket op clears a region with several ring passes.
 func TestPocketOpExecute(t *testing.T) {
 	op := &PocketOp{

@@ -51,5 +51,6 @@ func (op *AdaptiveOp) Execute(job *Job) (gcode.Path, error) {
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("adaptive operation %q: %w", op.OpLabel, err)
 	}
+	op.setBoundaryRoom(op.Boundary) // a helical-ramp dressup keeps its entry circle inside the region
 	return op.frame(cmds), nil
 }

@@ -30,6 +30,15 @@ const maxHelixTurns = 200
 // full depth so the subsequent cutting moves continue unchanged. A plunge with no following cut,
 // or zero params, is left as a straight plunge.
 func ApplyHelicalRamp(path gcode.Path, p HelicalRampParams) gcode.Path {
+	return ApplyHelicalRampBounded(path, p, nil)
+}
+
+// ApplyHelicalRampBounded is ApplyHelicalRamp with a wall-clearance guard: roomAt(x,y) reports the
+// distance from a point to the nearest wall, and each plunge's helix radius is shrunk so the entry
+// circle's disk stays inside that room — the helix never swings into a wall it has no business
+// touching (the gouge a fixed radius risks in a tight pocket or neck). A nil roomAt disables the
+// guard, leaving the radius exactly as configured.
+func ApplyHelicalRampBounded(path gcode.Path, p HelicalRampParams, roomAt func(x, y float64) float64) gcode.Path {
 	if p.Radius <= 0 || p.Pitch <= 0 {
 		return path
 	}
@@ -40,7 +49,9 @@ func ApplyHelicalRamp(path gcode.Path, p HelicalRampParams) gcode.Path {
 		if posKnown && isPlunge(c, px, py, pz) {
 			if dx, dy, ok := nextCutDir(path.Commands[i+1:], px, py); ok {
 				toZ := c.Params["Z"]
-				out.Commands = append(out.Commands, helixMoves(px, py, pz, toZ, dx, dy, feedOf(c), p)...)
+				pass := p
+				pass.Radius = clampHelixRadius(px, py, dx, dy, p.Radius, roomAt)
+				out.Commands = append(out.Commands, helixMoves(px, py, pz, toZ, dx, dy, feedOf(c), pass)...)
 				pz = toZ
 				continue
 			}
@@ -51,6 +62,31 @@ func ApplyHelicalRamp(path gcode.Path, p HelicalRampParams) gcode.Path {
 		posKnown = posKnown || hasXY
 	}
 	return out
+}
+
+// clampHelixRadius returns the largest radius up to the requested one whose entry-helix disk (a
+// circle of that radius centred one radius along the cut's left normal, per helixMoves) stays
+// within the room reported by roomAt — i.e. roomAt(centre) >= radius. roomAt nil leaves the radius
+// unchanged. The centre moves further from the plunge point as the radius grows, so the fit
+// shrinks monotonically and a bisection on [0, requested] converges on the largest safe radius.
+func clampHelixRadius(px, py, dx, dy, requested float64, roomAt func(x, y float64) float64) float64 {
+	if roomAt == nil {
+		return requested
+	}
+	fits := func(r float64) bool { return roomAt(px-dy*r, py+dx*r) >= r }
+	if fits(requested) {
+		return requested
+	}
+	lo, hi := 0.0, requested
+	for i := 0; i < 32; i++ { // bisect to the largest radius that still fits
+		mid := (lo + hi) / 2
+		if fits(mid) {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	return lo
 }
 
 // helixMoves builds the helical descent from fromZ to toZ on a circle of radius p.Radius whose
