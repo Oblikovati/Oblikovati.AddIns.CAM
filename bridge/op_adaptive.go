@@ -3,8 +3,10 @@
 package bridge
 
 import (
+	"errors"
 	"fmt"
 
+	"oblikovati.org/cam/bridge/adaptive"
 	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/gen"
 	"oblikovati.org/cam/bridge/geom2d"
@@ -30,8 +32,10 @@ func (op *AdaptiveOp) Features() FeatureFlag {
 	return FeatureTool | FeatureDepths | FeatureHeights | FeatureStepDown | FeatureBaseGeometry
 }
 
-// Execute generates the adaptive clearing toolpath: resolve the tool radius and feeds, build the
-// depth levels, and delegate to the adaptive generator, wrapped in the standard op framing.
+// Execute generates the adaptive clearing toolpath. It prefers the faithful constant-engagement
+// solver (which holds a near-constant engagement through corners); when that engine is not built in
+// (a CGO-disabled build) it falls back to the inward stay-down spiral generator. Resolves the tool
+// and feeds, builds the depth levels, and frames the result.
 func (op *AdaptiveOp) Execute(job *Job) (gcode.Path, error) {
 	tc, err := op.resolveTool(job)
 	if err != nil {
@@ -41,6 +45,21 @@ func (op *AdaptiveOp) Execute(job *Job) (gcode.Path, error) {
 		return gcode.Path{}, fmt.Errorf("adaptive operation %q has no boundary region", op.OpLabel)
 	}
 	feeds := op.feeds(tc)
+	op.setBoundaryRoom(op.Boundary) // a helical-ramp dressup keeps its entry circle inside the region
+
+	path, err := op.solverToolpath(tc, feeds)
+	if err == nil {
+		return path, nil
+	}
+	if !errors.Is(err, adaptive.ErrUnavailable) {
+		return gcode.Path{}, fmt.Errorf("adaptive operation %q: %w", op.OpLabel, err)
+	}
+	return op.spiralToolpath(tc, feeds)
+}
+
+// spiralToolpath is the fallback clearing strategy used when the constant-engagement engine is
+// unavailable: a continuous low-engagement inward spiral that stays down between rings.
+func (op *AdaptiveOp) spiralToolpath(tc ToolController, feeds gen.Feeds) (gcode.Path, error) {
 	cmds, err := gen.GenerateAdaptive(op.Boundary, gen.DepthLevels(op.StartDepth, op.FinalDepth, op.StepDown), feeds, gen.AdaptiveParams{
 		ToolRadius:      tc.Tool.Diameter / 2,
 		StepOver:        op.StepOver,
@@ -51,6 +70,5 @@ func (op *AdaptiveOp) Execute(job *Job) (gcode.Path, error) {
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("adaptive operation %q: %w", op.OpLabel, err)
 	}
-	op.setBoundaryRoom(op.Boundary) // a helical-ramp dressup keeps its entry circle inside the region
 	return op.frame(cmds), nil
 }
