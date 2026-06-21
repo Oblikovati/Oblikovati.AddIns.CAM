@@ -188,9 +188,11 @@ func (r *grblRenderer) parsePath(obj Object) string {
 			out.WriteString(r.tapTranslate(tokens, c))
 			continue
 		}
-		// When translating cycles, the canned-cycle return-mode/cancel codes are not valid
-		// GRBL — comment them out, e.g. G80 → "( G80 )".
-		if r.opts.TranslateDrill && (c.Name == "G80" || c.Name == "G98" || c.Name == "G99") {
+		// When translating cycles, the canned-cycle return-mode/cancel codes and the feed-mode
+		// codes the tapping op sets are not valid GRBL — comment them out, e.g. G80 → "( G80 )".
+		// GRBL has no feed-per-rev mode (G95/G94); tapTranslate instead reconstructs the per-minute
+		// feed from the pitch and rpm.
+		if r.opts.TranslateDrill && (c.Name == "G80" || c.Name == "G98" || c.Name == "G99" || c.Name == "G95" || c.Name == "G94") {
 			tokens = append([]string{"("}, append(tokens, ")")...)
 		}
 		r.applyToolChange(&out, c, &tokens)
