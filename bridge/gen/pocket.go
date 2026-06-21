@@ -16,6 +16,7 @@ type PocketParams struct {
 	Climb           bool             // climb vs conventional
 	Islands         []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
 	FinishAllowance float64          // mm of stock to leave on the walls when roughing; >0 adds a final wall pass
+	Pattern         string           // PocketOffset (default) | PocketZigzag
 }
 
 // defaultStepOver is the ring step (fraction of tool diameter) used when StepOver is unset.
@@ -35,10 +36,13 @@ func GeneratePocket(boundary geom2d.Polygon, levels []float64, feeds Feeds, p Po
 	if p.ToolRadius <= 0 {
 		return nil, fmt.Errorf("pocket needs a positive tool radius, got %g", p.ToolRadius)
 	}
-	wallDist := p.ToolRadius + p.FinishAllowance // roughing rings leave the allowance on every wall
+	wallDist := p.ToolRadius + p.FinishAllowance // roughing leaves the allowance on every wall
+	if p.Pattern == PocketZigzag {
+		return generateZigzagPocket(boundary, levels, feeds, p, wallDist)
+	}
 	rings := pocketRings(boundary, wallDist, p.stepDistance())
 	if len(rings) == 0 {
-		return nil, fmt.Errorf("pocket: tool radius %g (+ allowance %g) is too large to enter the region (area %g)", p.ToolRadius, p.FinishAllowance, boundary.Area())
+		return nil, pocketTooSmallErr(p, boundary)
 	}
 	roughKeepouts := grownIslands(p.Islands, wallDist)
 	finishRings, finishKeepouts := pocketFinishPass(boundary, p)
@@ -49,6 +53,12 @@ func GeneratePocket(boundary geom2d.Polygon, levels []float64, feeds Feeds, p Po
 		cmds = append(cmds, walkPocketRings(finishRings, finishKeepouts, z, feeds, p.Climb)...)
 	}
 	return cmds, nil
+}
+
+// pocketTooSmallErr is the shared "tool too large to enter the region" error for both clearing
+// patterns, naming the tool, allowance, and region area.
+func pocketTooSmallErr(p PocketParams, boundary geom2d.Polygon) error {
+	return fmt.Errorf("pocket: tool radius %g (+ allowance %g) is too large to enter the region (area %g)", p.ToolRadius, p.FinishAllowance, boundary.Area())
 }
 
 // walkPocketRings walks each ring at depth z routed around the keepouts: a ring clear of every

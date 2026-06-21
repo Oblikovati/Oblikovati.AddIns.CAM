@@ -41,6 +41,49 @@ func ClipOutside(path []Point2, keepout Polygon) [][]Point2 {
 	return runs
 }
 
+// ClipInside is the dual of ClipOutside: it splits a path into the maximal sub-paths that lie
+// INSIDE the region polygon, cutting each segment where it crosses the region boundary and keeping
+// the portions whose midpoint is inside. Used to fill a pocket interior with scanline rows. A
+// degenerate region (<3 points) returns no runs (nothing is inside it).
+func ClipInside(path []Point2, region Polygon) [][]Point2 {
+	if len(region) < 3 || len(path) < 2 {
+		return nil
+	}
+	var runs [][]Point2
+	var cur []Point2
+	flush := func() {
+		if len(cur) >= 2 {
+			runs = append(runs, cur)
+		}
+		cur = nil
+	}
+	for i := 0; i+1 < len(path); i++ {
+		a, b := path[i], path[i+1]
+		ts := append([]float64{0}, segCrossings(a, b, region)...)
+		ts = append(ts, 1)
+		for k := 0; k+1 < len(ts); k++ {
+			t0, t1 := ts[k], ts[k+1]
+			if !region.Contains(lerp(a, b, (t0+t1)/2)) {
+				flush() // this sub-segment is outside the region — break the run
+				continue
+			}
+			if len(cur) == 0 {
+				cur = append(cur, lerp(a, b, t0))
+			}
+			cur = append(cur, lerp(a, b, t1))
+		}
+	}
+	flush()
+	return runs
+}
+
+// SegmentCrosses reports whether the segment a→b properly crosses any edge of the polygon. A
+// segment that merely runs along (collinear with) an edge does not count as crossing — which is
+// what lets a pocket link move travel along a wall without being treated as leaving the region.
+func (p Polygon) SegmentCrosses(a, b Point2) bool {
+	return len(segCrossings(a, b, p)) > 0
+}
+
 // segCrossings returns the sorted, de-duplicated parameter values t in (0,1) where the segment
 // a→b crosses an edge of the polygon.
 func segCrossings(a, b Point2, poly Polygon) []float64 {

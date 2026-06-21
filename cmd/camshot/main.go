@@ -100,6 +100,8 @@ func shots() []shot {
 		{"pocket", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: part()}},
 		{"pocket-island", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: squarePoly(40), Islands: []geom2d.Polygon{islandPoly()}}},
 		{"pocket-finish", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.6, Climb: true, FinishAllowance: 2, Boundary: squarePoly(40)}},
+		{"pocket-zigzag", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.6, Pattern: gen.PocketZigzag, Boundary: squarePoly(40)}},
+		{"pocket-zigzag-island", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.6, Pattern: gen.PocketZigzag, Boundary: squarePoly(40), Islands: []geom2d.Polygon{islandPoly()}}},
 		{"adaptive", &bridge.AdaptiveOp{OpBase: millEnv("Adaptive"), Climb: true, Boundary: part()}},
 		{"adaptive-island", &bridge.AdaptiveOp{OpBase: millEnv("Adaptive"), StepOver: 0.2, Climb: true, Boundary: squarePoly(40), Islands: []geom2d.Polygon{islandPoly()}}},
 		{"rest", &bridge.RestOp{OpBase: millEnv("Rest"), PrevToolDiameter: 16, StepOver: 0.5, Climb: true, Boundary: part()}},
