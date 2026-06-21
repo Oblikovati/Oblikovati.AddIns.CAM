@@ -21,6 +21,7 @@ const CAMPanelID = "com.oblikovati.cam.panel"
 func (e *Engine) ShowPanel() (wire.OKResult, error) {
 	e.mu.Lock()
 	postName, feed, cut, body, material, flutes := e.postName, e.plungFeed, e.cut, e.targetBody, e.material, e.flutes
+	spinUp := e.spinUpSecs
 	e.mu.Unlock()
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID:      CAMPanelID,
@@ -35,6 +36,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 			client.PanelDropdown("material", "Material (feeds & speeds)", feeds.Materials(), material),
 			client.PanelTextBox("tool_dia", "Tool ⌀ (mm)", num(cut.ToolDiameter)),
 			client.PanelTextBox("flutes", "Flutes", strconv.Itoa(flutes)),
+			client.PanelTextBox("spin_up", "Spin-up (s)", num(spinUp)),
 			client.PanelTextBox("step_down", "Step-down (mm)", num(cut.StepDown)),
 			client.PanelTextBox("step_over", "Step-over (×⌀)", num(cut.StepOver)),
 			client.PanelTextBox("cut_depth", "Cut depth (mm, 0=thru)", num(cut.CutDepth)),
@@ -120,6 +122,10 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		if f := int(panelNum(value, float64(e.flutes))); f > 0 {
 			e.flutes = f
 			e.applyMaterialFeedsLocked() // more flutes → a faster feed at the same RPM
+		}
+	case "spin_up":
+		if s := panelNum(value, e.spinUpSecs); s >= 0 {
+			e.spinUpSecs = s
 		}
 	case "step_down":
 		e.cut.StepDown = panelNum(value, e.cut.StepDown)

@@ -111,12 +111,18 @@ func coolantOff(mode string) []gcode.Command {
 }
 
 // toolChangeBlock builds the leading M6/spindle commands for a controller: the tool select
-// (M6 Tn) and, when the controller drives the spindle, the spindle start (M3/M4 Sxxxx). An
-// empty spindle direction omits the spindle command.
+// (M6 Tn), the spindle start (M3/M4 Sxxxx) when the controller drives the spindle, and a dwell
+// (G4 P<secs>) after it when a spin-up time is set, so the spindle reaches speed before cutting.
+// An empty spindle direction omits the spindle command (and the dwell).
 func toolChangeBlock(tc ToolController) []gcode.Command {
 	block := []gcode.Command{gcode.NewCommand("M6", map[string]float64{"T": float64(tc.ToolNumber)})}
-	if spindle := tc.spindleM3M4(); spindle != "" {
-		block = append(block, gcode.NewCommand(spindle, map[string]float64{"S": tc.SpindleSpeed}))
+	spindle := tc.spindleM3M4()
+	if spindle == "" {
+		return block
+	}
+	block = append(block, gcode.NewCommand(spindle, map[string]float64{"S": tc.SpindleSpeed}))
+	if tc.SpinUpSecs > 0 {
+		block = append(block, gcode.NewCommand("G4", map[string]float64{"P": tc.SpinUpSecs}))
 	}
 	return block
 }

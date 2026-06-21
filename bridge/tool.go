@@ -27,6 +27,7 @@ type ToolController struct {
 	HorizFeed    float64 // cutting feed in the XY plane (mm/min)
 	VertRapid    float64 // rapid plunge (mm/min); 0 = machine default (G0)
 	HorizRapid   float64 // rapid traverse (mm/min); 0 = machine default (G0)
+	SpinUpSecs   float64 // dwell after spindle start so it reaches speed before cutting (s); 0 = none
 	Tool         ToolBit
 }
 

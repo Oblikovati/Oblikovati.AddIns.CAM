@@ -32,6 +32,7 @@ type Engine struct {
 	spindleSpeed  float64 // active spindle speed (rev/min), set by the feeds & speeds calculator
 	material      string  // selected workpiece material (drives the feeds & speeds calculator)
 	flutes        int     // flute count of the primary end mill (drives the feeds & speeds feed)
+	spinUpSecs    float64 // dwell after spindle start so it reaches speed before cutting (s); 0 = none
 	lastJob       *Job    // most recently generated job (for the operations browser + Save)
 	lastGCode     string  // most recently posted G-code (for export to a file)
 	lastEstimate  float64 // estimated cycle time (minutes) of the last posted job
@@ -52,20 +53,25 @@ func NewEngine(host HostCaller) *Engine {
 // fields. It is always present at index 0 of a job's tool list.
 func (e *Engine) activeEndmill() ToolController {
 	e.mu.Lock()
-	feed, dia, rpm, flutes := e.plungFeed, e.cut.ToolDiameter, e.spindleSpeed, e.flutes
+	feed, dia, rpm, flutes, spinUp := e.plungFeed, e.cut.ToolDiameter, e.spindleSpeed, e.flutes, e.spinUpSecs
 	e.mu.Unlock()
 	return ToolController{
-		Label: "End mill", ToolNumber: 1, SpindleSpeed: rpm, SpindleDir: "Forward",
+		Label: "End mill", ToolNumber: 1, SpindleSpeed: rpm, SpindleDir: "Forward", SpinUpSecs: spinUp,
 		VertFeed: feed, HorizFeed: feed * 3, Tool: ToolBit{Name: "End mill", ShapeType: "endmill", Diameter: dia, Flutes: flutes},
 	}
 }
 
 // jobTools returns the controllers loaded into a job: the primary end mill (T1) followed by the
-// library tools. Operations select among them by cutter shape (indexForShape).
+// library tools, all carrying the job's spindle spin-up dwell. Operations select among them by
+// cutter shape (indexForShape).
 func (e *Engine) jobTools() []ToolController {
 	e.mu.Lock()
 	lib := e.library.snapshot()
+	spinUp := e.spinUpSecs
 	e.mu.Unlock()
+	for i := range lib {
+		lib[i].SpinUpSecs = spinUp
+	}
 	return append([]ToolController{e.activeEndmill()}, lib...)
 }
 
