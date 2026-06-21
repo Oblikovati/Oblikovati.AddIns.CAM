@@ -82,7 +82,10 @@ func (r *grblRenderer) tapTranslate(tokens []string, c gcode.Command) string {
 		b.WriteString(r.lineNumber() + "(tap cycle error: R less than Z )\n")
 		return b.String()
 	}
-	feed := r.drillFeed(c.Params["F"])
+	// The cycle carries F as the per-revolution feed (the thread pitch) under the feed-per-rev mode
+	// the op set. GRBL has no feed-per-rev, so reconstruct the per-minute feed = pitch × spindle rpm
+	// for the explicit moves.
+	feed := r.drillFeed(c.Params["F"] * c.Params["S"])
 	if r.curZ < rPlane {
 		b.WriteString(r.lineNumber() + "G0 Z" + r.fixed(r.toUnit(rPlane)) + "\n")
 	}

@@ -171,3 +171,29 @@ func TestGRBLDrillTranslateG81(t *testing.T) {
 		t.Errorf("G81 should have been translated out:\n%s", out)
 	}
 }
+
+// TestGRBLTapTranslateFeedPerRev verifies the feed-per-rev tap fix: the cycle carries F as the
+// thread pitch (1.5) under the op's G95 mode, and GRBL — which has neither canned cycles nor a
+// feed-per-rev mode — expands it with the per-minute feed reconstructed as pitch × rpm (1.5 × 1000 =
+// 1500) and never leaves G84/G95/G94 as active codes.
+func TestGRBLTapTranslateFeedPerRev(t *testing.T) {
+	obj := []Object{{Label: "p", Path: gcode.NewPath([]gcode.Command{
+		gcode.NewCommand("G95", nil),
+		gcode.ParseCommand("G0 Z15"),
+		gcode.ParseCommand("G0 X5 Y6"),
+		gcode.NewCommand("G84", map[string]float64{"X": 5, "Y": 6, "Z": 0, "R": 12, "F": 1.5, "S": 1000}),
+		gcode.NewCommand("G80", nil),
+		gcode.NewCommand("G94", nil),
+	})}}
+	out := ExportGRBL(obj, "--no-header --no-comments --no-show-editor")
+	if !strings.Contains(out, "G1 Z0.000 F1500.00") {
+		t.Errorf("tap expansion should feed at pitch×rpm = 1500, got:\n%s", out)
+	}
+	for _, code := range []string{"G84", "G95", "G94"} {
+		for _, line := range strings.Split(out, "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), code) {
+				t.Errorf("%s must not appear as an active GRBL code:\n%s", code, out)
+			}
+		}
+	}
+}

@@ -380,6 +380,14 @@ func TestEngineRunTappingJobISO(t *testing.T) {
 	if !strings.Contains(res.GCode, "G80") {
 		t.Error("the tap cycle should be cancelled with G80")
 	}
+	// Tapping runs in feed-per-revolution: G95 before the cycle (so F is the pitch per turn) and
+	// G94 restored after — the feed-per-rev fidelity the reference workbench relies on.
+	if !strings.Contains(res.GCode, "G95") {
+		t.Error("tapping should switch to feed-per-revolution (G95)")
+	}
+	if !strings.Contains(res.GCode, "G94") {
+		t.Error("tapping should restore feed-per-minute (G94) after the cycle")
+	}
 }
 
 // TestEngineRunTappingJobGRBL checks GRBL — which lacks rigid tapping — expands the cycle into
@@ -393,6 +401,10 @@ func TestEngineRunTappingJobGRBL(t *testing.T) {
 		code := strings.TrimSpace(line)
 		if strings.HasPrefix(code, "G84") || strings.HasPrefix(code, "G74") {
 			t.Errorf("GRBL has no rigid tapping; the cycle must be expanded, not emitted as an active code: %q", line)
+		}
+		// GRBL has no feed-per-rev mode: the op's G95/G94 must be commented out, not left active.
+		if strings.HasPrefix(code, "G95") || strings.HasPrefix(code, "G94") {
+			t.Errorf("GRBL cannot run feed-per-rev mode; G95/G94 must be commented out, not active: %q", line)
 		}
 	}
 	if !strings.Contains(res.GCode, "soft tap") {
