@@ -90,8 +90,12 @@ func TestGetLinkingMovesLiftsWhenBlocked(t *testing.T) {
 	if moves[0].Params["Z"] != 20 || !roughlyEqual(moves[0].Params["X"], 0) {
 		t.Errorf("first move = %v, want a vertical lift to Z20", moves[0].Params)
 	}
-	if moves[1].Params["Z"] != 20 || moves[1].Params["X"] != 10 {
-		t.Errorf("second move = %v, want the traverse across at Z20", moves[1].Params)
+	// The traverse holds Z modally (Z is not re-emitted) and moves across in X.
+	if moves[1].Params["X"] != 10 {
+		t.Errorf("second move = %v, want the traverse across to X10", moves[1].Params)
+	}
+	if _, hasZ := moves[1].Params["Z"]; hasZ {
+		t.Errorf("traverse should not repeat the modal Z, got %v", moves[1].Params)
 	}
 	if last := moves[len(moves)-1]; last.Params["Z"] != 0 {
 		t.Errorf("last move = %v, want a plunge back to Z0", last.Params)
