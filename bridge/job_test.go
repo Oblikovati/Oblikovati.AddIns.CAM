@@ -2,7 +2,10 @@
 
 package bridge
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestStockFromRangeBox covers the cm→mm conversion and the malformed-input guard.
 func TestStockFromRangeBox(t *testing.T) {
@@ -44,5 +47,26 @@ func TestToolChangeBlockNoSpindle(t *testing.T) {
 	block := toolChangeBlock(ToolController{ToolNumber: 2, SpindleDir: "None"})
 	if len(block) != 1 || block[0].Name != "M6" {
 		t.Errorf("no-spindle block = %v, want a single M6", commandNames(block))
+	}
+}
+
+// TestToolChangeBlockSpinUp covers the spindle spin-up dwell: a G4 dwell follows the spindle start
+// when a spin-up time is set, is omitted when it is zero, and never appears without a spindle.
+func TestToolChangeBlockSpinUp(t *testing.T) {
+	withDwell := toolChangeBlock(ToolController{ToolNumber: 1, SpindleSpeed: 8000, SpindleDir: "Forward", SpinUpSecs: 2})
+	names := commandNames(withDwell)
+	if strings.Join(names, ",") != "M6,M3,G4" {
+		t.Errorf("spin-up block = %v, want M6,M3,G4", names)
+	}
+	if dwell := withDwell[2]; dwell.Params["P"] != 2 {
+		t.Errorf("dwell P = %g, want 2 s", dwell.Params["P"])
+	}
+	noDwell := toolChangeBlock(ToolController{ToolNumber: 1, SpindleSpeed: 8000, SpindleDir: "Forward"})
+	if len(noDwell) != 2 {
+		t.Errorf("a zero spin-up should add no dwell, got %v", commandNames(noDwell))
+	}
+	// No spindle → no dwell even with a spin-up time set.
+	if b := toolChangeBlock(ToolController{ToolNumber: 1, SpindleDir: "None", SpinUpSecs: 2}); len(b) != 1 {
+		t.Errorf("no spindle should mean no dwell, got %v", commandNames(b))
 	}
 }
