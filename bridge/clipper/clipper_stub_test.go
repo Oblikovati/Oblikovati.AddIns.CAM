@@ -9,7 +9,7 @@ import "testing"
 // In a non-cgo build the engine functions must fail cleanly (not panic), so callers can fall
 // back. The pure-Go predicates are exercised by clipper_test.go in every build.
 func TestEngineStubsReturnError(t *testing.T) {
-	sq := Paths{{{0, 0}, {10, 0}, {10, 10}, {0, 10}}}
+	sq := Paths{{{0, 0, 0}, {10, 0, 0}, {10, 10, 0}, {0, 10, 0}}}
 	if _, err := Boolean(Union, EvenOdd, sq, true, sq, false); err == nil {
 		t.Fatal("Boolean stub should return an error under CGO_ENABLED=0")
 	}
