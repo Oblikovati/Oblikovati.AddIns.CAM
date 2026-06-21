@@ -20,6 +20,7 @@ type isoOptions struct {
 	ProgramNumber   int
 	Inches          bool
 	WorkOffset      string // active work coordinate system (G54..G59); empty → G54
+	UseTLO          bool   // emit G43 H<n> (tool-length offset) after each tool change
 }
 
 // workOffsetOr returns a valid G54..G59 work-offset word, defaulting blanks/garbage to G54.
@@ -52,6 +53,8 @@ func parseISOArgs(argstring string, o isoOptions) isoOptions {
 			}
 		case strings.HasPrefix(tok, "--work-offset="):
 			o.WorkOffset = workOffsetOr(strings.TrimPrefix(tok, "--work-offset="))
+		case tok == "--no-tlo":
+			o.UseTLO = false
 		}
 	}
 	return o
@@ -102,6 +105,19 @@ func (r *isoRenderer) writeOperation(b *strings.Builder, obj Object) {
 		if tokens := r.commandTokens(c); len(tokens) > 0 {
 			r.line(b, formatOutstring(tokens))
 		}
+		r.toolLengthOffset(b, c)
+	}
+}
+
+// toolLengthOffset emits a G43 H<n> tool-length-offset activation right after a tool change
+// (M6 T<n>), as Fanuc/Haas controls require before the first Z move on the new tool. The offset
+// register defaults to the tool number. Skipped when UseTLO is off.
+func (r *isoRenderer) toolLengthOffset(b *strings.Builder, c gcode.Command) {
+	if !r.opts.UseTLO || (c.Name != "M6" && c.Name != "M06") {
+		return
+	}
+	if t, ok := c.Params["T"]; ok {
+		r.line(b, "G43 H"+strconv.Itoa(int(t)))
 	}
 }
 

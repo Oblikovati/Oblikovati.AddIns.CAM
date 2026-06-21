@@ -8,7 +8,7 @@ import "strings"
 // a safe-start block that cancels stray modal state (G40 G49 G80), each operation's blocks (canned
 // cycles preserved), a G28 Z-home return, and M30. Built on the shared isoRenderer (see iso.go).
 func ExportHaas(objects []Object, argstring string) string {
-	o := parseISOArgs(argstring, isoOptions{OutputComments: true, SequenceNumbers: true, Precision: 4, ProgramNumber: 1, WorkOffset: "G54"})
+	o := parseISOArgs(argstring, isoOptions{OutputComments: true, SequenceNumbers: true, Precision: 4, ProgramNumber: 1, WorkOffset: "G54", UseTLO: true})
 	r := &isoRenderer{opts: o, seq: 10}
 
 	var b strings.Builder
