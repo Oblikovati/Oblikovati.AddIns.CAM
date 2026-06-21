@@ -19,30 +19,10 @@ type MarlinOptions struct {
 	Inches         bool
 }
 
-// defaultMarlinOptions returns the Marlin defaults.
-func defaultMarlinOptions() MarlinOptions {
-	return MarlinOptions{OutputComments: true, Precision: 3}
-}
-
-// parseMarlinArgs applies the argstring onto the defaults.
+// parseMarlinArgs reads the shared scalar flags (comments / inches / precision) into the options.
 func parseMarlinArgs(argstring string) MarlinOptions {
-	o := defaultMarlinOptions()
-	for _, tok := range shlexSplit(argstring) {
-		switch {
-		case tok == "--no-comments":
-			o.OutputComments = false
-		case tok == "--inches":
-			o.Inches = true
-		case strings.HasPrefix(tok, "--precision="):
-			if p, err := strconv.Atoi(strings.TrimPrefix(tok, "--precision=")); err == nil {
-				o.Precision = p
-			}
-		}
-	}
-	if o.Inches {
-		o.Precision = 4
-	}
-	return o
+	comments, inches, precision := parseScalarPostArgs(argstring, 3)
+	return MarlinOptions{OutputComments: comments, Inches: inches, Precision: precision}
 }
 
 // marlinRenderer carries the Marlin export state: the current tool position (for translating
