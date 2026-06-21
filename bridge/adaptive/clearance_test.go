@@ -40,7 +40,7 @@ func TestIsAllowedToCutThroughShortMove(t *testing.T) {
 	rp, res := seededRegion(t)
 	// A sub-step move is treated as insignificant and always allowed.
 	near := clipper.IntPoint{X: res.toolPos.X + 1, Y: res.toolPos.Y}
-	ok, err := rp.isAllowedToCutThrough(res.toolPos, near, rp.cleared, 1.5, false)
+	ok, err := rp.isAllowedToCutThrough(res.toolPos, near, rp.cleared, rp.toolBoundPaths, 1.5, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestIsAllowedToCutThroughRejectsOutsideRegion(t *testing.T) {
 	rp, res := seededRegion(t)
 	// An endpoint well outside the tool-bound region is not allowed.
 	outside := clipper.IntPoint{X: -5000, Y: -5000}
-	ok, err := rp.isAllowedToCutThrough(res.toolPos, outside, rp.cleared, 1.5, false)
+	ok, err := rp.isAllowedToCutThrough(res.toolPos, outside, rp.cleared, rp.toolBoundPaths, 1.5, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestIsAllowedToCutThroughRejectsOverEngagement(t *testing.T) {
 	rp, res := seededRegion(t)
 	// A long straight plunge from the helix edge deep into uncut stock over-engages → rejected.
 	deep := clipper.IntPoint{X: res.entryPoint.X + 6000, Y: res.entryPoint.Y}
-	ok, err := rp.isAllowedToCutThrough(res.entryPoint, deep, rp.cleared, 1.5, false)
+	ok, err := rp.isAllowedToCutThrough(res.entryPoint, deep, rp.cleared, rp.toolBoundPaths, 1.5, false)
 	if err != nil {
 		t.Fatal(err)
 	}

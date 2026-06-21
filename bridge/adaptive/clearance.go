@@ -34,9 +34,10 @@ func (rp *regionProcessor) isClearPath(tp clipper.Path, cleared *clearedArea, sa
 // over-engaging: it walks the segment in steps and rejects it if any step cuts more than
 // areaFactor times the optimal engagement, or if the tool would leave the region. A move shorter
 // than half a step is treated as an insignificant cut and allowed. Exact port of
-// IsAllowedToCutTrough (cleared is explicit; areaFactor defaults to 1.5 at the call sites).
-func (rp *regionProcessor) isAllowedToCutThrough(p1, p2 clipper.IntPoint, cleared *clearedArea, areaFactor float64, skipBoundsCheck bool) (bool, error) {
-	if !skipBoundsCheck && (!isPointWithinCutRegion(rp.toolBoundPaths, p2) || !isPointWithinCutRegion(rp.toolBoundPaths, p1)) {
+// IsAllowedToCutTrough (cleared and toolBoundPaths are explicit — the finishing pass cuts against a
+// modified bound; areaFactor defaults to 1.5 at the call sites).
+func (rp *regionProcessor) isAllowedToCutThrough(p1, p2 clipper.IntPoint, cleared *clearedArea, toolBoundPaths clipper.Paths, areaFactor float64, skipBoundsCheck bool) (bool, error) {
+	if !skipBoundsCheck && (!isPointWithinCutRegion(toolBoundPaths, p2) || !isPointWithinCutRegion(toolBoundPaths, p1)) {
 		return false, nil // an endpoint is outside the region — not clear to cut
 	}
 	distance := distanceBetween(p1, p2)
@@ -64,7 +65,7 @@ func (rp *regionProcessor) isAllowedToCutThrough(p1, p2 clipper.IntPoint, cleare
 		if area > areaFactor*stepSize*rp.s.optimalCutAreaPD {
 			return false, nil // cutting above the allowed engagement
 		}
-		if !skipBoundsCheck && !isPointWithinCutRegion(rp.toolBoundPaths, toolPos2) {
+		if !skipBoundsCheck && !isPointWithinCutRegion(toolBoundPaths, toolPos2) {
 			return false, nil
 		}
 		toolPos1 = toolPos2
