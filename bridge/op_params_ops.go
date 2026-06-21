@@ -264,6 +264,7 @@ func (op *DrillingOp) Parameters() []OpParam {
 		numberParam("repeat", "Repeat", float64(op.Repeat)),
 		boolParam("chipBreak", "Chip-break", op.ChipBreak),
 		boolParam("feedRetract", "Feed retract", op.FeedRetract),
+		boolParam("retractToR", "Retract to R (G99)", op.RetractToR),
 	}, depthParams(op.OpBase)...)
 }
 
@@ -282,6 +283,8 @@ func (op *DrillingOp) SetParameter(id, value string) bool {
 		op.ChipBreak = parseBool(value)
 	case "feedRetract":
 		op.FeedRetract = parseBool(value)
+	case "retractToR":
+		op.RetractToR = parseBool(value)
 	default:
 		return setDepthParam(&op.OpBase, id, value)
 	}
