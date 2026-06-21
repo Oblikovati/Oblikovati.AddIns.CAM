@@ -34,11 +34,12 @@ func commandNames(cmds []gcode.Command) []string {
 // recordingHost is a fake HostCaller that records every method called and answers the
 // engine's geometry queries with a fixed two-hole plate. Unknown methods return "{}".
 type recordingHost struct {
-	mu           sync.Mutex
-	methods      []string
-	failOn       string              // when set, that method returns an error
-	sectionWires []wire.WirePolyline // when set, overrides the default single-square section
-	graphicsArgs []wire.SetClientGraphicsArgs
+	mu            sync.Mutex
+	methods       []string
+	failOn        string              // when set, that method returns an error
+	sectionWires  []wire.WirePolyline // when set, overrides the default single-square section
+	graphicsArgs  []wire.SetClientGraphicsArgs
+	minDistanceCm float64 // body.minimumDistance reply (cm); 0 (default) blocks every keep-down link
 }
 
 func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
@@ -63,6 +64,8 @@ func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
 		}}}})
 	case wire.MethodBodyRangeBox:
 		return json.Marshal(wire.BodyRangeBoxResult{Min: []float64{0, 0, 0}, Max: []float64{4, 4, 1}})
+	case wire.MethodBodyMinimumDistance:
+		return json.Marshal(wire.MinimumDistanceResult{Distance: h.minDistanceCm})
 	case wire.MethodBrepSectionWithPlane:
 		if h.sectionWires != nil {
 			return json.Marshal(wire.BrepWiresResult{Wires: h.sectionWires})

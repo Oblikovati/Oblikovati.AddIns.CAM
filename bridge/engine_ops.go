@@ -340,6 +340,7 @@ func (e *Engine) postPreviewResult(job *Job, verb string) (*JobResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	results = e.applyKeepToolDown(job, results)
 	estimate := EstimateMinutes(results)
 	e.mu.Lock()
 	job.PostProcessor = e.postName
