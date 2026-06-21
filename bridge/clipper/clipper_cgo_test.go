@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+//go:build cgo
+
+package clipper
+
+import (
+	"math"
+	"testing"
+)
+
+// rect builds a CCW axis-aligned rectangle from (x0,y0) to (x1,y1).
+func rect(x0, y0, x1, y1 int64) Path {
+	return Path{{x0, y0}, {x1, y0}, {x1, y1}, {x0, y1}}
+}
+
+// sumArea totals the signed areas of a path set (holes count negative).
+func sumArea(ps Paths) float64 {
+	a := 0.0
+	for _, p := range ps {
+		a += Area(p)
+	}
+	return a
+}
+
+func TestBooleanUnion(t *testing.T) {
+	// Two 100x100 squares overlapping in a 50x50 corner: union area = 10000+10000-2500.
+	got, err := Unite(Paths{rect(0, 0, 100, 100)}, Paths{rect(50, 50, 150, 150)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("union produced %d paths, want 1 (single L-shape)", len(got))
+	}
+	if a := math.Abs(Area(got[0])); a != 17500 {
+		t.Fatalf("union area = %g, want 17500", a)
+	}
+}
+
+func TestBooleanDifferenceLeavesHole(t *testing.T) {
+	// 100x100 outer minus a centred 50x50 inner: an outer ring plus a hole of opposite winding.
+	got, err := Subtract(Paths{rect(0, 0, 100, 100)}, Paths{rect(25, 25, 75, 75)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("difference produced %d paths, want 2 (outer + hole)", len(got))
+	}
+	if net := sumArea(got); net != 7500 {
+		t.Fatalf("net area = %g, want 7500 (10000 outer - 2500 hole)", net)
+	}
+}
+
+func TestBooleanIntersection(t *testing.T) {
+	got, err := Intersect(Paths{rect(0, 0, 100, 100)}, Paths{rect(50, 50, 150, 150)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || math.Abs(Area(got[0])) != 2500 {
+		t.Fatalf("intersection = %v, want one 50x50 (area 2500) path", got)
+	}
+}
+
+func TestBooleanOpenPathClippedToRegion(t *testing.T) {
+	// A horizontal open polyline crossing a 100x100 region: the inside segment is x in [0,100].
+	open := Paths{{{-50, 50}, {150, 50}}}
+	got, err := Boolean(Intersection, EvenOdd, open, false, Paths{rect(0, 0, 100, 100)}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || len(got[0]) != 2 {
+		t.Fatalf("open clip = %v, want one 2-point segment", got)
+	}
+	lo, hi := got[0][0].X, got[0][1].X
+	if lo > hi {
+		lo, hi = hi, lo
+	}
+	if lo != 0 || hi != 100 {
+		t.Fatalf("clipped segment x-span = [%d,%d], want [0,100]", lo, hi)
+	}
+}
+
+func TestOffsetShrinksSquare(t *testing.T) {
+	// Inset a 100x100 square by 10: ~80x80, area ~6400. Round join leaves the inward corners
+	// sharp, so the result is close to exact.
+	got, err := OffsetClosed(Paths{rect(0, 0, 100, 100)}, -10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("offset produced %d paths, want 1", len(got))
+	}
+	if a := math.Abs(Area(got[0])); a < 6200 || a > 6500 {
+		t.Fatalf("inset square area = %g, want ~6400", a)
+	}
+}
+
+func TestOffsetTooSmallVanishes(t *testing.T) {
+	// Shrinking a 100x100 square by 60 removes it entirely (no room left).
+	got, err := OffsetClosed(Paths{rect(0, 0, 100, 100)}, -60)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("over-shrink produced %d paths, want 0", len(got))
+	}
+}
+
+func TestSimplifyResolvesSelfIntersection(t *testing.T) {
+	// A bowtie (self-intersecting quad) resolves into two triangles under even-odd fill.
+	bowtie := Paths{{{0, 0}, {100, 0}, {0, 100}, {100, 100}}}
+	got, err := Simplify(bowtie, EvenOdd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("simplify of a bowtie produced %d paths, want 2 triangles", len(got))
+	}
+}
+
+func TestEmptyInputsAreSafe(t *testing.T) {
+	got, err := Unite(Paths{}, Paths{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("union of nothing = %v, want empty", got)
+	}
+}
