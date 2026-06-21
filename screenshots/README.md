@@ -49,6 +49,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | `tapping.png` | Tapping: a synchronised tap cycle (G84) at each detected hole — feed = thread pitch × spindle rpm. |
 | `countersink.png` | Countersink: a conical spiral from the rim down to the centre (the depth shade traces the cone). |
 | `surface.png` | 3D surface finish: parallel zig-zag passes; the depth shade (orange high → blue low) shows the surface. |
+| `surface-crosshatch.png` | 3D crosshatch finish: two perpendicular pass sets crossing over the surface for a finer scallop. |
 | `waterline.png` | 3D waterline finish: nested constant-Z contour loops down the surface. |
 
 The `surface` and `waterline` shots run on a synthetic pyramid surface so the 3D-finishing

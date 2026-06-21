@@ -131,6 +131,7 @@ func shots() []shot {
 		{"tapping", &bridge.TappingOp{OpBase: millEnv("Tapping"), Pitch: 1.5, Holes: holes()}},
 		{"countersink", &bridge.CountersinkOp{OpBase: deepEnv("Countersink"), Diameter: 14, ToolAngle: 90, Holes: boreHole()}},
 		{"surface", &bridge.SurfaceOp{OpBase: deepEnv("Surface"), Zigzag: true, Rows: pyramidRows()}},
+		{"surface-crosshatch", &bridge.SurfaceOp{OpBase: deepEnv("Surface"), Zigzag: true, Rows: pyramidRows(), CrossRows: pyramidColumns()}},
 		{"waterline", &bridge.WaterlineOp{OpBase: deepEnv("Waterline"), Levels: pyramidLevels()}},
 	}
 }
@@ -159,6 +160,20 @@ func pyramidRows() [][]gcode.Vector3 {
 	for y := -pyramidHalf; y <= pyramidHalf; y += 3 {
 		var row []gcode.Vector3
 		for x := -pyramidHalf; x <= pyramidHalf; x += 2 {
+			row = append(row, gcode.Vector3{X: x, Y: y, Z: pyramidHeight(x, y)})
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+// pyramidColumns samples the pyramid along parallel Y scan lines — the perpendicular drop-cutter
+// rows the crosshatch finish adds on top of pyramidRows.
+func pyramidColumns() [][]gcode.Vector3 {
+	var rows [][]gcode.Vector3
+	for x := -pyramidHalf; x <= pyramidHalf; x += 3 {
+		var row []gcode.Vector3
+		for y := -pyramidHalf; y <= pyramidHalf; y += 2 {
 			row = append(row, gcode.Vector3{X: x, Y: y, Z: pyramidHeight(x, y)})
 		}
 		rows = append(rows, row)

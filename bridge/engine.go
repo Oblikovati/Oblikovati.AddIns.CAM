@@ -113,6 +113,7 @@ const (
 	GenerateChamferCommandID     = "CAM.GenerateChamfer"     // edge chamfer / deburr
 	GenerateVCarveCommandID      = "CAM.GenerateVCarve"      // V-carve relief
 	GenerateSurfaceCommandID     = "CAM.GenerateSurface"     // 3D surface finishing (parallel drop-cutter)
+	GenerateCrosshatchCommandID  = "CAM.GenerateCrosshatch"  // 3D surface finishing (crosshatch — two perpendicular pass sets)
 	GenerateWaterlineCommandID   = "CAM.GenerateWaterline"   // 3D waterline (constant-Z) finishing
 	GenerateAllCommandID         = "CAM.GenerateAll"         // one program over several ops + tools
 	PreviewProfileCommandID      = "CAM.PreviewProfile"      // transient toolpath preview (not committed)
@@ -166,6 +167,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{GenerateChamferCommandID, "Generate Chamfer Job", "Break (bevel) the part's top edge with a V-tool chamfer pass."},
 	{GenerateVCarveCommandID, "Generate V-Carve Job", "Carve the part's outline region with a V-bit (depth deepens toward the spine)."},
 	{GenerateSurfaceCommandID, "Generate Surface Job", "Finish the part's 3D surface with a ball-nose end mill (parallel drop-cutter passes)."},
+	{GenerateCrosshatchCommandID, "Generate Crosshatch Job", "Finish the part's 3D surface with two perpendicular pass sets for a finer scallop."},
 	{GenerateWaterlineCommandID, "Generate Waterline Job", "Finish the part's 3D surface with constant-Z (waterline) passes — good for steep walls."},
 	{GenerateAllCommandID, "Generate All Operations", "Generate one program that drills, contours, and surface-finishes the part — with tool changes between operations."},
 	{PreviewProfileCommandID, "Preview Profile", "Show the profile toolpath as a live overlay without committing or posting it."},
@@ -304,6 +306,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(func() (*JobResult, error) { return e.RunVCarveJobOnHost(body) })
 	case GenerateSurfaceCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunSurface3DJobOnHost(body) })
+	case GenerateCrosshatchCommandID:
+		e.launchRun(func() (*JobResult, error) { return e.RunCrosshatchSurfaceJobOnHost(body) })
 	case GenerateWaterlineCommandID:
 		e.launchRun(func() (*JobResult, error) { return e.RunWaterlineJobOnHost(body) })
 	case GenerateAllCommandID:
