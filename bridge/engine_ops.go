@@ -5,6 +5,8 @@ package bridge
 import (
 	"fmt"
 
+	"oblikovati.org/api/types"
+	"oblikovati.org/api/wire"
 	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/gen"
 	"oblikovati.org/cam/bridge/geom2d"
@@ -361,7 +363,9 @@ func (e *Engine) postPreviewResult(job *Job, verb string) (*JobResult, error) {
 }
 
 // pushToolpathPreview draws the generated toolpath as two overlays: cutting moves in green
-// and rapids in grey, so the path reads at a glance. Best-effort.
+// and rapids in grey, so the path reads at a glance. Both are drawn ON TOP of the model so the
+// toolpath is not occluded by the solid stock (the cut lies at the cut depth, inside the part).
+// Best-effort.
 func (e *Engine) pushToolpathPreview(results []OperationResult) (string, error) {
 	var rapids, cuts PreviewLines
 	for _, r := range results {
@@ -369,14 +373,32 @@ func (e *Engine) pushToolpathPreview(results []OperationResult) (string, error) 
 		rapids, cuts = mergeLines(rapids, rr), mergeLines(cuts, cc)
 	}
 	if len(cuts.Indices) > 0 {
-		if _, err := e.api.Graphics().AddLines(ToolpathOverlayID, cuts.Coords, cuts.Indices, []float32{0.1, 0.9, 0.2, 1}); err != nil {
+		if err := e.addLinesOnTop(ToolpathOverlayID, cuts.Coords, cuts.Indices, []float32{0.1, 0.9, 0.2, 1}); err != nil {
 			return "", err
 		}
 	}
 	if len(rapids.Indices) > 0 {
-		_, _ = e.api.Graphics().AddLines(RapidOverlayID, rapids.Coords, rapids.Indices, []float32{0.6, 0.6, 0.6, 1})
+		_ = e.addLinesOnTop(RapidOverlayID, rapids.Coords, rapids.Indices, []float32{0.6, 0.6, 0.6, 1})
 	}
 	return ToolpathOverlayID, nil
+}
+
+// addLinesOnTop submits an indexed line list as a persistent overlay drawn on top of the model
+// (depth test disabled), so the toolpath reads over the stock instead of being hidden inside it.
+// The client's AddLines convenience wrapper omits OnTop, which is why the toolpath was occluded.
+func (e *Engine) addLinesOnTop(clientID string, coords []float64, indices []int, color []float32) error {
+	_, err := e.api.Graphics().Set(wire.SetClientGraphicsArgs{
+		ClientId: clientID,
+		Lane:     string(types.GraphicsLanePersistent),
+		Nodes: []wire.GraphicsNode{{Primitives: []wire.GraphicsPrimitive{{
+			Kind:        string(types.GraphicsLines),
+			Coordinates: coords,
+			Indices:     indices,
+			Color:       color,
+			OnTop:       true,
+		}}}},
+	})
+	return err
 }
 
 // mergeLines concatenates two line lists, re-basing the second's indices onto the first.
