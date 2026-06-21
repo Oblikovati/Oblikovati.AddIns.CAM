@@ -107,6 +107,7 @@ type opDoc struct {
 	Pattern          string  `json:"pattern,omitempty"`
 	OneWay           bool    `json:"oneWay,omitempty"`
 	RetractThreshold float64 `json:"retractThreshold,omitempty"`
+	FaceAngle        float64 `json:"faceAngle,omitempty"` // MillFace raster angle (degrees)
 
 	// Helix
 	HoleRadius float64 `json:"holeRadius,omitempty"`
@@ -303,6 +304,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 	case *MillFaceOp:
 		d := baseDoc("millface", o.OpBase)
 		d.StepOver, d.StepDown, d.Spiral = o.StepOver, o.StepDown, o.Spiral
+		d.Pattern, d.FaceAngle = o.Pattern, o.Angle
 		return d, nil
 	case *EngraveOp:
 		d := baseDoc("engrave", o.OpBase)
@@ -382,7 +384,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "trochoidal":
 		return &TrochoidalOp{OpBase: opBaseFrom(d), LoopRadius: d.LoopRadius, Advance: d.Advance, Side: d.Side, StepDown: d.StepDown}, nil
 	case "millface":
-		return &MillFaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown, Spiral: d.Spiral}, nil
+		return &MillFaceOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, StepDown: d.StepDown, Spiral: d.Spiral, Pattern: d.Pattern, Angle: d.FaceAngle}, nil
 	case "engrave":
 		return &EngraveOp{OpBase: opBaseFrom(d), Climb: d.Climb, StepDown: d.StepDown}, nil
 	case "chamfer":
