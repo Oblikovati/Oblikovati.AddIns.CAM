@@ -35,6 +35,28 @@ func TestWorkOffsetSubstitution(t *testing.T) {
 	}
 }
 
+// TestToolLengthOffset checks the Fanuc and Haas posts activate the tool-length offset (G43 H<n>)
+// right after a tool change, and that --no-tlo suppresses it.
+func TestToolLengthOffset(t *testing.T) {
+	withChange := []Object{{Label: "op", Path: gcode.NewPath([]gcode.Command{
+		gcode.NewCommand("M6", map[string]float64{"T": 3}),
+		gcode.NewCommand("G1", map[string]float64{"X": 1}),
+	})}}
+	for _, post := range []string{"fanuc", "haas"} {
+		out, err := Export(post, withChange, "--no-comments --no-sequence-numbers")
+		if err != nil {
+			t.Fatalf("%s: %v", post, err)
+		}
+		if !strings.Contains(out, "G43 H3") {
+			t.Errorf("%s should emit G43 H3 after the tool change, got:\n%s", post, out)
+		}
+		off, _ := Export(post, withChange, "--no-comments --no-sequence-numbers --no-tlo")
+		if strings.Contains(off, "G43") {
+			t.Errorf("%s --no-tlo should suppress G43, got:\n%s", post, off)
+		}
+	}
+}
+
 // TestWorkOffsetGarbageDefaultsToG54 checks an invalid offset falls back to G54.
 func TestWorkOffsetGarbageDefaultsToG54(t *testing.T) {
 	out, err := Export("fanuc", woObject(), "--no-comments --work-offset=G99")
