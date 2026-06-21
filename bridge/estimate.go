@@ -22,8 +22,11 @@ const toolChangeSeconds = 6.0
 // acceleration and dwell, like a quick CAM cycle-time readout.
 func EstimateMinutes(results []OperationResult) float64 {
 	total := 0.0
-	for _, r := range results {
-		total += toolChangeSeconds / 60
+	changes := toolChangeAt(results)
+	for i, r := range results {
+		if changes[i] {
+			total += toolChangeSeconds / 60
+		}
 		total += pathMinutes(r.Path, r.Controller)
 	}
 	return total
