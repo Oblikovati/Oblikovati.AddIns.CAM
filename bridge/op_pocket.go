@@ -20,6 +20,7 @@ type PocketOp struct {
 	Climb           bool             // climb vs conventional milling
 	StepDown        float64          // max Z step per pass (mm); <=0 → single pass
 	FinishAllowance float64          // mm of stock left on the walls when roughing; >0 adds a finish pass
+	Pattern         string           // gen.PocketOffset (default) | gen.PocketZigzag
 	Boundary        geom2d.Polygon   // driving region (mm), populated by the engine
 	Islands         []geom2d.Polygon // regions to leave standing (holes/bosses); the clearing routes around them
 }
@@ -46,6 +47,7 @@ func (op *PocketOp) Execute(job *Job) (gcode.Path, error) {
 		Climb:           op.Climb,
 		Islands:         op.Islands,
 		FinishAllowance: op.FinishAllowance,
+		Pattern:         op.Pattern,
 	})
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("pocket operation %q: %w", op.OpLabel, err)

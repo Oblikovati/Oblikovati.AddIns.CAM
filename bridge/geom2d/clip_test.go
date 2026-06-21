@@ -54,6 +54,34 @@ func TestClipOutsideStraddles(t *testing.T) {
 // approxP reports whether two points coincide within a small tolerance.
 func approxP(a, b Point2) bool { return dist(a, b) < 1e-6 }
 
+// TestClipInsideKeepsInteriorSpan keeps only the portion of a line that lies inside the region.
+func TestClipInsideKeepsInteriorSpan(t *testing.T) {
+	region := Polygon{{-5, -5}, {5, -5}, {5, 5}, {-5, 5}}
+	path := []Point2{{-10, 0}, {10, 0}} // crosses the region left-to-right
+	runs := ClipInside(path, region)
+	if len(runs) != 1 {
+		t.Fatalf("a line through the region should yield one inside run, got %d: %v", len(runs), runs)
+	}
+	if !approxP(runs[0][0], Point2{-5, 0}) || !approxP(runs[0][len(runs[0])-1], Point2{5, 0}) {
+		t.Errorf("inside run should span -5..5, got %v", runs[0])
+	}
+}
+
+// TestClipInsideFullyOutside drops a line that never enters the region.
+func TestClipInsideFullyOutside(t *testing.T) {
+	region := Polygon{{-1, -1}, {1, -1}, {1, 1}, {-1, 1}}
+	if runs := ClipInside([]Point2{{-10, 5}, {10, 5}}, region); len(runs) != 0 {
+		t.Errorf("a line clear of the region should yield no runs, got %v", runs)
+	}
+}
+
+// TestClipInsideDegenerateRegion returns no runs for a <3-point region (nothing is inside it).
+func TestClipInsideDegenerateRegion(t *testing.T) {
+	if runs := ClipInside(ringPath(5), Polygon{{0, 0}, {1, 1}}); runs != nil {
+		t.Errorf("a degenerate region should yield no runs, got %v", runs)
+	}
+}
+
 // TestClipOutsideDegenerateKeepout returns the path unchanged for a <3-point keepout.
 func TestClipOutsideDegenerateKeepout(t *testing.T) {
 	path := ringPath(5)

@@ -47,8 +47,17 @@ func (op *PocketOp) Parameters() []OpParam {
 		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
 		numberParam("finishAllowance", "Finish allowance (mm)", op.FinishAllowance),
+		choiceParam("pattern", "Pattern", pocketPatternOf(op.Pattern), gen.PocketOffset, gen.PocketZigzag),
 		boolParam("climb", "Climb", op.Climb),
 	}, depthParams(op.OpBase)...)
+}
+
+// pocketPatternOf defaults an unset pocket pattern to the offset (concentric) pattern.
+func pocketPatternOf(pattern string) string {
+	if pattern == "" {
+		return gen.PocketOffset
+	}
+	return pattern
 }
 
 // SetParameter applies one pocket parameter edit.
@@ -60,6 +69,8 @@ func (op *PocketOp) SetParameter(id, value string) bool {
 		op.StepDown = panelNum(value, op.StepDown)
 	case "finishAllowance":
 		op.FinishAllowance = panelNum(value, op.FinishAllowance)
+	case "pattern":
+		op.Pattern = value
 	case "climb":
 		op.Climb = parseBool(value)
 	default:
