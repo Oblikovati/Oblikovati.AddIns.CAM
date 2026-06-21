@@ -3,6 +3,9 @@
   "displayName": "Oblikovati CAM",
   "version": "0.6.0",
   "description": "Computer-aided manufacturing for Oblikovati: defines a machining Job over a part (stock, tools, operations), generates 2.5D and 3D toolpaths (clearing, profiling, drilling and hole-making, surfacing, probing) with dress-ups, and posts them to machine G-code (LinuxCNC, GRBL, Fanuc, Marlin, Haas, Heidenhain).",
+  "license": "GPL-2.0-only",
+  "sourceRepo": "https://github.com/Oblikovati/Oblikovati.AddIns.CAM",
+  "apiCompat": "0.85",
   "capabilities": [
     "commands",
     "documents",
