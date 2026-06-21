@@ -5,8 +5,7 @@ package bridge
 // ToolLibrary is the set of tool controllers the add-in keeps loaded beyond the primary milling
 // end mill (which the CAM panel quick-edits): the drill, the ball-nose finisher, and any tools
 // the user adds. Operations pick the controller matching their cutter shape, so a multi-operation
-// program emits the right tool changes. A pared-down port of FreeCAD's tool library + per-job
-// tool controllers.
+// program emits the right tool changes — a tool library plus per-job tool controllers.
 type ToolLibrary struct {
 	Tools []ToolController `json:"tools"`
 }

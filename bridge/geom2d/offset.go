@@ -10,7 +10,7 @@ import "math"
 // (area driven to ~zero or the winding inverted) — the caller uses that to stop generating
 // inner pocket rings.
 //
-// This is a miter offset (the JoinType=Miter case of FreeCAD's area engine). It is exact for
+// This is a miter offset (the miter join type). It is exact for
 // convex polygons and correct for mildly concave ones; deeply concave shapes whose inward
 // offset self-intersects are a known limitation (M2 documents it — robust arbitrary-polygon
 // offsetting is the host's OffsetPlanarWire / a future Clipper-grade port).

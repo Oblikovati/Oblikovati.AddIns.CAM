@@ -8,8 +8,8 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 )
 
-// topBottom is the canonical Z-aligned hole edge used across the upstream oracle
-// (TestPathDrillGenerator): top at (0,0,10), bottom at (0,0,0).
+// topBottom is the canonical Z-aligned hole edge used across the drill generator tests:
+// top at (0,0,10), bottom at (0,0,0).
 func topBottom() (gcode.Vector3, gcode.Vector3) {
 	return gcode.Vector3{X: 0, Y: 0, Z: 10}, gcode.Vector3{X: 0, Y: 0, Z: 0}
 }
@@ -28,8 +28,8 @@ func onlyCommand(t *testing.T, p DrillParams) gcode.Command {
 	return cmds[0]
 }
 
-// TestPlainDrillG81 ports TestPathDrillGenerator.test00: a bare cycle is a G81 with the
-// hole XY, bottom Z, and R defaulting to the start (top) Z.
+// TestPlainDrillG81 checks a bare cycle is a G81 with the hole XY, bottom Z, and R defaulting
+// to the start (top) Z.
 func TestPlainDrillG81(t *testing.T) {
 	c := onlyCommand(t, DrillParams{Repeat: 1})
 	if c.Name != "G81" {

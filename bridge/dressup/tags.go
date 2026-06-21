@@ -3,7 +3,7 @@
 // Package dressup holds toolpath dressups: transforms applied to a generated path to add
 // manufacturing features the raw geometry does not — holding tabs, dogbone corner relief, …
 // A dressup takes a gcode.Path and returns a modified one, leaf of the CAM add-in (it depends
-// only on the toolpath model). Mirrors FreeCAD's Path/Dressup.
+// only on the toolpath model).
 package dressup
 
 import (
@@ -12,7 +12,7 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 )
 
-// TagParams configure holding tabs (FreeCAD's Tags dressup): Count tabs spaced evenly by
+// TagParams configure holding tabs: Count tabs spaced evenly by
 // cutting arc-length, each Width long, lifting the tool Height above the cut so a bridge of
 // material is left holding the part to the stock.
 type TagParams struct {

@@ -8,11 +8,9 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 )
 
-// FeatureFlag enumerates the property groups an operation uses. In FreeCAD the flags drive
-// which properties get *added* to an op dynamically; in Go the fields always exist, so the
-// flags instead declare an op's capabilities for the UI and for validation (e.g. only an op
-// with FeatureStepDown exposes a step-down control). Ports the FeatureTool/FeatureDepths/…
-// bit system of FreeCAD's ObjectOp.
+// FeatureFlag enumerates the property groups an operation uses: the fields always exist on the
+// Go structs, so the flags declare an op's capabilities for the UI and for validation (e.g. only
+// an op with FeatureStepDown exposes a step-down control).
 type FeatureFlag uint32
 
 const (
@@ -28,7 +26,7 @@ const (
 func (f FeatureFlag) Has(x FeatureFlag) bool { return f&x != 0 }
 
 // Operation is one machining operation that produces a toolpath from a Job's geometry and
-// tools. Mirrors the role of FreeCAD's Path/Op/Base.ObjectOp: each concrete op (Drilling,
+// tools. Each concrete op (Drilling,
 // Profile, …) resolves its tool controller, reads its driving geometry, and appends moves.
 type Operation interface {
 	Label() string            // display label, also emitted as a path comment
@@ -44,8 +42,7 @@ type Operation interface {
 // under and the depth/height envelope (the planes a tool rapids to, retracts to, and cuts
 // between). Concrete operations embed it for the shared accessors and the standard
 // clearance/retract framing (see frame). All heights/depths are millimetres, measured in
-// the part's Z. Ports the FeatureHeights/FeatureDepths property group of FreeCAD's
-// ObjectOp.
+// the part's Z (the FeatureHeights/FeatureDepths property group).
 type OpBase struct {
 	OpLabel        string
 	IsActive       bool
@@ -122,8 +119,8 @@ func (b *OpBase) resolveTool(job *Job) (ToolController, error) {
 }
 
 // frame wraps an operation's cutting commands in the standard envelope: a leading label
-// comment and a trailing rapid to the clearance plane, mirroring ObjectOp.execute's
-// commandlist initialisation and final `G0 Z=ClearanceHeight`. The op supplies only its
+// comment and a trailing rapid to the clearance plane (a final `G0 Z=ClearanceHeight`). The
+// op supplies only its
 // cutting moves; framing keeps every operation's entry/exit consistent.
 func (b *OpBase) frame(cutting []gcode.Command) gcode.Path {
 	cmds := make([]gcode.Command, 0, len(cutting)+2)

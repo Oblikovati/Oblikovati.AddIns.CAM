@@ -11,7 +11,7 @@ import (
 )
 
 // LinuxCNCOptions are the LinuxCNC post's knobs, parsed from the argstring. Defaults match
-// the upstream legacy post's globals (comments + header on, line numbers off, precision 3,
+// the legacy-dialect globals (comments + header on, line numbers off, precision 3,
 // metric, tool-length offsets on).
 type LinuxCNCOptions struct {
 	OutputHeader      bool
@@ -26,7 +26,7 @@ type LinuxCNCOptions struct {
 	Postamble         string
 }
 
-// defaultLinuxCNCOptions returns the upstream defaults (PREAMBLE/POSTAMBLE included).
+// defaultLinuxCNCOptions returns the legacy defaults (PREAMBLE/POSTAMBLE included).
 func defaultLinuxCNCOptions() LinuxCNCOptions {
 	return LinuxCNCOptions{
 		OutputHeader:   true,
@@ -39,9 +39,9 @@ func defaultLinuxCNCOptions() LinuxCNCOptions {
 	}
 }
 
-// parseLinuxCNCArgs applies the argstring flags onto the defaults, mirroring the upstream
+// parseLinuxCNCArgs applies the argstring flags onto the defaults (the subset supported
 // processArguments. Unknown flags are ignored (e.g. --no-show-editor is a GUI-only no-op
-// here). Inches forces precision 4 like the upstream.
+// here). Inches forces precision 4.
 func parseLinuxCNCArgs(argstring string) LinuxCNCOptions {
 	o := defaultLinuxCNCOptions()
 	for _, tok := range shlexSplit(argstring) {
@@ -92,8 +92,7 @@ type lncRenderer struct {
 }
 
 // ExportLinuxCNC renders the objects to LinuxCNC-dialect G-code, applying the argstring
-// flags. It is the Go port of linuxcnc_legacy_post.export and is validated line-for-line
-// against FreeCAD's TestLinuxCNCLegacyPost.
+// flags. It is validated line-for-line against a reference exact-string oracle.
 func ExportLinuxCNC(objects []Object, argstring string) string {
 	r := &lncRenderer{opts: parseLinuxCNCArgs(argstring), lineNR: 100}
 	var b strings.Builder
@@ -106,7 +105,7 @@ func ExportLinuxCNC(objects []Object, argstring string) string {
 }
 
 // lineNumber returns the "Nxxx " prefix when line numbers are enabled (incrementing the
-// counter), else the empty string — the upstream linenumber().
+// counter), else the empty string.
 func (r *lncRenderer) lineNumber() string {
 	if !r.opts.OutputLineNumbers {
 		return ""
@@ -147,7 +146,7 @@ func (r *lncRenderer) writeOperation(b *strings.Builder, obj Object) {
 }
 
 // writePostamble emits the (non-line-numbered) begin-postamble comment and the postamble
-// block, matching the upstream quirk where "(begin postamble)" carries no line number.
+// block, where "(begin postamble)" carries no line number.
 func (r *lncRenderer) writePostamble(b *strings.Builder) {
 	if r.opts.OutputComments {
 		b.WriteString("(begin postamble)\n")
@@ -161,7 +160,7 @@ func (r *lncRenderer) writePostamble(b *strings.Builder) {
 var lncParams = []string{"X", "Y", "Z", "A", "B", "C", "I", "J", "F", "S", "T", "Q", "R", "L", "H", "D", "P"}
 
 // parsePath renders one path's commands. currLocation/lastcommand are per-path state
-// (reset here), seeded with the upstream's sentinel first move so the first real move
+// (reset here), seeded with a sentinel first move so the first real move
 // always prints its axes under axis-modal.
 func (r *lncRenderer) parsePath(path gcode.Path) string {
 	var out strings.Builder
@@ -180,7 +179,7 @@ func (r *lncRenderer) parsePath(path gcode.Path) string {
 		r.applyToolChange(&out, c, &tokens)
 		if len(tokens) >= 1 {
 			line := strings.Join(tokens, " ") + " \n"
-			// The upstream inserts linenumber() (already trailing a space) as the first
+			// The line number (already trailing a space) is inserted as the first
 			// token then joins with COMMAND_SPACE, so an enabled line number is followed
 			// by two spaces ("N160  G0 ...").
 			if r.opts.OutputLineNumbers {
@@ -239,7 +238,7 @@ func (r *lncRenderer) formatParam(name, p string, v float64, currLocation map[st
 }
 
 // applyToolChange emits the spindle stop + appends a tool-length-offset block on M6,
-// mirroring the upstream M6 handling (M5 line, then G43 Hn appended to the tool-change
+// the M6 handling (M5 line, then G43 Hn appended to the tool-change
 // line when TLO is on).
 func (r *lncRenderer) applyToolChange(out *strings.Builder, c gcode.Command, tokens *[]string) {
 	if c.Name != "M6" {

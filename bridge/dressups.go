@@ -10,13 +10,13 @@ import (
 // Dressup is a post-process applied to an operation's toolpath to add a manufacturing
 // feature the raw geometry lacks — holding tabs, dogbone corner relief, … It is the bridge
 // adapter over the pure dressup package, letting an operation carry an ordered chain of
-// dressups that frame() applies after generating the cut. Mirrors FreeCAD's Path/Dressup.
+// dressups that frame() applies after generating the cut.
 type Dressup interface {
 	Apply(gcode.Path) gcode.Path // transform the toolpath
 	Name() string                // display name (operations browser / persistence)
 }
 
-// TagsDressup lifts the tool over evenly spaced holding tabs (FreeCAD's Tags dressup).
+// TagsDressup lifts the tool over evenly spaced holding tabs.
 type TagsDressup struct{ Params dressup.TagParams }
 
 // Apply implements Dressup.
@@ -25,8 +25,7 @@ func (d TagsDressup) Apply(path gcode.Path) gcode.Path { return dressup.ApplyTag
 // Name implements Dressup.
 func (d TagsDressup) Name() string { return "Tags" }
 
-// DogboneDressup cuts corner-relief bones so a round end mill reaches internal corners
-// (FreeCAD's DogboneII dressup).
+// DogboneDressup cuts corner-relief bones so a round end mill reaches internal corners.
 type DogboneDressup struct{ Params dressup.DogboneParams }
 
 // Apply implements Dressup.
@@ -37,7 +36,7 @@ func (d DogboneDressup) Apply(path gcode.Path) gcode.Path {
 // Name implements Dressup.
 func (d DogboneDressup) Name() string { return "Dogbone" }
 
-// RampDressup replaces straight plunges with a ramped descent (FreeCAD's ramp-entry dressup).
+// RampDressup replaces straight plunges with a ramped descent.
 type RampDressup struct{ Params dressup.RampParams }
 
 // Apply implements Dressup.
@@ -70,8 +69,7 @@ func NewHelicalRampDressup(radius, pitch float64) HelicalRampDressup {
 	return HelicalRampDressup{Params: dressup.HelicalRampParams{Radius: radius, Pitch: pitch}}
 }
 
-// LeadInOutDressup eases the tool into and out of each cut with tangential arcs (FreeCAD's
-// LeadInOut dressup).
+// LeadInOutDressup eases the tool into and out of each cut with tangential arcs.
 type LeadInOutDressup struct{ Params dressup.LeadInOutParams }
 
 // Apply implements Dressup.

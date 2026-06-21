@@ -6,7 +6,7 @@ import "oblikovati.org/cam/bridge/gcode"
 
 // Job is the top-level machining container: the part(s) it cuts, the stock it cuts from,
 // the tool controllers it has loaded, and the ordered operations that produce toolpaths.
-// A pared-down port of FreeCAD's Path/Main/Job — enough for the milestone-1 drilling
+// A pared-down job container — enough for the milestone-1 drilling
 // slice. The post processor is selected by name and applied to the concatenated
 // operation paths (see post.PostList).
 type Job struct {

@@ -11,8 +11,8 @@ import (
 
 // CustomOp emits operator-supplied raw G-code verbatim as a step in the job sequence — the escape
 // hatch for moves the toolpath generators do not produce (a manual tool-change macro, a probing
-// routine, an auxiliary M-function, a comment block). It ports the role of FreeCAD's CAM Custom
-// op. The GCode is one command per line; blank lines are skipped. It takes the standard tool-change
+// routine, an auxiliary M-function, a comment block) — the manual/custom operation. The GCode
+// is one command per line; blank lines are skipped. It takes the standard tool-change
 // framing for its controller like any operation, so set its tool controller to the previous op's
 // to keep the spindle running.
 type CustomOp struct {

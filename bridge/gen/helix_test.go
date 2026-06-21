@@ -11,10 +11,10 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 )
 
-// freecadGCode renders a command the way FreeCAD's Path.Command.toGCode does — the name
-// followed by its parameters in alphabetical address order, each formatted %.6f — so the
-// ported generator can be compared byte-for-byte against the upstream oracle string.
-func freecadGCode(c gcode.Command) string {
+// referenceGCode renders a command as the name followed by its parameters in alphabetical
+// address order, each formatted %.6f — so the generator can be compared byte-for-byte against
+// the reference oracle string.
+func referenceGCode(c gcode.Command) string {
 	addrs := make([]string, 0, len(c.Params))
 	for a := range c.Params {
 		addrs = append(addrs, a)
@@ -27,8 +27,8 @@ func freecadGCode(c gcode.Command) string {
 	return strings.Join(parts, " ")
 }
 
-// expectedHelixGCode is FreeCAD CAMTests.TestPathHelixGenerator.expectedHelixGCode — the
-// concatenated toGCode of the annulus helix for the canonical args below.
+// expectedHelixGCode is the reference oracle string — the concatenated G-code of the annulus
+// helix for the canonical args below.
 const expectedHelixGCode = "G0 Z23.000000" +
 	"G0 X7.500000 Y5.000000" +
 	"G1 Z20.000000" +
@@ -60,9 +60,8 @@ const expectedHelixGCode = "G0 Z23.000000" +
 	"G2 I7.500000 J0.000000 X12.500000 Y5.000000 Z18.000000" +
 	"G0 X11.250000 Y5.000000 Z23.000000"
 
-// TestHelixGeneratorOracle reproduces the upstream TestPathHelixGenerator: the annulus helix
-// (outer 7.5, inner 2.5, step 2.5, tool ⌀5, ramp 3°, CW, from Inside) over the (5,5,20)→
-// (5,5,18) edge must match FreeCAD's g-code exactly.
+// TestHelixGeneratorOracle checks the annulus helix (outer 7.5, inner 2.5, step 2.5, tool ⌀5,
+// ramp 3°, CW, from Inside) over the (5,5,20)→(5,5,18) edge matches the reference G-code exactly.
 func TestHelixGeneratorOracle(t *testing.T) {
 	cmds, err := GenerateHelix(
 		gcode.Vector3{X: 5, Y: 5, Z: 20}, gcode.Vector3{X: 5, Y: 5, Z: 18},
@@ -76,7 +75,7 @@ func TestHelixGeneratorOracle(t *testing.T) {
 	}
 	var b strings.Builder
 	for _, c := range cmds {
-		b.WriteString(freecadGCode(c))
+		b.WriteString(referenceGCode(c))
 	}
 	if got := b.String(); got != expectedHelixGCode {
 		t.Errorf("helix g-code mismatch:\n got %q\nwant %q", got, expectedHelixGCode)

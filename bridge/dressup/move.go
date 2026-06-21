@@ -9,13 +9,12 @@ import (
 )
 
 // angleTolerance is the radian/coordinate slop below which two angles or positions are
-// treated as equal. Mirrors FreeCAD Path.Geom.Tolerance (1e-6), which the dogbone math
-// compares tangents against.
+// treated as equal (1e-6), which the dogbone math compares tangents against.
 const angleTolerance = 1e-6
 
 // move is one planar (XY) toolpath move with tangent directions — the unit the dogbone
 // dressup reasons about. A straight move runs begin→end; an arc additionally carries its
-// centre and a turn direction (ccw). Ports FreeCAD's PathLanguage MoveStraight / MoveArc;
+// centre and a turn direction (ccw);
 // only the XY projection matters for corner relief, so Z is ignored.
 type move struct {
 	begin, end gcode.Vector3
@@ -36,7 +35,7 @@ func arcMove(begin, end gcode.Vector3, i, j float64, ccw bool) move {
 
 // anglesOfTangents returns the tangent direction (radians) at the move's begin and end. For
 // a straight move both equal the segment direction; for an arc each is perpendicular to the
-// radius, signed by the turn direction. Ports PathLanguage.MoveStraight/MoveArc.anglesOfTangents.
+// radius, signed by the turn direction.
 func (m move) anglesOfTangents() (t0, t1 float64) {
 	if !m.arc {
 		if roughlySame(m.begin, m.end) {
@@ -55,7 +54,7 @@ func (m move) anglesOfTangents() (t0, t1 float64) {
 }
 
 // pathLength returns the move's length in the XY plane (mm) — used to compare adjacent edges
-// for the short/long T-bone styles. Ports MoveStraight/MoveArc.pathLength.
+// for the short/long T-bone styles.
 func (m move) pathLength() float64 {
 	if !m.arc {
 		return math.Hypot(m.end.X-m.begin.X, m.end.Y-m.begin.Y)
@@ -64,7 +63,7 @@ func (m move) pathLength() float64 {
 }
 
 // arcAngle returns the opening angle (radians, always positive) the arc subtends, unwinding
-// in its turn direction. Ports MoveArc.arcAngle.
+// in its turn direction.
 func (m move) arcAngle() float64 {
 	s0 := angleOf(sub(m.begin, m.center))
 	s1 := angleOf(sub(m.end, m.center))
@@ -80,11 +79,11 @@ func (m move) arcAngle() float64 {
 	return s1 - s0
 }
 
-// angleOf returns the angle of a vector from the +X axis in (-pi, pi]. Ports Path.Geom.getAngle
+// angleOf returns the angle of a vector from the +X axis in (-pi, pi].
 // (acos against +X, negated for the lower half-plane), which equals atan2(y, x).
 func angleOf(v gcode.Vector3) float64 { return math.Atan2(v.Y, v.X) }
 
-// normalizeAngle shifts an angle into [-pi, pi]. Ports Path.Geom.normalizeAngle.
+// normalizeAngle shifts an angle into [-pi, pi].
 func normalizeAngle(a float64) float64 {
 	for a > math.Pi {
 		a -= 2 * math.Pi
@@ -95,11 +94,10 @@ func normalizeAngle(a float64) float64 {
 	return a
 }
 
-// isRoughly reports whether two scalars are equal within angleTolerance. Ports Path.Geom.isRoughly.
+// isRoughly reports whether two scalars are equal within angleTolerance.
 func isRoughly(a, b float64) bool { return math.Abs(a-b) <= angleTolerance }
 
-// roughlySame reports whether two XY points coincide within angleTolerance. Ports
-// Path.Geom.pointsCoincide (XY only).
+// roughlySame reports whether two XY points coincide within angleTolerance (XY only).
 func roughlySame(a, b gcode.Vector3) bool {
 	return isRoughly(a.X, b.X) && isRoughly(a.Y, b.Y)
 }

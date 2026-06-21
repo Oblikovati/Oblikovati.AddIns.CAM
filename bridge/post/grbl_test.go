@@ -9,7 +9,7 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 )
 
-// grblObject wraps parsed lines as the "testpath" object the GRBL oracle uses.
+// grblObject wraps parsed lines as the "testpath" object the GRBL post tests use.
 func grblObject(lines ...string) []Object {
 	cmds := make([]gcode.Command, 0, len(lines))
 	for _, l := range lines {
@@ -29,7 +29,7 @@ func grblLine(t *testing.T, idx int, args string, lines ...string) string {
 	return split[idx]
 }
 
-// TestGRBLEmptyPath ports TestGrblLegacyPost.test000.
+// TestGRBLEmptyPath covers the empty-program wrapper.
 func TestGRBLEmptyPath(t *testing.T) {
 	empty := []Object{{Label: "testpath", Path: gcode.NewPath(nil)}}
 

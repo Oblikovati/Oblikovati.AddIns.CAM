@@ -3,8 +3,7 @@
 // Package gcode is the pure toolpath model — Command (one G/M move) and Path (an ordered
 // list of them) — plus the Vector3 the generators consume. It is the leaf of the CAM add-in:
 // generators (../gen), operations (..), and post processors (../post) all depend on it, and it
-// depends on nothing in this module, mirroring FreeCAD's App/Command + App/Path sitting under
-// Path/Base/Generator, Path/Op, and Path/Post.
+// depends on nothing in this module.
 package gcode
 
 import (
@@ -20,7 +19,7 @@ type Vector3 struct {
 }
 
 // Command is one toolpath instruction: a G/M-code name plus its addressed parameters
-// (X/Y/Z, I/J/K, F, R, Q, P, L, S, T, …). It mirrors FreeCAD's Path.Command — a flat
+// (X/Y/Z, I/J/K, F, R, Q, P, L, S, T, …). It is a flat
 // (name, parameter-map) pair with no embedded geometry — so a post processor can render
 // it to text and a generator can emit it without a kernel dependency. Numeric values are
 // kept in millimetres (the G-code convention), independent of the host's centimetre
@@ -41,7 +40,7 @@ func NewCommand(name string, params map[string]float64) Command {
 
 // ParseCommand parses a single G-code line ("G0 X10 Y20 Z30 F100") into a Command. A
 // line that opens with "(" is treated as a whole-line comment: the entire text becomes
-// the Name and no parameters are extracted (matching FreeCAD's Path.Command(string)).
+// the Name and no parameters are extracted.
 // Unparseable address values are skipped rather than erroring — a post never aborts a
 // job on one malformed token.
 func ParseCommand(line string) Command {
@@ -109,7 +108,7 @@ func formatNumber(v float64) string {
 }
 
 // Path is an ordered list of Commands — the toolpath an operation produces and a post
-// processor consumes. It mirrors FreeCAD's Path.Path.
+// processor consumes.
 type Path struct {
 	Commands []Command
 }

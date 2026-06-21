@@ -33,7 +33,7 @@ const defaultAdaptiveStepOver = 0.1
 // rings, unlike the offset-pattern pocket). The small step-over bounds the radial engagement on
 // straight runs; sharp internal corners still spike (a full constant-engagement solver would add
 // trochoidal loops there, which needs a medial-axis the add-in's polygon offsetter does not
-// provide — see cam-port/gaps.md). This is the HSM analogue of FreeCAD's Path/Op/Adaptive.
+// provide). This is the HSM (high-speed-machining) clearing strategy.
 func GenerateAdaptive(boundary geom2d.Polygon, levels []float64, feeds Feeds, p AdaptiveParams) ([]gcode.Command, error) {
 	if p.ToolRadius <= 0 {
 		return nil, fmt.Errorf("adaptive clearing needs a positive tool radius, got %g", p.ToolRadius)

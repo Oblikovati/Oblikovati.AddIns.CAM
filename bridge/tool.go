@@ -3,8 +3,8 @@
 package bridge
 
 // ToolBit is the cutting tool's geometry: its diameter, a shape tag, and cutting-edge
-// height. A pared-down port of FreeCAD's Path/Tool/toolbit (the milestone-1 drilling
-// slice only needs the diameter and a type tag; the parametric shape comes later).
+// height. The milestone-1 drilling slice only needs the diameter and a type tag; the
+// parametric shape comes later.
 // Lengths are millimetres — the G-code/tooling convention.
 type ToolBit struct {
 	Name              string  // human label, e.g. "6mm Drill"
@@ -15,8 +15,8 @@ type ToolBit struct {
 }
 
 // ToolController binds a ToolBit to its machining parameters — the spindle and feed/rapid
-// rates an operation reads when it emits moves. Mirrors FreeCAD's Path/Tool/Controller
-// (ToolNumber, SpindleSpeed/Dir, VertFeed/HorizFeed, VertRapid/HorizRapid). Feeds are
+// rates an operation reads when it emits moves (ToolNumber, SpindleSpeed/Dir,
+// VertFeed/HorizFeed, VertRapid/HorizRapid). Feeds are
 // mm/min; the spindle speed is rpm.
 type ToolController struct {
 	Label        string

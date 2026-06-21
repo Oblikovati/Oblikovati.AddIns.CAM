@@ -19,7 +19,7 @@ type MillFaceParams struct {
 // GenerateMillFace clears the top of the stock over the boundary's bounding region with a
 // back-and-forth raster (zigzag) at each depth level — the simplest facing pattern. The
 // raster is inset by the tool radius so the tool stays within the region. Ports the role of
-// FreeCAD's Path/Op/MillFace (the raster-clearing core). Rows run along X, stepping in Y.
+// the raster-clearing facing core. Rows run along X, stepping in Y.
 func GenerateMillFace(boundary geom2d.Polygon, levels []float64, feeds Feeds, p MillFaceParams) ([]gcode.Command, error) {
 	if p.ToolRadius <= 0 {
 		return nil, fmt.Errorf("face milling needs a positive tool radius, got %g", p.ToolRadius)

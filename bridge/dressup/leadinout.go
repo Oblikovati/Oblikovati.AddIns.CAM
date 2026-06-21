@@ -25,7 +25,7 @@ type LeadInOutParams struct {
 // moves → retract) with a tangential quarter-arc lead-in and lead-out. The plunge is relocated
 // to the lead-in arc's start so the tool descends clear of the contour, sweeps in tangentially,
 // cuts the sequence, then sweeps out tangentially before retracting. Zero/negative radius, or a
-// sequence without a following cut, is left untouched. Mirrors FreeCAD's LeadInOut dressup.
+// sequence without a following cut, is left untouched.
 func ApplyLeadInOut(path gcode.Path, p LeadInOutParams) gcode.Path {
 	if p.Radius <= 0 {
 		return path

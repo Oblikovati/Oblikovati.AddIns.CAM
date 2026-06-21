@@ -13,7 +13,7 @@ import (
 // processor renders, injecting the tool-change + spindle-start block (M6 Tn, then M3/M4 Sxxxx)
 // before each operation that needs a fresh tool — the first op, and any op whose tool differs
 // from the previous one. Consecutive operations sharing a tool keep the spindle running rather
-// than re-selecting the same tool. A pared-down port of FreeCAD's Path/Post/PostList ordering:
+// than re-selecting the same tool. The post-list ordering:
 // it makes the program self-contained (a machine sees the tool select and spindle start it
 // needs before the cutting moves). The tool number/spindle come from the operation's controller.
 func PostObjects(results []OperationResult) []post.Object {

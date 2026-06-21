@@ -12,7 +12,7 @@ import (
 // HelixOp bores circular holes larger than the tool by helical interpolation, descending
 // from the stock top to the hole bottom. It reuses the part's detected cylindrical holes
 // (like Drilling) but cuts each with a helix instead of a canned cycle, so it suits holes
-// wider than the drill/end-mill. Ports the role of FreeCAD's Path/Op/Helix.
+// wider than the drill/end-mill.
 type HelixOp struct {
 	OpBase
 	HoleRadius float64 // mm — radius of the hole to bore (the wall the helix follows minus tool)

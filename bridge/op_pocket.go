@@ -11,8 +11,8 @@ import (
 )
 
 // PocketOp clears the interior of a boundary region with concentric offset rings, stepping
-// down in Z. It ports the toolpath behaviour of FreeCAD's Path/Op/Pocket (offset-pattern
-// clearing). The driving Boundary (a closed XY region in millimetres) is populated by the
+// down in Z (offset-pattern clearing). The driving Boundary (a closed XY region in
+// millimetres) is populated by the
 // engine; Execute is pure given the boundary, tool, and depths.
 type PocketOp struct {
 	OpBase

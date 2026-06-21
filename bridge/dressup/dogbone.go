@@ -9,7 +9,7 @@ import (
 )
 
 // Dogbone styles: the direction a corner-relief bone is cut so an end mill of finite radius
-// can clear an internal corner. Mirrors FreeCAD's DogboneII styles.
+// can clear an internal corner.
 const (
 	StyleDogbone   = "dogbone"          // along the corner bisector (shortest relief)
 	StyleTBoneH    = "tbone_horizontal" // along the X axis
@@ -37,7 +37,7 @@ const (
 )
 
 // kink is the corner where one move meets the next: the end tangent of m0 against the begin
-// tangent of m1, with the deflection (signed turn) between them. Ports DogboneII.Kink.
+// tangent of m1, with the deflection (signed turn) between them.
 type kink struct {
 	m0, m1 move
 	t0, t1 float64
@@ -61,8 +61,8 @@ func (k kink) position() gcode.Vector3 { return k.m0.end }
 // goesRight reports a right (clockwise) turn at the corner.
 func (k kink) goesRight() bool { return k.defl < 0 }
 
-// normAngle returns the angle of the corner bisector pointing into the relief direction.
-// Ports DogboneII.Kink.normAngle: the perpendicular to the average tangent, turned toward
+// normAngle returns the angle of the corner bisector pointing into the relief direction:
+// the perpendicular to the average tangent, turned toward
 // the side the two tangents' ordering selects.
 func (k kink) normAngle() float64 {
 	if k.t0 > k.t1 {
@@ -71,8 +71,8 @@ func (k kink) normAngle() float64 {
 	return normalizeAngle((k.t0 + k.t1 - math.Pi) / 2)
 }
 
-// boneAngle returns the bone direction (radians) for a style at a kink. Ports the angle()
-// methods of DogboneII's Generator subclasses.
+// boneAngle returns the bone direction (radians) for a style at a kink, dispatching on the
+// requested bone style.
 func boneAngle(style string, k kink) float64 {
 	switch style {
 	case StyleTBoneH:
@@ -108,8 +108,8 @@ func edgeBoneAngle(k kink, useOnM0 bool) float64 {
 }
 
 // generateBone builds the two-move relief bone at a kink: a move out by Length along angle,
-// then a move back to the corner. Each move carries only the axis (axes) it changes, matching
-// FreeCAD's generate_bone, so a tangent (axis-aligned) bone stays a single-axis move.
+// then a move back to the corner. Each move carries only the axis (axes) it changes, so a
+// tangent (axis-aligned) bone stays a single-axis move.
 func generateBone(k kink, length, angle float64) (in, out gcode.Command) {
 	dx := length * math.Cos(angle)
 	dy := length * math.Sin(angle)
@@ -127,8 +127,8 @@ func generateBone(k kink, length, angle float64) (in, out gcode.Command) {
 // g1 wraps a parameter map as a G1 feed move.
 func g1(params map[string]float64) gcode.Command { return gcode.NewCommand("G1", params) }
 
-// qualifies reports whether a kink's deflection clears the threshold on the selected side.
-// Ports DogboneII.findDogboneKinks (positive threshold keeps left turns, negative keeps right).
+// qualifies reports whether a kink's deflection clears the threshold on the selected side
+// (a positive threshold keeps left turns, negative keeps right).
 func qualifies(k kink, p DogboneParams) bool {
 	switch p.Side {
 	case SideRight:

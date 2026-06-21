@@ -12,7 +12,7 @@ import (
 // SurfaceOp finishes a 3D surface with a ball-nose end mill running parallel passes. The
 // surface-following Z of each pass is computed by the drop-cutter (OpenCAMLib) over the part
 // mesh and handed to the op as Rows; Execute shapes them into a framed toolpath. Mirrors the
-// toolpath role of FreeCAD's CAM 3D Surface op (whose Z-projection is likewise OCL's).
+// 3D surface-finishing toolpath (the Z-projection comes from OCL).
 type SurfaceOp struct {
 	OpBase
 	StepOver  float64           // distance between parallel scan lines (mm)

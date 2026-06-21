@@ -19,7 +19,7 @@ type Feeds struct {
 
 // DepthLevels returns the descending list of cut Z planes from startDepth down to
 // finalDepth in steps no larger than stepDown, always finishing exactly on finalDepth. A
-// non-positive step collapses to a single pass at finalDepth. Ports FreeCAD's depth_params.
+// non-positive step collapses to a single pass at finalDepth.
 func DepthLevels(startDepth, finalDepth, stepDown float64) []float64 {
 	if stepDown <= 0 || startDepth <= finalDepth {
 		return []float64{finalDepth}
@@ -35,9 +35,8 @@ func DepthLevels(startDepth, finalDepth, stepDown float64) []float64 {
 
 // walkLoop emits the moves to cut one closed loop at depth z: rapid to the clearance plane,
 // rapid over the loop's first point, plunge to z at the vertical feed, then feed around the
-// loop at the horizontal feed and close it. This is the per-loop core of FreeCAD's
-// Path.fromShapes (polyline form — offset loops are straight-segment polygons, so only
-// G0/G1 are emitted, no arcs).
+// loop at the horizontal feed and close it. The per-loop core of the clearing walk (polyline
+// form — offset loops are straight-segment polygons, so only G0/G1 are emitted, no arcs).
 func walkLoop(loop geom2d.Polygon, z float64, feeds Feeds) []gcode.Command {
 	if len(loop) < 2 {
 		return nil
