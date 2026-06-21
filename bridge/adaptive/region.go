@@ -59,11 +59,12 @@ type regionProcessor struct {
 	overCutCount      int
 }
 
-// cutArea measures the freshly cut area for a move from c1 to c2, querying the cleared-area model
-// for the local geometry and integrating with calcCutArea. It reproduces the bounding-window
-// selection CalcCutArea does internally: a far move looks around c2, a near move around c1 with a
-// window enlarged by the move distance.
-func (rp *regionProcessor) cutArea(c1, c2 clipper.IntPoint) (area, conventional float64, err error) {
+// cutArea measures the freshly cut area for a move from c1 to c2 against the given cleared-area
+// model, integrating with calcCutArea. It reproduces the bounding-window selection CalcCutArea does
+// internally: a far move looks around c2, a near move around c1 with a window enlarged by the move
+// distance. The cleared area is passed explicitly because the lead/link machinery measures against
+// a local working copy, not the region's accumulating one.
+func (rp *regionProcessor) cutArea(c1, c2 clipper.IntPoint, cleared *clearedArea) (area, conventional float64, err error) {
 	dist := distanceBetween(c1, c2)
 	center := c1
 	delta := rp.s.toolRadiusScaled + int64(dist) + 4
@@ -71,7 +72,7 @@ func (rp *regionProcessor) cutArea(c1, c2 clipper.IntPoint) (area, conventional 
 		center = c2
 		delta = rp.s.toolRadiusScaled + 4
 	}
-	bounded, err := rp.cleared.boundedClearedAreaClipped(center, delta)
+	bounded, err := cleared.boundedClearedAreaClipped(center, delta)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -175,7 +176,7 @@ search:
 			continue
 		}
 
-		a, conventionalArea, err := rp.cutArea(toolPos, newToolPos)
+		a, conventionalArea, err := rp.cutArea(toolPos, newToolPos, rp.cleared)
 		if err != nil {
 			return out, err
 		}
@@ -298,7 +299,7 @@ func (rp *regionProcessor) finishStep(out iterateNextStepOutput, toolPos clipper
 			out.failed = true
 		}
 		if recalc {
-			a, conventionalArea, err := rp.cutArea(toolPos, newToolPos)
+			a, conventionalArea, err := rp.cutArea(toolPos, newToolPos, rp.cleared)
 			if err != nil {
 				return out, err
 			}
