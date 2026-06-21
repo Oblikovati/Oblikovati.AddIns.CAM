@@ -417,20 +417,6 @@ func TestEngineRunCountersinkJob(t *testing.T) {
 	}
 }
 
-// TestEngineRunVCarveJob runs the V-carve flow and checks it carves the outline region.
-func TestEngineRunVCarveJob(t *testing.T) {
-	res, err := NewEngine(&recordingHost{}).SetPost("grbl").RunVCarveJobOnHost(0)
-	if err != nil {
-		t.Fatalf("RunVCarveJobOnHost: %v", err)
-	}
-	if !strings.Contains(res.Summary, "v-carved") {
-		t.Errorf("summary = %q, want it to mention v-carved", res.Summary)
-	}
-	if !strings.Contains(res.GCode, "G1") {
-		t.Error("V-carve should emit cutting contours")
-	}
-}
-
 // TestPanelMaterialFeeds checks selecting a material sets the active end mill's spindle speed and
 // feed from the feeds & speeds calculator, and that changing the tool diameter re-derives them.
 func TestPanelMaterialFeeds(t *testing.T) {

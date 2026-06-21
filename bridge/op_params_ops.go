@@ -400,7 +400,8 @@ func (op *ChamferOp) SetParameter(id, value string) bool {
 func (op *VCarveOp) Parameters() []OpParam {
 	return append([]OpParam{
 		numberParam("toolAngle", "Tool angle (°)", op.ToolAngle),
-		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
+		numberParam("tipDiameter", "Tip diameter (mm)", op.TipDiameter),
+		numberParam("stepDown", "Step-down (mm)", op.StepDown),
 	}, depthParams(op.OpBase)...)
 }
 
@@ -409,8 +410,10 @@ func (op *VCarveOp) SetParameter(id, value string) bool {
 	switch id {
 	case "toolAngle":
 		op.ToolAngle = panelNum(value, op.ToolAngle)
-	case "stepOver":
-		op.StepOver = panelNum(value, op.StepOver)
+	case "tipDiameter":
+		op.TipDiameter = panelNum(value, op.TipDiameter)
+	case "stepDown":
+		op.StepDown = panelNum(value, op.StepDown)
 	default:
 		return setDepthParam(&op.OpBase, id, value)
 	}
