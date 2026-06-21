@@ -46,12 +46,15 @@ func (j *Job) GenerateAll() ([]OperationResult, error) {
 			return nil, err
 		}
 		tc, _ := j.toolController(op.ToolControllerIndex())
+		safeZ, clearanceZ := retractHeightsOf(op)
 		results = append(results, OperationResult{
 			Label:      op.Label(),
 			Path:       path,
 			Controller: tc,
 			Coolant:    coolantOf(op),
 			PauseAfter: pauseAfterOf(op),
+			SafeZ:      safeZ,
+			ClearanceZ: clearanceZ,
 		})
 	}
 	return results, nil
@@ -73,6 +76,17 @@ func pauseAfterOf(op Operation) bool {
 	return false
 }
 
+// retractHeightsOf reads an operation's safe and clearance planes (mm), which between-cut link
+// planning uses as the candidate retract heights. Operations carry both via OpBase.
+func retractHeightsOf(op Operation) (safeZ, clearanceZ float64) {
+	if r, ok := op.(interface {
+		RetractHeights() (float64, float64)
+	}); ok {
+		return r.RetractHeights()
+	}
+	return 0, 0
+}
+
 // OperationResult is one operation's generated toolpath plus the controller it ran under
 // (the post processor needs the tool number + spindle to emit tool-change and start
 // blocks between operations).
@@ -80,6 +94,8 @@ type OperationResult struct {
 	Label      string
 	Path       gcode.Path
 	Controller ToolController
-	Coolant    string // "none" | "flood" | "mist"
-	PauseAfter bool   // emit an optional stop (M1) after this operation
+	Coolant    string  // "none" | "flood" | "mist"
+	PauseAfter bool    // emit an optional stop (M1) after this operation
+	SafeZ      float64 // the op's safe (feed-in) plane, mm — for between-cut link planning
+	ClearanceZ float64 // the op's clearance (rapid) plane, mm — for between-cut link planning
 }

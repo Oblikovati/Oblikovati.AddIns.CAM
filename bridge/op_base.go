@@ -112,6 +112,10 @@ func (b *OpBase) CoolantMode() string {
 // PausesAfter reports whether an optional stop should follow this operation.
 func (b *OpBase) PausesAfter() bool { return b.PauseAfter }
 
+// RetractHeights returns the operation's safe (feed-in) and clearance (rapid) planes in millimetres
+// — the candidate heights between-cut link planning lifts to when it cannot keep the tool down.
+func (b *OpBase) RetractHeights() (safeZ, clearanceZ float64) { return b.SafeHeight, b.ClearanceHeight }
+
 // Coolant modes emitted around an operation (flood = M8, mist = M7, off = M9).
 const (
 	CoolantNone  = "none"
