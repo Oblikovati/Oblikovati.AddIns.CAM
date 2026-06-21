@@ -25,15 +25,49 @@ type Material struct {
 // tool in a fast material would otherwise demand an impossible RPM.
 const machineMaxRPM = 24000
 
-// catalogue is the built-in material table (typical carbide end-mill values).
+// The catalogue's ChipLoad is quoted for a reference tool diameter; a smaller tool must take a
+// proportionally smaller chip to avoid snapping, a larger tool can take more. chipLoadScale scales
+// the feed-per-tooth by the tool's diameter relative to that reference, clamped so the smallest
+// and largest tools stay in a sane band.
+const (
+	chipLoadRefDiameter = 6.0 // mm — the diameter the catalogue ChipLoad values are quoted for
+	minChipLoadScale    = 0.35
+	maxChipLoadScale    = 1.4
+)
+
+// catalogue is the built-in material table (typical carbide end-mill values, ChipLoad quoted at
+// chipLoadRefDiameter).
 var catalogue = map[string]Material{
-	"aluminium": {Name: "aluminium", SurfaceSpeed: 200, ChipLoad: 0.05},
-	"brass":     {Name: "brass", SurfaceSpeed: 120, ChipLoad: 0.05},
-	"steel":     {Name: "steel", SurfaceSpeed: 30, ChipLoad: 0.03},
-	"stainless": {Name: "stainless", SurfaceSpeed: 20, ChipLoad: 0.02},
-	"plastic":   {Name: "plastic", SurfaceSpeed: 300, ChipLoad: 0.08},
-	"hardwood":  {Name: "hardwood", SurfaceSpeed: 250, ChipLoad: 0.10},
-	"softwood":  {Name: "softwood", SurfaceSpeed: 300, ChipLoad: 0.12},
+	"aluminium":    {Name: "aluminium", SurfaceSpeed: 200, ChipLoad: 0.05},
+	"brass":        {Name: "brass", SurfaceSpeed: 120, ChipLoad: 0.05},
+	"bronze":       {Name: "bronze", SurfaceSpeed: 100, ChipLoad: 0.05},
+	"copper":       {Name: "copper", SurfaceSpeed: 150, ChipLoad: 0.06},
+	"steel":        {Name: "steel", SurfaceSpeed: 30, ChipLoad: 0.03},
+	"tool steel":   {Name: "tool steel", SurfaceSpeed: 25, ChipLoad: 0.025},
+	"stainless":    {Name: "stainless", SurfaceSpeed: 20, ChipLoad: 0.02},
+	"cast iron":    {Name: "cast iron", SurfaceSpeed: 60, ChipLoad: 0.05},
+	"titanium":     {Name: "titanium", SurfaceSpeed: 40, ChipLoad: 0.04},
+	"plastic":      {Name: "plastic", SurfaceSpeed: 300, ChipLoad: 0.08},
+	"acrylic":      {Name: "acrylic", SurfaceSpeed: 300, ChipLoad: 0.10},
+	"acetal":       {Name: "acetal", SurfaceSpeed: 350, ChipLoad: 0.10},
+	"carbon fibre": {Name: "carbon fibre", SurfaceSpeed: 200, ChipLoad: 0.05},
+	"mdf":          {Name: "mdf", SurfaceSpeed: 350, ChipLoad: 0.12},
+	"hardwood":     {Name: "hardwood", SurfaceSpeed: 250, ChipLoad: 0.10},
+	"softwood":     {Name: "softwood", SurfaceSpeed: 300, ChipLoad: 0.12},
+}
+
+// chipLoadScale returns the diameter-based multiplier on the catalogue chip load: the tool's
+// diameter over the reference, clamped to [minChipLoadScale, maxChipLoadScale]. A reference-sized
+// tool scales by 1.
+func chipLoadScale(diameterMM float64) float64 {
+	scale := diameterMM / chipLoadRefDiameter
+	if scale < minChipLoadScale {
+		return minChipLoadScale
+	}
+	if scale > maxChipLoadScale {
+		return maxChipLoadScale
+	}
+	return scale
 }
 
 // Result is a recommended spindle speed (rev/min) and cutting feed (mm/min).
@@ -60,8 +94,8 @@ func Lookup(name string) (Material, bool) {
 
 // Recommend computes the spindle speed and cutting feed for a tool of the given diameter (mm)
 // and flute count cutting the named material. RPM = Vc·1000 / (π·D), capped at the machine
-// maximum, and feed = RPM · flutes · chipload. Errors on an unknown material or non-positive
-// tool diameter / flute count.
+// maximum, and feed = RPM · flutes · (chipload scaled by tool diameter). Errors on an unknown
+// material or non-positive tool diameter / flute count.
 func Recommend(material string, toolDiameterMM float64, flutes int) (Result, error) {
 	m, ok := Lookup(material)
 	if !ok {
@@ -74,6 +108,6 @@ func Recommend(material string, toolDiameterMM float64, flutes int) (Result, err
 		return Result{}, fmt.Errorf("flute count must be positive, got %d", flutes)
 	}
 	rpm := math.Min(m.SurfaceSpeed*1000/(math.Pi*toolDiameterMM), machineMaxRPM)
-	feed := rpm * float64(flutes) * m.ChipLoad
+	feed := rpm * float64(flutes) * m.ChipLoad * chipLoadScale(toolDiameterMM)
 	return Result{RPM: int(math.Round(rpm)), FeedRate: math.Round(feed)}, nil
 }

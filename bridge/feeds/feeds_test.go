@@ -36,8 +36,26 @@ func TestRecommendCapsRPM(t *testing.T) {
 	if got.RPM != machineMaxRPM {
 		t.Errorf("RPM = %d, want it capped at %d", got.RPM, machineMaxRPM)
 	}
-	if want := math.Round(machineMaxRPM * 2 * 0.08); got.FeedRate != want {
-		t.Errorf("feed = %g, want %g (from the capped RPM)", got.FeedRate, want)
+	// The feed follows the capped RPM and the diameter-scaled chip load (1mm tool clamps to the
+	// minimum chip-load scale).
+	if want := math.Round(machineMaxRPM * 2 * 0.08 * chipLoadScale(1)); got.FeedRate != want {
+		t.Errorf("feed = %g, want %g (from the capped RPM and scaled chip load)", got.FeedRate, want)
+	}
+}
+
+// TestRecommendChipLoadScalesWithDiameter checks a larger tool takes a heavier chip per tooth than
+// a small one in the same material — the feed-per-tooth (feed / (RPM·flutes)) rises with diameter.
+func TestRecommendChipLoadScalesWithDiameter(t *testing.T) {
+	small, _ := Recommend("aluminium", 3, 2)
+	large, _ := Recommend("aluminium", 12, 2)
+	fptSmall := small.FeedRate / (float64(small.RPM) * 2)
+	fptLarge := large.FeedRate / (float64(large.RPM) * 2)
+	if fptLarge <= fptSmall {
+		t.Errorf("feed-per-tooth should grow with diameter: 3mm %.4f, 12mm %.4f", fptSmall, fptLarge)
+	}
+	// A reference-diameter tool is unscaled (scale exactly 1).
+	if s := chipLoadScale(chipLoadRefDiameter); s != 1 {
+		t.Errorf("a reference-diameter tool should scale by 1, got %g", s)
 	}
 }
 
