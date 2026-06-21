@@ -47,14 +47,34 @@ func newRegionProcessor(s *solver, boundPaths, toolBoundPaths, initialClearedPat
 	cleared := newClearedArea(s.toolRadiusScaled)
 	cleared.setClearedPaths(initialClearedPaths)
 	return &regionProcessor{
-		s:              s,
-		toolBoundPaths: tbp,
-		boundPaths:     bp,
-		cleared:        cleared,
-		tbpMinus:       tbpMinus,
-		output:         output,
-		angle:          math.Pi,
+		s:                   s,
+		toolBoundPaths:      tbp,
+		boundPaths:          bp,
+		cleared:             cleared,
+		tbpMinus:            tbpMinus,
+		initialClearedPaths: append(clipper.Paths(nil), initialClearedPaths...),
+		output:              output,
+		angle:               math.Pi,
 	}, nil
+}
+
+// finalizeClearedArea records the net area newly cleared in this region (in mm²) on the output.
+// Upstream computes signed-area(final) − signed-area(initial); since the cleared area only ever
+// grows (initial ⊆ final), that equals the area of (final minus initial), which we take via a
+// boolean subtract — the same result without the per-path nesting sign, which is fragile when a
+// pre-cleared region's start vertex lands on a neighbour's boundary.
+func (rp *regionProcessor) finalizeClearedArea() error {
+	newly, err := clipper.Subtract(rp.cleared.cleared(), rp.initialClearedPaths)
+	if err != nil {
+		return err
+	}
+	area := 0.0
+	for _, p := range newly {
+		area += clipper.Area(p) // signed: outer contours positive, holes negative → net area
+	}
+	scale := float64(rp.s.scaleFactor) * float64(rp.s.scaleFactor)
+	rp.output.ClearedArea = math.Abs(area) / scale
+	return nil
 }
 
 // cleanSimplify applies Clipper's CleanPolygons then SimplifyPolygons, the pair the upstream uses to
