@@ -17,8 +17,11 @@ import (
 // it makes the program self-contained (a machine sees the tool select and spindle start it
 // needs before the cutting moves). The tool number/spindle come from the operation's controller.
 func PostObjects(results []OperationResult) []post.Object {
-	objects := make([]post.Object, 0, len(results)+1)
+	objects := make([]post.Object, 0, len(results)+2)
 	if header, ok := toolListHeader(results); ok {
+		objects = append(objects, header)
+	}
+	if header, ok := safetyHeader(results); ok {
 		objects = append(objects, header)
 	}
 	changes := toolChangeAt(results)
@@ -101,6 +104,24 @@ func toolListHeader(results []OperationResult) (post.Object, bool) {
 		return post.Object{}, false
 	}
 	return post.Object{Label: "Tool list", Path: gcode.NewPath(lines)}, true
+}
+
+// safetyHeader builds a comment-only object listing any rapid-through-stock warnings the generated
+// operations contain (a lateral rapid taken below the clearance plane). It returns false when every
+// operation is clean, so a safe program carries no safety block. The lines are whole-line comments,
+// rendered in each post's own comment style, so the operator sees the warning at the top of the NC
+// file before running. See gcode.LintRapids.
+func safetyHeader(results []OperationResult) (post.Object, bool) {
+	var lines []gcode.Command
+	for _, r := range results {
+		for _, w := range gcode.LintRapids(r.Path) {
+			lines = append(lines, gcode.NewCommand(fmt.Sprintf("(WARNING %s: %s)", r.Label, w), nil))
+		}
+	}
+	if len(lines) == 0 {
+		return post.Object{}, false
+	}
+	return post.Object{Label: "Safety", Path: gcode.NewPath(lines)}, true
 }
 
 // toolListLine formats one tool's setup-sheet comment, e.g. "(T1  endmill  D6.0mm)".
