@@ -4,38 +4,48 @@ package gen
 
 import (
 	"testing"
+
+	"oblikovati.org/cam/bridge/gcode"
 )
 
-// TestMillFaceRaster checks the facing raster covers the inset region with alternating rows
-// and respects the tool inset, and that an oversized tool errors.
+// cutBandViolations reports cutting moves whose X or Y leaves the radius-inset band [lo,hi].
+func cutBandViolations(cmds []gcode.Command, lo, hi float64) int {
+	bad := 0
+	for _, c := range cmds {
+		if c.Name != "G1" {
+			continue
+		}
+		if x, ok := c.Params["X"]; ok && (x < lo-1e-6 || x > hi+1e-6) {
+			bad++
+		}
+		if y, ok := c.Params["Y"]; ok && (y < lo-1e-6 || y > hi+1e-6) {
+			bad++
+		}
+	}
+	return bad
+}
+
+// TestMillFaceRaster checks the default zigzag facing covers the inset region with alternating rows
+// linked at depth (one plunge), respects the tool inset, and that an oversized tool errors.
 func TestMillFaceRaster(t *testing.T) {
 	cmds, err := GenerateMillFace(square(20), []float64{0}, testFeeds, MillFaceParams{ToolRadius: 2, StepOver: 0.5})
 	if err != nil {
 		t.Fatalf("GenerateMillFace: %v", err)
 	}
 	if countPlunges(cmds) != 1 {
-		t.Errorf("one level → one plunge, got %d", countPlunges(cmds))
+		t.Errorf("zigzag links its rows at depth → one plunge, got %d", countPlunges(cmds))
 	}
-	// All cutting moves stay within the radius-inset band [2,18] in X and Y.
-	for _, c := range cmds {
-		if c.Name != "G1" {
-			continue
-		}
-		if x, ok := c.Params["X"]; ok && (x < 2-1e-9 || x > 18+1e-9) {
-			t.Errorf("cut X=%g outside inset band [2,18]", x)
-		}
+	if n := cutBandViolations(cmds, 2, 18); n != 0 {
+		t.Errorf("%d cutting moves left the radius-inset band [2,18]", n)
 	}
-	// Several rows of back-and-forth cuts (more than a couple of X moves).
-	xMoves := 0
-	for _, c := range cmds {
-		if c.Name == "G1" {
-			if _, ok := c.Params["X"]; ok {
-				xMoves++
-			}
-		}
+	dirs := rowDirections(cmds)
+	sawPlus, sawMinus := false, false
+	for _, d := range dirs {
+		sawPlus = sawPlus || d > 0
+		sawMinus = sawMinus || d < 0
 	}
-	if xMoves < 4 {
-		t.Errorf("expected several raster rows, got %d X cuts", xMoves)
+	if !sawPlus || !sawMinus {
+		t.Errorf("a zigzag should sweep both directions, got %v", dirs)
 	}
 
 	if _, err := GenerateMillFace(square(3), []float64{0}, testFeeds, MillFaceParams{ToolRadius: 2}); err == nil {
@@ -43,9 +53,76 @@ func TestMillFaceRaster(t *testing.T) {
 	}
 }
 
-// TestMillFaceSpiral checks the spiral facing pattern plunges only once per level (a continuous
-// stay-down spiral, unlike the raster which also plunges once but links its rows differently),
-// keeps every cut within the radius-inset band, and clears more than a single ring.
+// TestMillFaceDirectional checks the one-way (directional) pattern cuts every row in the same
+// direction (consistent climb) and lifts/repositions between rows rather than linking at depth.
+func TestMillFaceDirectional(t *testing.T) {
+	cmds, err := GenerateMillFace(square(20), []float64{0}, testFeeds, MillFaceParams{
+		ToolRadius: 2, StepOver: 0.5, Pattern: FacePatternDirectional,
+	})
+	if err != nil {
+		t.Fatalf("directional facing: %v", err)
+	}
+	if cutBandViolations(cmds, 2, 18) != 0 {
+		t.Error("directional cuts must stay in the inset band [2,18]")
+	}
+	for _, d := range rowDirections(cmds) {
+		if d < 0 {
+			t.Errorf("one-way facing must never reverse a row, got dirs %v", rowDirections(cmds))
+			break
+		}
+	}
+	if countPlunges(cmds) <= 1 {
+		t.Errorf("directional lifts and re-plunges per row, want several plunges, got %d", countPlunges(cmds))
+	}
+}
+
+// TestMillFaceBidirectional checks the bidirectional pattern alternates direction (like zigzag) but
+// lifts between rows (more than one plunge, unlike the linked zigzag).
+func TestMillFaceBidirectional(t *testing.T) {
+	zig, err := GenerateMillFace(square(20), []float64{0}, testFeeds, MillFaceParams{ToolRadius: 2, StepOver: 0.5})
+	if err != nil {
+		t.Fatalf("zigzag facing: %v", err)
+	}
+	bidi, err := GenerateMillFace(square(20), []float64{0}, testFeeds, MillFaceParams{
+		ToolRadius: 2, StepOver: 0.5, Pattern: FacePatternBidirectional,
+	})
+	if err != nil {
+		t.Fatalf("bidirectional facing: %v", err)
+	}
+	sawPlus, sawMinus := false, false
+	for _, d := range rowDirections(bidi) {
+		sawPlus = sawPlus || d > 0
+		sawMinus = sawMinus || d < 0
+	}
+	if !sawPlus || !sawMinus {
+		t.Error("bidirectional should alternate direction like a zigzag")
+	}
+	if countPlunges(bidi) <= countPlunges(zig) {
+		t.Errorf("bidirectional lifts between rows: plunges %d should exceed zigzag's %d", countPlunges(bidi), countPlunges(zig))
+	}
+}
+
+// TestMillFaceAngle checks an angled raster still clears the region within the inset band: at 90° the
+// rows run along Y instead of X, and every cut stays inside [2,18].
+func TestMillFaceAngle(t *testing.T) {
+	for _, angle := range []float64{45, 90} {
+		cmds, err := GenerateMillFace(square(20), []float64{0}, testFeeds, MillFaceParams{
+			ToolRadius: 2, StepOver: 0.5, Angle: angle,
+		})
+		if err != nil {
+			t.Fatalf("angled facing %g°: %v", angle, err)
+		}
+		if cutBandViolations(cmds, 2, 18) != 0 {
+			t.Errorf("angled (%g°) cuts must stay in the inset band [2,18]", angle)
+		}
+		if countCutMoves(cmds) < 4 {
+			t.Errorf("angled (%g°) facing should lay several rows, got %d cut moves", angle, countCutMoves(cmds))
+		}
+	}
+}
+
+// TestMillFaceSpiral checks the spiral facing pattern plunges only once per level, keeps every cut
+// within the radius-inset band, and clears more than a single ring.
 func TestMillFaceSpiral(t *testing.T) {
 	cmds, err := GenerateMillFace(square(20), []float64{0}, testFeeds, MillFaceParams{ToolRadius: 2, StepOver: 0.5, Spiral: true})
 	if err != nil {
@@ -54,16 +131,8 @@ func TestMillFaceSpiral(t *testing.T) {
 	if countPlunges(cmds) != 1 {
 		t.Errorf("a spiral level should plunge exactly once, got %d", countPlunges(cmds))
 	}
-	for _, c := range cmds {
-		if c.Name != "G1" {
-			continue
-		}
-		if x, ok := c.Params["X"]; ok && (x < 2-1e-9 || x > 18+1e-9) {
-			t.Errorf("spiral cut X=%g outside inset band [2,18]", x)
-		}
-		if y, ok := c.Params["Y"]; ok && (y < 2-1e-9 || y > 18+1e-9) {
-			t.Errorf("spiral cut Y=%g outside inset band [2,18]", y)
-		}
+	if cutBandViolations(cmds, 2, 18) != 0 {
+		t.Error("spiral cuts must stay in the inset band [2,18]")
 	}
 	if countCutMoves(cmds) < 8 {
 		t.Errorf("the spiral should lay down several concentric rings, got %d cut moves", countCutMoves(cmds))
@@ -82,21 +151,5 @@ func TestFaceSpiralRings(t *testing.T) {
 	}
 	if rings := faceSpiralRings(rect, 0); len(rings) != 1 {
 		t.Errorf("a non-positive spacing should yield just the outer ring, got %d", len(rings))
-	}
-}
-
-// TestPassLines covers the spacing and the single-row fallback.
-func TestPassLines(t *testing.T) {
-	if rows := passLines(0, 1, 5); len(rows) != 1 || rows[0] != 0.5 {
-		t.Errorf("thin band → single mid row, got %v", rows)
-	}
-	rows := passLines(0, 10, 2)
-	if rows[0] != 0 || rows[len(rows)-1] != 10 {
-		t.Errorf("rows must span the band ends, got %v", rows)
-	}
-	for i := 1; i < len(rows); i++ {
-		if rows[i]-rows[i-1] > 2+1e-9 {
-			t.Errorf("row spacing %g exceeds 2", rows[i]-rows[i-1])
-		}
 	}
 }

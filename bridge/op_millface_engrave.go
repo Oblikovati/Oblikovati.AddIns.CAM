@@ -16,7 +16,9 @@ type MillFaceOp struct {
 	OpBase
 	StepOver float64        // pass spacing as a fraction of the tool diameter (0..1)
 	StepDown float64        // max Z step per pass (mm)
-	Spiral   bool           // clear with a continuous inward spiral instead of a back-and-forth raster
+	Pattern  string         // gen.FacePattern* (zigzag default, or directional / bidirectional / spiral)
+	Angle    float64        // raster angle in degrees (0 = rows along X)
+	Spiral   bool           // legacy: clear with the inward spiral (prefer Pattern = "spiral")
 	Boundary geom2d.Polygon // region to face (mm)
 }
 
@@ -38,6 +40,8 @@ func (op *MillFaceOp) Execute(job *Job) (gcode.Path, error) {
 	cmds, err := gen.GenerateMillFace(op.Boundary, gen.DepthLevels(op.StartDepth, op.FinalDepth, op.StepDown), feeds, gen.MillFaceParams{
 		ToolRadius: tc.Tool.Diameter / 2,
 		StepOver:   op.StepOver,
+		Pattern:    op.Pattern,
+		Angle:      op.Angle,
 		Spiral:     op.Spiral,
 	})
 	if err != nil {

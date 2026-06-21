@@ -301,8 +301,22 @@ func (op *MillFaceOp) Parameters() []OpParam {
 	return append([]OpParam{
 		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
-		boolParam("spiral", "Spiral pattern", op.Spiral),
+		choiceParam("pattern", "Pattern", facingPatternOf(op),
+			gen.FacePatternZigzag, gen.FacePatternDirectional, gen.FacePatternBidirectional, gen.FacePatternSpiral),
+		numberParam("angle", "Raster angle (°)", op.Angle),
 	}, depthParams(op.OpBase)...)
+}
+
+// facingPatternOf reports the op's effective facing pattern, mapping the legacy Spiral flag and
+// defaulting an unset pattern to zigzag.
+func facingPatternOf(op *MillFaceOp) string {
+	if op.Pattern != "" {
+		return op.Pattern
+	}
+	if op.Spiral {
+		return gen.FacePatternSpiral
+	}
+	return gen.FacePatternZigzag
 }
 
 // SetParameter applies one facing parameter edit.
@@ -312,8 +326,11 @@ func (op *MillFaceOp) SetParameter(id, value string) bool {
 		op.StepOver = panelNum(value, op.StepOver)
 	case "stepDown":
 		op.StepDown = panelNum(value, op.StepDown)
-	case "spiral":
-		op.Spiral = parseBool(value)
+	case "pattern":
+		op.Pattern = value
+		op.Spiral = false // the pattern choice supersedes the legacy flag
+	case "angle":
+		op.Angle = panelNum(value, op.Angle)
 	default:
 		return setDepthParam(&op.OpBase, id, value)
 	}
