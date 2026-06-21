@@ -119,12 +119,24 @@ func horizontalTraverse(wire []gcode.Vector3) (gcode.Vector3, gcode.Vector3, boo
 	return gcode.Vector3{}, gcode.Vector3{}, false
 }
 
-// rapidsAlong renders a link polyline as G0 moves (one per leg). Ports the cmdsForEdge/G0 loop.
+// rapidsAlong renders a link polyline as G0 moves (one per leg), emitting only the axes that change
+// on each leg so a modal address (an unchanged Z across a traverse) is not repeated — matching how
+// the generators write G-code. Ports the cmdsForEdge/G0 loop.
 func rapidsAlong(wire []gcode.Vector3) []gcode.Command {
 	cmds := make([]gcode.Command, 0, len(wire)-1)
 	for i := 1; i < len(wire); i++ {
-		p := wire[i]
-		cmds = append(cmds, gcode.NewCommand("G0", map[string]float64{"X": p.X, "Y": p.Y, "Z": p.Z}))
+		prev, p := wire[i-1], wire[i]
+		params := map[string]float64{}
+		if !roughlyEqual(prev.X, p.X) {
+			params["X"] = p.X
+		}
+		if !roughlyEqual(prev.Y, p.Y) {
+			params["Y"] = p.Y
+		}
+		if !roughlyEqual(prev.Z, p.Z) {
+			params["Z"] = p.Z
+		}
+		cmds = append(cmds, gcode.NewCommand("G0", params))
 	}
 	return cmds
 }
