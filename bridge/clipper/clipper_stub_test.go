@@ -19,4 +19,7 @@ func TestEngineStubsReturnError(t *testing.T) {
 	if _, err := Simplify(sq, EvenOdd); err == nil {
 		t.Fatal("Simplify stub should return an error under CGO_ENABLED=0")
 	}
+	if _, err := PathIntersectArea(sq[0], sq); err == nil {
+		t.Fatal("PathIntersectArea stub should return an error under CGO_ENABLED=0")
+	}
 }

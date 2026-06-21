@@ -127,3 +127,50 @@ func TestEmptyInputsAreSafe(t *testing.T) {
 		t.Fatalf("union of nothing = %v, want empty", got)
 	}
 }
+
+func TestPathIntersectAreaWholeRingInside(t *testing.T) {
+	// An engage-style closed ring fully inside the region comes back as one open path (rejoined
+	// across the closing seam) that visits all the ring's vertices in order.
+	ring := Path{{20, 20}, {80, 20}, {80, 80}, {20, 80}}
+	got, err := PathIntersectArea(ring, Paths{rect(0, 0, 100, 100)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("a wholly-inside ring = %d paths, want 1", len(got))
+	}
+	if len(got[0]) < 4 {
+		t.Fatalf("rejoined ring too short: %v", got[0])
+	}
+}
+
+func TestPathIntersectAreaClipsRingToRegion(t *testing.T) {
+	// A ring straddling the region edge keeps only its inside portion; every returned point lies
+	// within the region (x,y in [0,100]).
+	ring := Path{{50, 50}, {200, 50}, {200, 200}, {50, 200}}
+	got, err := PathIntersectArea(ring, Paths{rect(0, 0, 100, 100)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) == 0 {
+		t.Fatal("a ring straddling the region should leave an inside portion")
+	}
+	for _, p := range got {
+		for _, pt := range p {
+			if pt.X < 0 || pt.X > 100 || pt.Y < 0 || pt.Y > 100 {
+				t.Fatalf("clipped point %v fell outside the region", pt)
+			}
+		}
+	}
+}
+
+func TestPathIntersectAreaOutsideIsEmpty(t *testing.T) {
+	ring := Path{{200, 200}, {300, 200}, {300, 300}, {200, 300}}
+	got, err := PathIntersectArea(ring, Paths{rect(0, 0, 100, 100)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("a ring entirely outside the area = %v, want empty", got)
+	}
+}
