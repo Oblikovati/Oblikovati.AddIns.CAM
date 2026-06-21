@@ -44,6 +44,19 @@ int obk_clipper_offset(const long long *paths, const int *counts, int npaths,
 int obk_clipper_simplify(const long long *paths, const int *counts, int npaths, int fill_type,
                          int **out_counts, long long **out_coords);
 
+/* obk_clipper_path_intersect_area intersects ONE open subject path with a closed-area path set,
+   returning the open sub-paths that fall inside the area, each preserving the subject's traversal
+   direction. The subject is closed internally (its first point is appended) and tagged with
+   per-vertex order data so fragments that come out of the clip reversed are flipped back, and the
+   two fragments that straddle the artificial closing seam are rejoined; the order data uses the
+   engine's Z field (built with use_xyz) and never reaches the caller — results are plain x,y.
+     subj        : 2*subj_count int64 (x,y interleaved) of the open subject path
+     obj/obj_counts/n_obj : the closed clip area, flattened as elsewhere
+   Returns the result-path count and writes counts/coords like obk_clipper_boolean; -1 on failure. */
+int obk_clipper_path_intersect_area(const long long *subj, int subj_count,
+                                    const long long *obj, const int *obj_counts, int n_obj,
+                                    int **out_counts, long long **out_coords);
+
 void obk_clipper_free_i(int *p);
 void obk_clipper_free_ll(long long *p);
 

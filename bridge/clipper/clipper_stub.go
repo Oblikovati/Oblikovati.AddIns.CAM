@@ -26,3 +26,8 @@ func Offset(paths Paths, join JoinType, end EndType, delta, miterLimit, arcToler
 func Simplify(paths Paths, fill FillType) (Paths, error) {
 	return nil, fmt.Errorf(errNoCgo, "polygon simplify")
 }
+
+// PathIntersectArea is the non-cgo stub for clipping an open path by a closed area; see Boolean.
+func PathIntersectArea(subject Path, obj Paths) (Paths, error) {
+	return nil, fmt.Errorf(errNoCgo, "path-area intersection")
+}

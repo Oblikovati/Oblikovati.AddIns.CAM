@@ -144,5 +144,111 @@ extern "C" int obk_clipper_simplify(const long long *paths, const int *counts, i
     }
 }
 
+namespace
+{
+// orderFill tags an intersection point with the average order of the subject edge it lies on, so
+// the subject's per-vertex order survives the clip (Z==0 marks clip-area points, which are skipped).
+void orderFill(IntPoint &e1b, IntPoint &e1t, IntPoint &e2b, IntPoint &e2t, IntPoint &p)
+{
+    if (e1b.Z != 0 && e1t.Z != 0) {
+        p.Z = (e1b.Z + e1t.Z) / 2;
+    } else if (e2b.Z != 0 && e2t.Z != 0) {
+        p.Z = (e2b.Z + e2t.Z) / 2;
+    }
+}
+}  // namespace
+
+extern "C" int obk_clipper_path_intersect_area(const long long *subj, int subj_count,
+                                               const long long *obj, const int *obj_counts, int n_obj,
+                                               int **out_counts, long long **out_coords)
+{
+    if (!out_counts || !out_coords || subj_count < 1) {
+        return -1;
+    }
+    try {
+        // rebuild the subject, close it explicitly, and tag each vertex with a unique increasing
+        // order value (2i+1) so split points (averaged) fall strictly between their neighbours.
+        Path subject;
+        subject.reserve(subj_count + 1);
+        const long long *c = subj;
+        for (int i = 0; i < subj_count; ++i) {
+            subject.push_back(IntPoint(static_cast<cInt>(c[0]), static_cast<cInt>(c[1])));
+            c += 2;
+        }
+        subject.push_back(subject[0]);
+        for (size_t i = 0; i < subject.size(); ++i) {
+            subject[i].Z = static_cast<cInt>(i * 2 + 1);
+        }
+
+        Paths objs = n_obj > 0 ? toPaths(obj, obj_counts, n_obj) : Paths();
+        for (Path &p : objs) {
+            for (IntPoint &pt : p) {
+                pt.Z = 0;
+            }
+        }
+
+        Clipper clip;
+        clip.ZFillFunction(orderFill);
+        clip.AddPath(subject, ptSubject, false);
+        if (!objs.empty()) {
+            clip.AddPaths(objs, ptClip, true);
+        }
+        PolyTree diffTree;
+        if (!clip.Execute(ctIntersection, diffTree)) {
+            return -1;
+        }
+        clip.ZFillFunction(0);
+        Paths diff;
+        OpenPathsFromPolyTree(diffTree, diff);
+
+        // restore the subject's traversal direction on each fragment
+        for (Path &p : diff) {
+            for (size_t i = 0; i + 1 < p.size(); ++i) {
+                if (p[i].Z != 0 && p[i + 1].Z != 0) {
+                    if (p[i].Z + 1 != p[i + 1].Z && p[i].Z + 2 != p[i + 1].Z) {
+                        ReversePath(p);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // rejoin the two fragments that straddle the artificial closing seam
+        const cInt zstart = 1;
+        const cInt zend = static_cast<cInt>(subject.size()) * 2 - 1;
+        Path startPath, endPath;
+        bool haveStart = false, haveEnd = false;
+        Paths result;
+        for (Path &p : diff) {
+            if (!p.empty() && p.front().Z == zstart) {
+                startPath = p;
+                haveStart = true;
+            } else if (!p.empty() && p.back().Z == zend) {
+                endPath = p;
+                haveEnd = true;
+            } else {
+                result.push_back(p);
+            }
+        }
+        if (haveStart && haveEnd) {
+            Path joined = endPath;
+            for (size_t i = 1; i < startPath.size(); ++i) {
+                joined.push_back(startPath[i]);
+            }
+            result.push_back(joined);
+        } else {
+            if (haveStart) {
+                result.push_back(startPath);
+            }
+            if (haveEnd) {
+                result.push_back(endPath);
+            }
+        }
+        return emit(result, out_counts, out_coords);
+    } catch (...) {
+        return -1;
+    }
+}
+
 extern "C" void obk_clipper_free_i(int *p) { std::free(p); }
 extern "C" void obk_clipper_free_ll(long long *p) { std::free(p); }
