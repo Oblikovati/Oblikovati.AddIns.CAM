@@ -675,3 +675,18 @@ func TestPostObjectsInjectsToolChange(t *testing.T) {
 		t.Errorf("commands after the comment = %v, want %v", names[1:], want)
 	}
 }
+
+// TestPostArgsWorkOffset checks the engine threads the chosen work coordinate system into the
+// post arguments, leaving the default (G54) implicit.
+func TestPostArgsWorkOffset(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	if got := e.postArgs(); contains(got, "work-offset") {
+		t.Errorf("default work offset should add no arg, got %q", got)
+	}
+	e.workOffset = 3 // G56
+	if got := e.postArgs(); !contains(got, "--work-offset=G56") {
+		t.Errorf("work offset 3 should pass --work-offset=G56, got %q", got)
+	}
+}
+
+func contains(s, sub string) bool { return strings.Contains(s, sub) }

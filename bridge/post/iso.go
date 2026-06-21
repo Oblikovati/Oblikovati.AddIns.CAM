@@ -19,6 +19,17 @@ type isoOptions struct {
 	Precision       int
 	ProgramNumber   int
 	Inches          bool
+	WorkOffset      string // active work coordinate system (G54..G59); empty → G54
+}
+
+// workOffsetOr returns a valid G54..G59 work-offset word, defaulting blanks/garbage to G54.
+func workOffsetOr(s string) string {
+	switch s {
+	case "G54", "G55", "G56", "G57", "G58", "G59":
+		return s
+	default:
+		return "G54"
+	}
 }
 
 // parseISOArgs applies the common ISO flags onto the given defaults.
@@ -39,6 +50,8 @@ func parseISOArgs(argstring string, o isoOptions) isoOptions {
 			if n, err := strconv.Atoi(strings.TrimPrefix(tok, "--program-number=")); err == nil {
 				o.ProgramNumber = n
 			}
+		case strings.HasPrefix(tok, "--work-offset="):
+			o.WorkOffset = workOffsetOr(strings.TrimPrefix(tok, "--work-offset="))
 		}
 	}
 	return o

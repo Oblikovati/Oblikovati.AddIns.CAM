@@ -44,8 +44,11 @@ func defaultLinuxCNCOptions() LinuxCNCOptions {
 // here). Inches forces precision 4.
 func parseLinuxCNCArgs(argstring string) LinuxCNCOptions {
 	o := defaultLinuxCNCOptions()
+	workOffset := "G54"
 	for _, tok := range shlexSplit(argstring) {
 		switch {
+		case strings.HasPrefix(tok, "--work-offset="):
+			workOffset = workOffsetOr(strings.TrimPrefix(tok, "--work-offset="))
 		case tok == "--no-header":
 			o.OutputHeader = false
 		case tok == "--no-comments":
@@ -72,6 +75,10 @@ func parseLinuxCNCArgs(argstring string) LinuxCNCOptions {
 	}
 	if o.Inches {
 		o.Precision = 4
+	}
+	if workOffset != "G54" { // swap the WCS into the preamble/postamble; default G54 is left as-is
+		o.Preamble = strings.ReplaceAll(o.Preamble, "G54", workOffset)
+		o.Postamble = strings.ReplaceAll(o.Postamble, "G54", workOffset)
 	}
 	return o
 }

@@ -21,7 +21,7 @@ const CAMPanelID = "com.oblikovati.cam.panel"
 func (e *Engine) ShowPanel() (wire.OKResult, error) {
 	e.mu.Lock()
 	postName, feed, cut, body, material, flutes := e.postName, e.plungFeed, e.cut, e.targetBody, e.material, e.flutes
-	spinUp := e.spinUpSecs
+	spinUp, workOffset := e.spinUpSecs, e.workOffset
 	e.mu.Unlock()
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID:      CAMPanelID,
@@ -31,6 +31,7 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 		Controls: []wire.PanelControlSpec{
 			client.PanelLabel("hdr", "— CAM job —"),
 			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl", "fanuc", "marlin", "haas", "heidenhain"}, postName),
+			client.PanelTextBox("work_offset", "Work offset (1=G54)", strconv.Itoa(workOffsetOrOne(workOffset))),
 			client.PanelTextBox("body", "Body index", strconv.Itoa(body)),
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(feed)),
 			client.PanelDropdown("material", "Material (feeds & speeds)", feeds.Materials(), material),
@@ -126,6 +127,10 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 	case "spin_up":
 		if s := panelNum(value, e.spinUpSecs); s >= 0 {
 			e.spinUpSecs = s
+		}
+	case "work_offset":
+		if w := int(panelNum(value, float64(workOffsetOrOne(e.workOffset)))); w >= 1 && w <= 6 {
+			e.workOffset = w
 		}
 	case "step_down":
 		e.cut.StepDown = panelNum(value, e.cut.StepDown)

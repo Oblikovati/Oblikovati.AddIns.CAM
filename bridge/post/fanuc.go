@@ -8,7 +8,7 @@ import "strings"
 // header, a metric/absolute/feed-per-minute preamble, each operation's blocks (canned cycles
 // preserved), and M30. Built on the shared isoRenderer (see iso.go).
 func ExportFanuc(objects []Object, argstring string) string {
-	o := parseISOArgs(argstring, isoOptions{OutputComments: true, SequenceNumbers: true, Precision: 3, ProgramNumber: 1})
+	o := parseISOArgs(argstring, isoOptions{OutputComments: true, SequenceNumbers: true, Precision: 3, ProgramNumber: 1, WorkOffset: "G54"})
 	if o.Inches {
 		o.Precision = 4
 	}
@@ -17,7 +17,7 @@ func ExportFanuc(objects []Object, argstring string) string {
 	var b strings.Builder
 	b.WriteString("%\n")
 	r.line(&b, r.programLine(4))
-	r.line(&b, "G17 "+r.unitCode()+" G90 G94 G54")
+	r.line(&b, "G17 "+r.unitCode()+" G90 G94 "+workOffsetOr(o.WorkOffset))
 	for _, obj := range objects {
 		r.writeOperation(&b, obj)
 	}
