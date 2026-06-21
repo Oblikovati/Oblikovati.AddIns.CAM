@@ -32,7 +32,7 @@ func generateZigzagPocket(boundary geom2d.Polygon, levels []float64, feeds Feeds
 
 	var cmds []gcode.Command
 	for _, z := range levels {
-		cmds = append(cmds, zigzagLevel(inset, keepouts, minX, maxX, rows, z, feeds, p.OneWay)...)
+		cmds = append(cmds, zigzagLevel(inset, keepouts, minX, maxX, rows, z, feeds, p.OneWay, p.retractThreshold())...)
 		cmds = append(cmds, walkPocketRings(finishRings, finishKeepouts, z, feeds, p.Climb)...)
 	}
 	return cmds, nil
@@ -57,7 +57,7 @@ func scanRows(inset geom2d.Polygon, spacing float64) []float64 {
 // zigzagLevel builds one depth level's runs and walks them. The default back-and-forth (zigzag)
 // alternates row direction and links consecutive rows at depth; oneWay cuts every row in the same
 // direction (consistent climb/conventional for a cleaner finish), rapiding back between rows.
-func zigzagLevel(inset geom2d.Polygon, islands []geom2d.Polygon, minX, maxX float64, rows []float64, z float64, feeds Feeds, oneWay bool) []gcode.Command {
+func zigzagLevel(inset geom2d.Polygon, islands []geom2d.Polygon, minX, maxX float64, rows []float64, z float64, feeds Feeds, oneWay bool, threshold float64) []gcode.Command {
 	var ordered [][]geom2d.Point2
 	for i, y := range rows {
 		runs := rowRuns(inset, islands, minX, maxX, y)
@@ -69,7 +69,7 @@ func zigzagLevel(inset geom2d.Polygon, islands []geom2d.Polygon, minX, maxX floa
 	if oneWay {
 		return walkSeparateRuns(ordered, z, feeds)
 	}
-	return walkLinkedRuns(ordered, inset, islands, z, feeds)
+	return walkLinkedRuns(ordered, inset, islands, z, feeds, threshold)
 }
 
 // walkSeparateRuns cuts each run as its own plunge-feed-retract pass — the one-direction mode,
@@ -119,9 +119,9 @@ func reverseRuns(runs [][]geom2d.Point2) [][]geom2d.Point2 {
 }
 
 // walkLinkedRuns cuts the ordered runs: plunge at the first, feed along each, and between runs
-// either feed straight across at depth (when the link stays inside the pocket) or retract, rapid,
-// and re-plunge.
-func walkLinkedRuns(runs [][]geom2d.Point2, inset geom2d.Polygon, islands []geom2d.Polygon, z float64, feeds Feeds) []gcode.Command {
+// either feed straight across at depth (when the link is short enough and stays inside the pocket)
+// or retract, rapid, and re-plunge.
+func walkLinkedRuns(runs [][]geom2d.Point2, inset geom2d.Polygon, islands []geom2d.Polygon, z float64, feeds Feeds, threshold float64) []gcode.Command {
 	var cmds []gcode.Command
 	plunged := false
 	var pos geom2d.Point2
@@ -132,7 +132,7 @@ func walkLinkedRuns(runs [][]geom2d.Point2, inset geom2d.Polygon, islands []geom
 		if !plunged {
 			cmds = append(cmds, plungeAt(run[0], z, feeds)...)
 			plunged = true
-		} else if connectorClear(pos, run[0], inset, islands) {
+		} else if keepDownLink(pos, run[0], inset, islands, threshold) {
 			cmds = append(cmds, feedMove(run[0], feeds.Horiz)) // stay down across the link
 		} else {
 			cmds = append(cmds, gcode.NewCommand("G0", map[string]float64{"Z": feeds.ClearanceZ}))
@@ -157,6 +157,19 @@ func plungeAt(pt geom2d.Point2, z float64, feeds Feeds) []gcode.Command {
 		gcode.NewCommand("G0", map[string]float64{"Z": feeds.SafeZ}),
 		gcode.NewCommand("G1", map[string]float64{"Z": z, "F": feeds.Vert}),
 	}
+}
+
+// keepDownLink reports whether the tool should stay at cutting depth across the link a→b rather
+// than retract. Faithful to FreeCAD's area walk (App/Area.cpp toPath): the horizontal hop must be
+// within the retract threshold — a long reposition is faster and safer as a G0 retract+rapid than
+// feeding slowly at depth — AND the straight link must stay inside the already-cleared pocket so a
+// short hop across an island wall still retracts. The distance is compared squared, as FreeCAD does.
+func keepDownLink(a, b geom2d.Point2, inset geom2d.Polygon, islands []geom2d.Polygon, threshold float64) bool {
+	dx, dy := b.X-a.X, b.Y-a.Y
+	if dx*dx+dy*dy > threshold*threshold {
+		return false
+	}
+	return connectorClear(a, b, inset, islands)
 }
 
 // connectorClear reports whether the straight move a→b stays inside the pocket: it must not cross
