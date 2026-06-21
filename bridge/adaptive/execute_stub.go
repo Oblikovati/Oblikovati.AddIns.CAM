@@ -10,5 +10,5 @@ import "fmt"
 // engine, which is compiled only in cgo builds. Returning an error lets callers fall back to the
 // simpler spiral generator rather than fail.
 func Execute(cfg Config, stockPaths, paths, clearedPaths []DPath) ([]Output, error) {
-	return nil, fmt.Errorf("adaptive.Execute requires the cgo build (vendored Clipper engine); this binary was built with CGO disabled")
+	return nil, fmt.Errorf("adaptive.Execute: %w", ErrUnavailable)
 }

@@ -12,6 +12,13 @@
 // at the boundary.
 package adaptive
 
+import "errors"
+
+// ErrUnavailable is returned by Execute when the clearing engine is not built in (a CGO-disabled
+// build), so callers can fall back to a simpler strategy. Genuine clearing failures in a cgo build
+// return their own errors, not this one.
+var ErrUnavailable = errors.New("adaptive: clearing engine requires the cgo build (vendored Clipper)")
+
 // MotionType tags each emitted sub-path with how the tool moves along it. The values match the
 // solver's enum so they serialise unchanged.
 type MotionType int
