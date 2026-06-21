@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"oblikovati.org/api/types"
 	"oblikovati.org/api/wire"
 	"oblikovati.org/cam/bridge/gcode"
 )
@@ -39,7 +40,8 @@ type recordingHost struct {
 	failOn        string              // when set, that method returns an error
 	sectionWires  []wire.WirePolyline // when set, overrides the default single-square section
 	graphicsArgs  []wire.SetClientGraphicsArgs
-	minDistanceCm float64 // body.minimumDistance reply (cm); 0 (default) blocks every keep-down link
+	createdCmds   []wire.CreateCommandArgs // every commands.create request, for ribbon-placement assertions
+	minDistanceCm float64                  // body.minimumDistance reply (cm); 0 (default) blocks every keep-down link
 }
 
 func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
@@ -49,6 +51,12 @@ func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
 		var a wire.SetClientGraphicsArgs
 		if json.Unmarshal(payload, &a) == nil {
 			h.graphicsArgs = append(h.graphicsArgs, a)
+		}
+	}
+	if method == wire.MethodCommandsCreate {
+		var a wire.CreateCommandArgs
+		if json.Unmarshal(payload, &a) == nil {
+			h.createdCmds = append(h.createdCmds, a)
 		}
 	}
 	h.mu.Unlock()
@@ -598,8 +606,44 @@ func TestEngineSetupRegistersUI(t *testing.T) {
 	if err := NewEngine(h).Setup(); err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
-	if !h.called(wire.MethodCommandsCreate) || !h.called(wire.MethodDockableWindowsSet) {
-		t.Errorf("Setup must register command + panel; got %v", h.methods)
+	if !h.called(wire.MethodCommandsCreate) {
+		t.Errorf("Setup must register the CAM commands; got %v", h.methods)
+	}
+	// Setup must NOT open any window: the panels/browsers open on demand from the CAM tab.
+	if h.called(wire.MethodDockableWindowsSet) {
+		t.Error("Setup must not open a window by default")
+	}
+	// Every command lands on the CAM tab of the part ribbon, on a named panel.
+	for _, c := range h.createdCmds {
+		if c.Ribbon != types.PartRibbon || c.Tab != camRibbonTab || c.Category == "" {
+			t.Errorf("command %q placed at ribbon=%q tab=%q panel=%q, want the part ribbon's CAM tab on a named panel", c.ID, c.Ribbon, c.Tab, c.Category)
+		}
+	}
+	// A cutting tool carries the add-in's own inline glyph.
+	for _, c := range h.createdCmds {
+		if c.ID == GeneratePocketCommandID {
+			if c.IconSVG == "" || c.ButtonStyle != types.LargeIconButton {
+				t.Errorf("the Pocket tool should be a large icon button with an inline SVG glyph, got style=%v svgLen=%d", c.ButtonStyle, len(c.IconSVG))
+			}
+		}
+	}
+}
+
+// TestRibbonLayoutCoversEveryCommand guards that every registered command has a ribbon spot (so none
+// lands on an unnamed panel) and that every referenced glyph resolves to a bundled asset.
+func TestRibbonLayoutCoversEveryCommand(t *testing.T) {
+	for _, c := range camCommands {
+		spot, ok := camRibbonSpots[c.id]
+		if !ok {
+			t.Errorf("command %q has no ribbon spot", c.id)
+			continue
+		}
+		if spot.panel == "" {
+			t.Errorf("command %q has an empty panel", c.id)
+		}
+		if spot.icon != "" && iconSVG(spot.icon) == "" {
+			t.Errorf("command %q references glyph %q with no bundled icons/%s.svg", c.id, spot.icon, spot.icon)
+		}
 	}
 }
 

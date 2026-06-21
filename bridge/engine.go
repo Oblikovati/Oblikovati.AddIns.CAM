@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"oblikovati.org/api/client"
+	"oblikovati.org/api/types"
 	"oblikovati.org/api/wire"
 	"oblikovati.org/cam/bridge/post"
 )
@@ -163,6 +164,7 @@ const (
 	AddLeadInOutCommandID        = "CAM.AddLeadInOut"        // add lead-in/out to the selected operation
 	AddHelicalRampCommandID      = "CAM.AddHelicalRamp"      // add helical ramp entry to the selected operation
 	ClearDressupsCommandID       = "CAM.ClearDressups"       // remove the selected operation's dressups
+	ShowPanelCommandID           = "CAM.ShowPanel"           // open the CAM job settings panel
 	ShowToolsCommandID           = "CAM.ShowTools"           // open the tool-library browser
 	AddEndmillCommandID          = "CAM.AddEndmill"          // add an end mill to the library
 	AddDrillCommandID            = "CAM.AddDrill"            // add a drill to the library
@@ -218,6 +220,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{AddLeadInOutCommandID, "Add Lead In/Out", "Ease the tool into and out of each cut with tangential arcs on the selected operation."},
 	{AddHelicalRampCommandID, "Add Helical Ramp", "Replace straight plunges with a helical descent on the selected operation."},
 	{ClearDressupsCommandID, "Clear Dressups", "Remove the selected operation's dressups."},
+	{ShowPanelCommandID, "Show CAM Panel", "Open the CAM job settings panel."},
 	{ShowToolsCommandID, "Show Tool Library", "Open the CAM tool-library browser."},
 	{AddEndmillCommandID, "Add End Mill", "Add an end mill to the tool library."},
 	{AddDrillCommandID, "Add Drill", "Add a drill to the tool library."},
@@ -230,12 +233,21 @@ var camCommands = []struct{ id, name, tip string }{
 	{SaveGCodeCommandID, "Save G-code", "Export the last posted program to a .nc file."},
 }
 
-// RegisterCommands registers the CAM commands so each is invokable like a ribbon click. The
-// host action is a no-op; executing one fires command.started, which Notify turns into a job.
+// camRibbonTab is the dedicated ribbon tab the CAM add-in places all its commands on, scoped to the
+// part document ribbon. Grouping the commands into panels by operation type keeps the tab readable.
+const camRibbonTab = "CAM"
+
+// RegisterCommands registers the CAM commands as buttons on a dedicated "CAM" tab of the part-document
+// ribbon. Each lands on a named panel (its operation-type group), the cutting tools styled as large
+// icon buttons with the add-in's own glyph, the rest as compact buttons. The host action is a no-op;
+// executing one fires command.started, which Notify turns into a job.
 func (e *Engine) RegisterCommands() error {
 	for _, c := range camCommands {
+		spot := camRibbonSpots[c.id]
 		if _, err := e.api.Commands().Create(wire.CreateCommandArgs{
-			ID: c.id, DisplayName: c.name, Category: "CAM", Tooltip: c.tip,
+			ID: c.id, DisplayName: c.name, Tooltip: c.tip,
+			Ribbon: types.PartRibbon, Tab: camRibbonTab, Category: spot.panel,
+			IconSVG: iconSVG(spot.icon), ButtonStyle: spot.style,
 		}); err != nil {
 			return err
 		}
@@ -243,15 +255,21 @@ func (e *Engine) RegisterCommands() error {
 	return nil
 }
 
-// Setup performs the one-time host-facing initialisation: register the command and show the
-// CAM panel. It MUST NOT run on the host's session goroutine (host calls there deadlock the
-// head) — the cgo shell runs it on its own goroutine.
+// Setup performs the one-time host-facing initialisation: register the CAM ribbon commands. No
+// window is opened — the panels and browsers are opened on demand from the CAM tab's Windows panel,
+// so the add-in adds nothing to the screen until the user asks. It MUST NOT run on the host's session
+// goroutine (host calls there deadlock the head) — the cgo shell runs it on its own goroutine.
 func (e *Engine) Setup() error {
-	if err := e.RegisterCommands(); err != nil {
-		return err
+	return e.RegisterCommands()
+}
+
+// showPanelAction opens the CAM job settings panel on demand (the Windows-panel button), since Setup
+// no longer opens it automatically.
+func (e *Engine) showPanelAction() (*JobResult, error) {
+	if _, err := e.ShowPanel(); err != nil {
+		return nil, err
 	}
-	_, err := e.ShowPanel()
-	return err
+	return &JobResult{Summary: "CAM: job panel open."}, nil
 }
 
 // Notify receives host event bytes. A command.started carrying GenerateJobCommandID runs a
@@ -392,6 +410,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.clearPreviewAction)
 	case ShowOperationsCommandID:
 		e.launchRun(e.showOperationsAction)
+	case ShowPanelCommandID:
+		e.launchRun(e.showPanelAction)
 	case SaveJobCommandID:
 		e.launchRun(e.saveJobAction)
 	case LoadJobCommandID:
