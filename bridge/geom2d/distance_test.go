@@ -36,6 +36,27 @@ func TestDistanceToBoundaryDegenerate(t *testing.T) {
 	}
 }
 
+// TestMaxInscribedCircle checks the largest inscribed circle of a square is centred with radius
+// half its side, and of a wide rectangle is centred with radius half its short side.
+func TestMaxInscribedCircle(t *testing.T) {
+	c, r := MaxInscribedCircle(Polygon{{0, 0}, {20, 0}, {20, 20}, {0, 20}})
+	if math.Abs(c.X-10) > 0.1 || math.Abs(c.Y-10) > 0.1 || math.Abs(r-10) > 0.1 {
+		t.Errorf("square 20: centre %v r %g, want ~(10,10) r~10", c, r)
+	}
+	// A 40×10 slot: the biggest circle has radius 5 (half the short side), centred on the spine.
+	_, r2 := MaxInscribedCircle(Polygon{{0, 0}, {40, 0}, {40, 10}, {0, 10}})
+	if math.Abs(r2-5) > 0.1 {
+		t.Errorf("40×10 slot inscribed radius = %g, want ~5", r2)
+	}
+}
+
+// TestMaxInscribedCircleDegenerate returns a zero circle for a sub-triangle.
+func TestMaxInscribedCircleDegenerate(t *testing.T) {
+	if _, r := MaxInscribedCircle(Polygon{{0, 0}, {1, 1}}); r != 0 {
+		t.Errorf("a degenerate polygon should give a zero radius, got %g", r)
+	}
+}
+
 // TestDistanceToSegmentClampsToEndpoints checks the foot of the perpendicular is clamped to the
 // segment: beyond an end, the distance is to that endpoint.
 func TestDistanceToSegmentClampsToEndpoints(t *testing.T) {
