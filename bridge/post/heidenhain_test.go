@@ -104,6 +104,18 @@ func TestHeidenhainInches(t *testing.T) {
 	}
 }
 
+// TestHeidenhainCoolant checks the coolant M-functions pass through as Klartext blocks (they are
+// valid Heidenhain M-codes) rather than being dropped.
+func TestHeidenhainCoolant(t *testing.T) {
+	out := ExportHeidenhain(klartextObject("op", "M8", "G1 X1 F100", "M9"), "--no-comments")
+	if !strings.Contains(out, " M8\n") { // a numbered Klartext block "<n> M8"
+		t.Errorf("flood coolant (M8) should be emitted, got:\n%s", out)
+	}
+	if !strings.Contains(out, " M9\n") {
+		t.Errorf("coolant-off (M9) should be emitted, got:\n%s", out)
+	}
+}
+
 // TestHeidenhainViaDispatch routes through the Export dispatcher.
 func TestHeidenhainViaDispatch(t *testing.T) {
 	out, err := Export("heidenhain", klartextObject("op", "G1 X1 Y2 F100"), "--no-comments")

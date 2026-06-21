@@ -109,6 +109,8 @@ func (r *heidenhainRenderer) writeCommand(b *strings.Builder, c gcode.Command) {
 		r.line(b, "M0")
 	case "M1", "M01":
 		r.line(b, "M1")
+	case "M7", "M8", "M9":
+		r.line(b, c.Name) // coolant on/off — M7/M8/M9 are valid Klartext M-functions
 	default:
 		if strings.HasPrefix(c.Name, "(") {
 			r.comment(b, strings.Trim(c.Name, "()"))
