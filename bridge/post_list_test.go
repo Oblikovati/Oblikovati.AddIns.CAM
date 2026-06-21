@@ -2,7 +2,10 @@
 
 package bridge
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // totalM6 counts M6 commands in the posted objects' command lists.
 func totalM6(results []OperationResult) int {
@@ -15,6 +18,30 @@ func totalM6(results []OperationResult) int {
 		}
 	}
 	return n
+}
+
+// TestToolListHeader checks the posted program opens with a setup-sheet listing each distinct tool
+// once, in first-use order, with its number, shape, and diameter.
+func TestToolListHeader(t *testing.T) {
+	res := []OperationResult{
+		{Label: "Drill", Path: NewJobPath("G81"), Controller: ToolController{ToolNumber: 2, Tool: ToolBit{ShapeType: "drill", Diameter: 5}}},
+		{Label: "Profile", Path: NewJobPath("G1 X1"), Controller: ToolController{ToolNumber: 1, Tool: ToolBit{ShapeType: "endmill", Diameter: 6}}},
+		{Label: "Profile2", Path: NewJobPath("G1 X2"), Controller: ToolController{ToolNumber: 1, Tool: ToolBit{ShapeType: "endmill", Diameter: 6}}}, // repeat T1
+	}
+	objs := PostObjects(res)
+	if objs[0].Label != "Tool list" {
+		t.Fatalf("first object should be the tool list, got %q", objs[0].Label)
+	}
+	names := commandNames(objs[0].Path.Commands)
+	if len(names) != 2 {
+		t.Fatalf("two distinct tools should give two header lines, got %v", names)
+	}
+	if !strings.Contains(names[0], "T2") || !strings.Contains(names[0], "drill") || !strings.Contains(names[0], "D5.0mm") {
+		t.Errorf("first header line should describe T2 drill ⌀5, got %q", names[0])
+	}
+	if !strings.Contains(names[1], "T1") || !strings.Contains(names[1], "endmill") {
+		t.Errorf("second header line should describe T1 end mill, got %q", names[1])
+	}
 }
 
 // TestPostSuppressesRedundantToolChange checks consecutive operations on the same tool emit only

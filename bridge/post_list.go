@@ -3,6 +3,8 @@
 package bridge
 
 import (
+	"fmt"
+
 	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/post"
 )
@@ -15,7 +17,10 @@ import (
 // it makes the program self-contained (a machine sees the tool select and spindle start it
 // needs before the cutting moves). The tool number/spindle come from the operation's controller.
 func PostObjects(results []OperationResult) []post.Object {
-	objects := make([]post.Object, 0, len(results))
+	objects := make([]post.Object, 0, len(results)+1)
+	if header, ok := toolListHeader(results); ok {
+		objects = append(objects, header)
+	}
 	changes := toolChangeAt(results)
 	for i, res := range results {
 		var commands []gcode.Command
@@ -44,6 +49,35 @@ func toolChangeAt(results []OperationResult) []bool {
 		}
 	}
 	return flags
+}
+
+// toolListHeader builds a comment-only "setup sheet" object listing the distinct tools the program
+// uses (number, shape, diameter), in first-use order, so the operator knows what to load before
+// running. Returns false when no operation carries a tool. The lines are whole-line comments, so
+// every post renders them in its own comment style.
+func toolListHeader(results []OperationResult) (post.Object, bool) {
+	var lines []gcode.Command
+	seen := map[int]bool{}
+	for _, r := range results {
+		if seen[r.Controller.ToolNumber] {
+			continue
+		}
+		seen[r.Controller.ToolNumber] = true
+		lines = append(lines, gcode.NewCommand(toolListLine(r.Controller), nil))
+	}
+	if len(lines) == 0 {
+		return post.Object{}, false
+	}
+	return post.Object{Label: "Tool list", Path: gcode.NewPath(lines)}, true
+}
+
+// toolListLine formats one tool's setup-sheet comment, e.g. "(T1  endmill  D6.0mm)".
+func toolListLine(tc ToolController) string {
+	shape := tc.Tool.ShapeType
+	if shape == "" {
+		shape = "tool"
+	}
+	return fmt.Sprintf("(T%d  %s  D%.1fmm)", tc.ToolNumber, shape, tc.Tool.Diameter)
 }
 
 // coolantOn returns the coolant-start command for a mode (M8 flood, M7 mist), or nothing.
