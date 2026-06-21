@@ -3,6 +3,7 @@
 package gen
 
 import (
+	"strings"
 	"testing"
 
 	"oblikovati.org/cam/bridge/gcode"
@@ -118,5 +119,17 @@ func TestZigzagPocketOneWay(t *testing.T) {
 func TestZigzagPocketTooSmall(t *testing.T) {
 	if _, err := GeneratePocket(square(3), []float64{0}, testFeeds, PocketParams{ToolRadius: 2, Pattern: PocketZigzag}); err == nil {
 		t.Error("a tool too large for the region must error")
+	}
+}
+
+// TestPocketTooSmallErrorNamesInscribedRadius checks the "tool too large" error reports the
+// region's maximum inscribed radius, so the user knows what tool would fit.
+func TestPocketTooSmallErrorNamesInscribedRadius(t *testing.T) {
+	_, err := GeneratePocket(square(6), []float64{0}, testFeeds, PocketParams{ToolRadius: 5})
+	if err == nil {
+		t.Fatal("a too-large tool should error")
+	}
+	if !strings.Contains(err.Error(), "inscribed radius") {
+		t.Errorf("error should report the inscribed radius, got %q", err)
 	}
 }

@@ -57,9 +57,11 @@ func GeneratePocket(boundary geom2d.Polygon, levels []float64, feeds Feeds, p Po
 }
 
 // pocketTooSmallErr is the shared "tool too large to enter the region" error for both clearing
-// patterns, naming the tool, allowance, and region area.
+// patterns. It reports the region's maximum inscribed radius — the largest tool that *would* fit —
+// so the message is actionable, not just "too big". Computed only on this error path.
 func pocketTooSmallErr(p PocketParams, boundary geom2d.Polygon) error {
-	return fmt.Errorf("pocket: tool radius %g (+ allowance %g) is too large to enter the region (area %g)", p.ToolRadius, p.FinishAllowance, boundary.Area())
+	_, fits := geom2d.MaxInscribedCircle(boundary)
+	return fmt.Errorf("pocket: tool radius %g (+ allowance %g) exceeds the region's maximum inscribed radius %.3g — too large to enter", p.ToolRadius, p.FinishAllowance, fits)
 }
 
 // walkPocketRings walks each ring at depth z routed around the keepouts: a ring clear of every
