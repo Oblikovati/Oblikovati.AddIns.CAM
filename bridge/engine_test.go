@@ -658,10 +658,14 @@ func TestPostObjectsInjectsToolChange(t *testing.T) {
 		Controller: ToolController{ToolNumber: 4, SpindleSpeed: 1500, SpindleDir: "Reverse"},
 	}}
 	objs := PostObjects(res)
-	if len(objs) != 1 {
-		t.Fatalf("want 1 object, got %d", len(objs))
+	// A tool-list header precedes the operation object.
+	if len(objs) != 2 {
+		t.Fatalf("want 2 objects (tool-list header + op), got %d", len(objs))
 	}
-	names := commandNames(objs[0].Path.Commands)
+	if objs[0].Label != "Tool list" {
+		t.Errorf("first object should be the tool-list header, got %q", objs[0].Label)
+	}
+	names := commandNames(objs[1].Path.Commands)
 	want := []string{"M6", "M4", "G80"} // tool select, reverse spindle, then the op body
 	if strings.Join(names, ",") != strings.Join(want, ",") {
 		t.Errorf("commands = %v, want %v", names, want)
