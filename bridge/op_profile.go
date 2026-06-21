@@ -16,11 +16,13 @@ import (
 // a selected face; Execute is pure given the boundary, tool, and depths.
 type ProfileOp struct {
 	OpBase
-	Side        string         // gen.SideOutside | gen.SideInside | gen.SideOn
-	OffsetExtra float64        // extra stock left on the wall (mm)
-	Climb       bool           // climb vs conventional milling
-	StepDown    float64        // max Z step per pass (mm); <=0 → single pass
-	Boundary    geom2d.Polygon // driving contour (mm), populated by the engine
+	Side           string         // gen.SideOutside | gen.SideInside | gen.SideOn
+	OffsetExtra    float64        // extra stock left on the wall (mm)
+	Climb          bool           // climb vs conventional milling
+	StepDown       float64        // max Z step per pass (mm); <=0 → single pass
+	RoughingPasses int            // radial passes to reach the wall (>1 roughs thick stock); 0/1 → single
+	RoughStep      float64        // radial step between roughing passes (mm)
+	Boundary       geom2d.Polygon // driving contour (mm), populated by the engine
 }
 
 // Features reports the property groups a profile uses.
@@ -39,10 +41,12 @@ func (op *ProfileOp) Execute(job *Job) (gcode.Path, error) {
 		return gcode.Path{}, fmt.Errorf("profile operation %q has no boundary contour", op.OpLabel)
 	}
 	cmds, err := gen.GenerateProfile(op.Boundary, op.depthLevels(), op.feeds(tc), gen.ProfileParams{
-		ToolRadius:  tc.Tool.Diameter / 2,
-		Side:        op.Side,
-		OffsetExtra: op.OffsetExtra,
-		Climb:       op.Climb,
+		ToolRadius:     tc.Tool.Diameter / 2,
+		Side:           op.Side,
+		OffsetExtra:    op.OffsetExtra,
+		Climb:          op.Climb,
+		RoughingPasses: op.RoughingPasses,
+		RoughStep:      op.RoughStep,
 	})
 	if err != nil {
 		return gcode.Path{}, fmt.Errorf("profile operation %q: %w", op.OpLabel, err)

@@ -15,6 +15,7 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 | Image | Validates |
 |---|---|
 | `profile.png` | Outside contour: the cut loop is the boundary grown by the tool radius. |
+| `profile-multipass.png` | Profile roughing: several radial passes march from the stock inward to the final contour (for cutting a part out of thick stock). |
 | `profile-holes.png` | Island-aware profiling: the outer outline cut outside plus each inner hole cut inside. |
 | `pocket.png` | Area clearing: concentric inward rings, rapids between them. |
 | `pocket-island.png` | Pocket with an island: the clearing routes around a central island, leaving it standing. |

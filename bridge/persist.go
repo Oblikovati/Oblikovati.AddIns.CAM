@@ -99,6 +99,8 @@ type opDoc struct {
 	StepDown        float64 `json:"stepDown,omitempty"`
 	StepOver        float64 `json:"stepOver,omitempty"`
 	FinishAllowance float64 `json:"finishAllowance,omitempty"`
+	RoughingPasses  int     `json:"roughingPasses,omitempty"`
+	RoughStep       float64 `json:"roughStep,omitempty"`
 
 	// Helix
 	HoleRadius float64 `json:"holeRadius,omitempty"`
@@ -268,6 +270,7 @@ func toOpDoc(op Operation) (opDoc, error) {
 	case *ProfileOp:
 		d := baseDoc("profile", o.OpBase)
 		d.Side, d.OffsetExtra, d.Climb, d.StepDown = o.Side, o.OffsetExtra, o.Climb, o.StepDown
+		d.RoughingPasses, d.RoughStep = o.RoughingPasses, o.RoughStep
 		return d, nil
 	case *PocketOp:
 		d := baseDoc("pocket", o.OpBase)
@@ -352,7 +355,7 @@ func fromOpDoc(d opDoc) (Operation, error) {
 	case "drilling":
 		return &DrillingOp{OpBase: opBaseFrom(d), DwellTime: d.DwellTime, PeckDepth: d.PeckDepth, ChipBreak: d.ChipBreak, FeedRetract: d.FeedRetract, Repeat: d.Repeat}, nil
 	case "profile":
-		return &ProfileOp{OpBase: opBaseFrom(d), Side: d.Side, OffsetExtra: d.OffsetExtra, Climb: d.Climb, StepDown: d.StepDown}, nil
+		return &ProfileOp{OpBase: opBaseFrom(d), Side: d.Side, OffsetExtra: d.OffsetExtra, Climb: d.Climb, StepDown: d.StepDown, RoughingPasses: d.RoughingPasses, RoughStep: d.RoughStep}, nil
 	case "pocket":
 		return &PocketOp{OpBase: opBaseFrom(d), StepOver: d.StepOver, Climb: d.Climb, StepDown: d.StepDown, FinishAllowance: d.FinishAllowance}, nil
 	case "adaptive":

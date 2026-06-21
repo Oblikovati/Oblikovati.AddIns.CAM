@@ -12,6 +12,8 @@ func (op *ProfileOp) Parameters() []OpParam {
 		choiceParam("side", "Side", op.Side, gen.SideOutside, gen.SideInside, gen.SideOn),
 		numberParam("offsetExtra", "Extra stock (mm)", op.OffsetExtra),
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
+		numberParam("roughingPasses", "Roughing passes", float64(op.RoughingPasses)),
+		numberParam("roughStep", "Roughing step (mm)", op.RoughStep),
 		boolParam("climb", "Climb", op.Climb),
 	}, depthParams(op.OpBase)...)
 }
@@ -25,6 +27,10 @@ func (op *ProfileOp) SetParameter(id, value string) bool {
 		op.OffsetExtra = panelNum(value, op.OffsetExtra)
 	case "stepDown":
 		op.StepDown = panelNum(value, op.StepDown)
+	case "roughingPasses":
+		op.RoughingPasses = int(panelNum(value, float64(op.RoughingPasses)))
+	case "roughStep":
+		op.RoughStep = panelNum(value, op.RoughStep)
 	case "climb":
 		op.Climb = parseBool(value)
 	default:
