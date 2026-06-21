@@ -3,6 +3,7 @@
 package bridge
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -18,6 +19,34 @@ func totalM6(results []OperationResult) int {
 		}
 	}
 	return n
+}
+
+// TestPostObjectsEstimateComment checks each operation block opens with a cycle-time estimate
+// comment naming the operation and a minutes figure scaled by the cut length.
+func TestPostObjectsEstimateComment(t *testing.T) {
+	tc := ToolController{ToolNumber: 1, VertFeed: 100, HorizFeed: 100}
+	short := []OperationResult{{Label: "Tab", Path: NewJobPath("G0 X0", "G1 X10 F100"), Controller: tc}}
+	long := []OperationResult{{Label: "Tab", Path: NewJobPath("G0 X0", "G1 X200 F100"), Controller: tc}}
+
+	first := commandNames(lastObj(PostObjects(short)).Path.Commands)[0]
+	if !strings.HasPrefix(first, "(Tab: est ") {
+		t.Errorf("op block should open with its estimate comment, got %q", first)
+	}
+	// A longer cut yields a larger estimate figure.
+	if minutesOf(t, long) <= minutesOf(t, short) {
+		t.Errorf("a longer toolpath should estimate more time: long %g, short %g", minutesOf(t, long), minutesOf(t, short))
+	}
+}
+
+// minutesOf extracts the "est N.N min" figure from an operation's leading estimate comment.
+func minutesOf(t *testing.T, res []OperationResult) float64 {
+	t.Helper()
+	comment := commandNames(lastObj(PostObjects(res)).Path.Commands)[0]
+	var m float64
+	if _, err := fmt.Sscanf(comment, "(Tab: est %f min)", &m); err != nil {
+		t.Fatalf("could not parse estimate from %q: %v", comment, err)
+	}
+	return m
 }
 
 // TestToolListHeader checks the posted program opens with a setup-sheet listing each distinct tool

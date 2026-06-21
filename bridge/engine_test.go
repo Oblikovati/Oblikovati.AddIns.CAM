@@ -666,8 +666,12 @@ func TestPostObjectsInjectsToolChange(t *testing.T) {
 		t.Errorf("first object should be the tool-list header, got %q", objs[0].Label)
 	}
 	names := commandNames(objs[1].Path.Commands)
-	want := []string{"M6", "M4", "G80"} // tool select, reverse spindle, then the op body
-	if strings.Join(names, ",") != strings.Join(want, ",") {
-		t.Errorf("commands = %v, want %v", names, want)
+	// A per-op estimate comment leads the block, then the tool select, reverse spindle, op body.
+	if len(names) == 0 || !strings.HasPrefix(names[0], "(") {
+		t.Errorf("first command should be the estimate comment, got %v", names)
+	}
+	want := []string{"M6", "M4", "G80"}
+	if strings.Join(names[1:], ",") != strings.Join(want, ",") {
+		t.Errorf("commands after the comment = %v, want %v", names[1:], want)
 	}
 }
