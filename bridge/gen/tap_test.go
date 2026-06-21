@@ -13,7 +13,7 @@ import (
 func TestGenerateTapRightHand(t *testing.T) {
 	cmds, err := GenerateTap(
 		gcode.Vector3{X: 3, Y: 4, Z: 10}, gcode.Vector3{X: 3, Y: 4, Z: 0},
-		750, TapParams{Pitch: 1.5},
+		750, 500, TapParams{Pitch: 1.5},
 	)
 	if err != nil {
 		t.Fatalf("GenerateTap: %v", err)
@@ -21,7 +21,8 @@ func TestGenerateTapRightHand(t *testing.T) {
 	if len(cmds) != 1 || cmds[0].Name != "G84" {
 		t.Fatalf("want one G84 command, got %v", cmds)
 	}
-	for addr, want := range map[string]float64{"X": 3, "Y": 4, "Z": 0, "R": 10, "F": 750} {
+	// X/Y/Z/R/S/F like FreeCAD's tapping cycle — S carries the spindle rpm the feed syncs to.
+	for addr, want := range map[string]float64{"X": 3, "Y": 4, "Z": 0, "R": 10, "S": 500, "F": 750} {
 		if got := cmds[0].Params[addr]; got != want {
 			t.Errorf("G84 %s = %g, want %g", addr, got, want)
 		}
@@ -35,7 +36,7 @@ func TestGenerateTapRightHand(t *testing.T) {
 func TestGenerateTapLeftHand(t *testing.T) {
 	cmds, err := GenerateTap(
 		gcode.Vector3{X: 0, Y: 0, Z: 5}, gcode.Vector3{X: 0, Y: 0, Z: -5},
-		500, TapParams{Pitch: 1.0, LeftHand: true},
+		500, 800, TapParams{Pitch: 1.0, LeftHand: true},
 	)
 	if err != nil {
 		t.Fatalf("GenerateTap: %v", err)
@@ -49,7 +50,7 @@ func TestGenerateTapLeftHand(t *testing.T) {
 func TestGenerateTapDwell(t *testing.T) {
 	cmds, err := GenerateTap(
 		gcode.Vector3{X: 0, Y: 0, Z: 10}, gcode.Vector3{X: 0, Y: 0, Z: 0},
-		600, TapParams{Pitch: 1.25, DwellTime: 0.5},
+		600, 480, TapParams{Pitch: 1.25, DwellTime: 0.5},
 	)
 	if err != nil {
 		t.Fatalf("GenerateTap: %v", err)
@@ -74,7 +75,7 @@ func TestGenerateTapErrors(t *testing.T) {
 		{"start below end", bottom, good, 750, 1.5},
 	}
 	for _, c := range cases {
-		if _, err := GenerateTap(c.start, c.end, c.feed, TapParams{Pitch: c.pitch}); err == nil {
+		if _, err := GenerateTap(c.start, c.end, c.feed, 500, TapParams{Pitch: c.pitch}); err == nil {
 			t.Errorf("%s: expected an error", c.name)
 		}
 	}
