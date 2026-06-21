@@ -21,6 +21,30 @@ func totalM6(results []OperationResult) int {
 	return n
 }
 
+// hasObjectLabeled reports whether any posted object carries the given label.
+func hasObjectLabeled(results []OperationResult, label string) bool {
+	for _, obj := range PostObjects(results) {
+		if obj.Label == label {
+			return true
+		}
+	}
+	return false
+}
+
+// TestPostObjectsSafetyHeader emits a "Safety" block only when an operation rapids through stock
+// (a lateral G0 below the clearance plane), and omits it for a clean program.
+func TestPostObjectsSafetyHeader(t *testing.T) {
+	clean := []OperationResult{{Label: "Drill", Path: NewJobPath("G0 Z15", "G0 X0 Y0", "G1 Z-2 F100", "G0 Z15", "G0 X9 Y9")}}
+	if hasObjectLabeled(clean, "Safety") {
+		t.Error("a clean program should carry no Safety block")
+	}
+	// the second hole is reached by a rapid still at depth — no retract to Z15 first.
+	danger := []OperationResult{{Label: "Drill", Path: NewJobPath("G0 Z15", "G0 X0 Y0", "G1 Z-2 F100", "G0 X9 Y9")}}
+	if !hasObjectLabeled(danger, "Safety") {
+		t.Error("a rapid through stock should produce a Safety warning block")
+	}
+}
+
 // TestPostObjectsEstimateComment checks each operation block opens with a cycle-time estimate
 // comment naming the operation and a minutes figure scaled by the cut length.
 func TestPostObjectsEstimateComment(t *testing.T) {
