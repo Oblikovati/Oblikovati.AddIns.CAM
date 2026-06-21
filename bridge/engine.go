@@ -5,6 +5,7 @@ package bridge
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"oblikovati.org/api/client"
@@ -33,6 +34,7 @@ type Engine struct {
 	material      string  // selected workpiece material (drives the feeds & speeds calculator)
 	flutes        int     // flute count of the primary end mill (drives the feeds & speeds feed)
 	spinUpSecs    float64 // dwell after spindle start so it reaches speed before cutting (s); 0 = none
+	workOffset    int     // active work coordinate system, 1..6 → G54..G59; 0/1 = G54
 	lastJob       *Job    // most recently generated job (for the operations browser + Save)
 	lastGCode     string  // most recently posted G-code (for export to a file)
 	lastEstimate  float64 // estimated cycle time (minutes) of the last posted job
@@ -93,6 +95,28 @@ func (e *Engine) SetPost(name string) *Engine {
 		e.mu.Unlock()
 	}
 	return e
+}
+
+// workOffsetOrOne maps an unset (zero) or out-of-range work offset to 1 (G54), for display.
+func workOffsetOrOne(w int) int {
+	if w < 1 || w > 6 {
+		return 1
+	}
+	return w
+}
+
+// postArgs builds the post-processor argument string: the GUI no-op plus the active work
+// coordinate system when it is not the default G54 (the posts that honour --work-offset substitute
+// it into their preamble). G54 is left implicit so the default output is unchanged.
+func (e *Engine) postArgs() string {
+	e.mu.Lock()
+	wo := e.workOffset
+	e.mu.Unlock()
+	args := "--no-show-editor"
+	if wo >= 2 && wo <= 6 {
+		args += " --work-offset=G5" + strconv.Itoa(3+wo) // 2→G55 … 6→G59
+	}
+	return args
 }
 
 // The CAM commands the add-in registers; firing one (a ribbon click or the MCP bridge's
@@ -468,7 +492,7 @@ func (e *Engine) GenerateGCode(job *Job) (string, error) {
 	e.lastJob = job
 	e.lastEstimate = EstimateMinutes(results)
 	e.mu.Unlock()
-	gcodeText, err := post.Export(job.PostProcessor, PostObjects(results), "--no-show-editor")
+	gcodeText, err := post.Export(job.PostProcessor, PostObjects(results), e.postArgs())
 	if err == nil {
 		e.rememberGCode(gcodeText)
 	}
