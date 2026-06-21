@@ -5,6 +5,8 @@ package dressup
 import (
 	"testing"
 
+	"math"
+
 	"oblikovati.org/cam/bridge/gcode"
 )
 
@@ -68,6 +70,57 @@ func TestApplyTagsLiftsSomeMoves(t *testing.T) {
 		t.Error("ApplyTags must not mutate the input path")
 	}
 }
+
+// TestApplyTagsBridgeWidth: a tab on a single long edge lifts only a Width-long bridge, not the
+// whole edge — the segment is split at the tab boundaries.
+func TestApplyTagsBridgeWidth(t *testing.T) {
+	// A closed square traced as four long single-segment edges (40 mm perimeter, 10 mm each).
+	in := gcode.NewPath([]gcode.Command{
+		gcode.NewCommand("G0", map[string]float64{"Z": 15}),
+		gcode.NewCommand("G0", map[string]float64{"X": 0, "Y": 0}),
+		gcode.NewCommand("G1", map[string]float64{"Z": -5, "F": 50}),
+		gcode.NewCommand("G1", map[string]float64{"X": 10, "Y": 0, "F": 200}),
+		gcode.NewCommand("G1", map[string]float64{"X": 10, "Y": 10, "F": 200}),
+		gcode.NewCommand("G1", map[string]float64{"X": 0, "Y": 10, "F": 200}),
+		gcode.NewCommand("G1", map[string]float64{"X": 0, "Y": 0, "F": 200}),
+		gcode.NewCommand("G0", map[string]float64{"Z": 15}),
+	})
+	out := ApplyTags(in, TagParams{Count: 4, Width: 4, Height: 3})
+
+	// Sum the arc length of the lifted (tab) sub-moves; with 4 tabs of width 4 it must be ~16 mm,
+	// not the whole 40 mm perimeter (the bug lifted entire edges).
+	lifted := liftedArcLength(out, -5)
+	if lifted < 12 || lifted > 20 {
+		t.Errorf("lifted arc length = %g mm, want ~16 (4 tabs × 4 mm), not the whole perimeter", lifted)
+	}
+}
+
+// liftedArcLength sums the XY length of cutting sub-moves raised above the cut depth.
+func liftedArcLength(path gcode.Path, cutZ float64) float64 {
+	var total, px, py float64
+	posKnown := false
+	for _, c := range path.Commands {
+		x, hasX := c.Params["X"]
+		y, hasY := c.Params["Y"]
+		if !hasX && !hasY {
+			continue
+		}
+		nx, ny := px, py
+		if hasX {
+			nx = x
+		}
+		if hasY {
+			ny = y
+		}
+		if c.Name == "G1" && posKnown && c.Params["Z"] > cutZ+1e-9 {
+			total += hypot(nx-px, ny-py)
+		}
+		px, py, posKnown = nx, ny, true
+	}
+	return total
+}
+
+func hypot(a, b float64) float64 { return math.Hypot(a, b) }
 
 // TestApplyTagsNoop: zero count or width leaves the path unchanged.
 func TestApplyTagsNoop(t *testing.T) {
