@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"oblikovati.org/cam/bridge/gcode"
+	"oblikovati.org/cam/bridge/geom2d"
 )
 
 // cutZ returns the depth of the first cutting (G1 with Z) move — the chamfer pass depth.
@@ -74,6 +75,30 @@ func TestChamferMultiPass(t *testing.T) {
 	one, _ := GenerateChamfer(square(20), 0, testFeeds, ChamferParams{Width: 3, ToolAngleDeg: 90, Side: SideOutside, Climb: true, Passes: 1})
 	if len(single) != len(one) {
 		t.Errorf("Passes=1 should match the single-pass chamfer: %d vs %d", len(one), len(single))
+	}
+}
+
+// TestChamferInsideCornerNoGouge checks an inside chamfer never cuts a tip point deeper than its
+// distance to the nearest wall allows — at a concave corner the tip crowds another edge, so the
+// depth is capped there rather than driving the flank into that wall.
+func TestChamferInsideCornerNoGouge(t *testing.T) {
+	// L-shaped boundary with a concave corner at (20,20); an inside chamfer rides 2mm inside it.
+	l := geom2d.Polygon{{X: 0, Y: 0}, {X: 40, Y: 0}, {X: 40, Y: 20}, {X: 20, Y: 20}, {X: 20, Y: 40}, {X: 0, Y: 40}}
+	cmds, err := GenerateChamfer(l, 0, testFeeds, ChamferParams{Width: 2, ToolAngleDeg: 90, Side: SideInside})
+	if err != nil {
+		t.Fatalf("GenerateChamfer inside L: %v", err)
+	}
+	for _, c := range cmds {
+		x, hasX := c.Params["X"]
+		y, hasY := c.Params["Y"]
+		z, hasZ := c.Params["Z"]
+		if c.Name != "G1" || !hasX || !hasY || !hasZ {
+			continue
+		}
+		limit := geom2d.DistanceToBoundary(geom2d.Point2{X: x, Y: y}, l) // tan45° = 1
+		if -z > limit+1e-6 {
+			t.Errorf("inside-chamfer point (%g,%g) cut to depth %g exceeds wall distance %g (gouge)", x, y, -z, limit)
+		}
 	}
 }
 

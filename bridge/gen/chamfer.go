@@ -44,21 +44,33 @@ func GenerateChamfer(boundary geom2d.Polygon, top float64, feeds Feeds, p Chamfe
 	if _, err := chamferTipPath(boundary, p); err != nil { // the full-width pass must fit
 		return nil, err
 	}
-	fullDepth := p.Width / math.Tan(chamferHalfAngle(p.ToolAngleDeg))
+	tan := math.Tan(chamferHalfAngle(p.ToolAngleDeg))
 	n := chamferPasses(p.Passes)
 
 	var cmds []gcode.Command
 	for j := 1; j <= n; j++ {
-		frac := float64(j) / float64(n)
 		pass := p
-		pass.Width = p.Width * frac // narrower offset than the validated full pass, so it fits
+		pass.Width = p.Width * float64(j) / float64(n) // narrower offset than the validated full pass
 		tip, err := chamferTipPath(boundary, pass)
 		if err != nil {
 			continue
 		}
-		cmds = append(cmds, walkLoop(orient(tip, p.Climb), top-fullDepth*frac, feeds)...)
+		cmds = append(cmds, walkLoopVaryingZ(orient(tip, p.Climb), chamferDepthAt(boundary, pass.Width, top, tan), feeds)...)
 	}
 	return cmds, nil
+}
+
+// chamferDepthAt builds the per-point depth function for one flank pass. The bevel is Width wide, so
+// the tip normally rides at a uniform depth Width/tan below the top. But the depth is *capped* by a
+// tip point's true distance to the nearest wall: at a concave corner an inside-chamfer tip is closer
+// to a crowding edge than its width, and cutting the full depth there would drive the V-tool flank
+// into that wall. The min() only ever reduces the depth — on the common convex/outside case the
+// nearest wall is at least the offset width away, so the depth stays uniform (no over-deepening at
+// the wider diagonal of a convex offset corner).
+func chamferDepthAt(boundary geom2d.Polygon, width, top, tan float64) func(geom2d.Point2) float64 {
+	return func(pt geom2d.Point2) float64 {
+		return top - math.Min(width, geom2d.DistanceToBoundary(pt, boundary))/tan
+	}
 }
 
 // chamferPasses clamps the flank-pass count to at least one and no more than the cap.

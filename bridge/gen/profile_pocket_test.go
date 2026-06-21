@@ -192,11 +192,14 @@ func TestPocketRings(t *testing.T) {
 	}
 }
 
-// countPlunges counts the plunge moves (G1 carrying a Z address) — one per cut loop.
+// countPlunges counts the plunge moves (a G1 carrying a Z but no X/Y — a pure descent) — one per
+// cut loop. Loops cut with a varying per-point Z (V-carve, chamfer) attach Z to every move, so the
+// no-X/Y guard is what distinguishes the plunge from the cutting moves.
 func countPlunges(cmds []gcode.Command) int {
 	n := 0
 	for _, c := range cmds {
-		if _, hasZ := c.Params["Z"]; c.Name == "G1" && hasZ {
+		_, hasX := c.Params["X"]
+		if _, hasZ := c.Params["Z"]; c.Name == "G1" && hasZ && !hasX {
 			n++
 		}
 	}
