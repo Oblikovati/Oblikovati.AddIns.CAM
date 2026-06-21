@@ -42,6 +42,30 @@ func cutPolygon(cmds []gcode.Command) geom2d.Polygon {
 
 func approx(a, b float64) bool { return math.Abs(a-b) < 1e-6 }
 
+// lastLoopArea returns the signed-free area of the last closed cut loop in the command list — the
+// final contour of a multi-pass profile. Loops are the runs of G1 XY moves between retracts.
+func lastLoopArea(cmds []gcode.Command) float64 {
+	var loop, last geom2d.Polygon
+	for _, c := range cmds {
+		x, hasX := c.Params["X"]
+		y, hasY := c.Params["Y"]
+		if c.Name == "G1" && hasX && hasY {
+			loop = append(loop, geom2d.Point2{X: x, Y: y})
+			continue
+		}
+		if len(loop) > 0 {
+			last, loop = loop, nil
+		}
+	}
+	if len(loop) > 0 {
+		last = loop
+	}
+	if n := len(last); n > 1 && last[n-1] == last[0] {
+		last = last[:n-1]
+	}
+	return last.Area()
+}
+
 // TestDepthLevels covers stepped descent, the single-pass fallbacks, and exact finish.
 func TestDepthLevels(t *testing.T) {
 	got := DepthLevels(10, 0, 3)
@@ -77,6 +101,48 @@ func TestProfileOutside(t *testing.T) {
 	// The cut loop of the first pass is the 10×10 boundary grown by radius 1 → 12×12 = 144.
 	if a := cutPolygon(cmds).Area(); !approx(a, 144) {
 		t.Errorf("outside profile area = %g, want 144 (12×12)", a)
+	}
+}
+
+// TestProfileMultiPassOutside checks roughing passes add concentric contours that march inward to
+// the final wall: three passes at 1mm step over a 10×10 part give an outer pass of 16×16 (the part
+// grown by radius 1 + 2×2mm rough) down to the 12×12 finish contour, all at one Z level.
+func TestProfileMultiPassOutside(t *testing.T) {
+	cmds, err := GenerateProfile(square(10), []float64{0}, testFeeds, ProfileParams{
+		ToolRadius: 1, Side: SideOutside, Climb: true, RoughingPasses: 3, RoughStep: 2,
+	})
+	if err != nil {
+		t.Fatalf("GenerateProfile multi-pass: %v", err)
+	}
+	// Three passes at one level → three plunges (one per contour).
+	if got := countPlunges(cmds); got != 3 {
+		t.Errorf("multi-pass plunges = %d, want 3 (one per roughing pass)", got)
+	}
+	// The outermost (first) pass is the part grown by radius 1 + 2 steps of 2mm = 5 → 20×20 = 400.
+	if a := cutPolygon(cmds).Area(); !approx(a, 400) {
+		t.Errorf("outer roughing pass area = %g, want 400 (20×20)", a)
+	}
+	// The final pass must still reach the wall: the same single-pass profile is the last contour.
+	single, _ := GenerateProfile(square(10), []float64{0}, testFeeds, ProfileParams{ToolRadius: 1, Side: SideOutside, Climb: true})
+	last := lastLoopArea(cmds)
+	if !approx(last, cutPolygon(single).Area()) {
+		t.Errorf("final pass area = %g, want the single-pass wall %g", last, cutPolygon(single).Area())
+	}
+}
+
+// TestProfileMultiPassSinglePassEquivalent checks one (or zero) roughing pass, or a zero step, is
+// identical to the plain single-pass profile.
+func TestProfileMultiPassSinglePassEquivalent(t *testing.T) {
+	base := ProfileParams{ToolRadius: 1, Side: SideOutside, Climb: true}
+	plain, _ := GenerateProfile(square(10), []float64{0}, testFeeds, base)
+	for _, p := range []ProfileParams{
+		{ToolRadius: 1, Side: SideOutside, Climb: true, RoughingPasses: 1, RoughStep: 2},
+		{ToolRadius: 1, Side: SideOutside, Climb: true, RoughingPasses: 4, RoughStep: 0},
+	} {
+		got, _ := GenerateProfile(square(10), []float64{0}, testFeeds, p)
+		if len(got) != len(plain) {
+			t.Errorf("params %+v should be a single pass: got %d cmds, want %d", p, len(got), len(plain))
+		}
 	}
 }
 

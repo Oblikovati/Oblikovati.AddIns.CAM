@@ -96,6 +96,7 @@ func (s shot) boundary() geom2d.Polygon { return boundaryOf(s.op) }
 func shots() []shot {
 	return []shot{
 		{"profile", profileOp(nil)},
+		{"profile-multipass", &bridge.ProfileOp{OpBase: millEnv("Profile"), Side: "outside", Climb: true, RoughingPasses: 4, RoughStep: 2, Boundary: part()}},
 		{"pocket", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: part()}},
 		{"pocket-island", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.5, Climb: true, Boundary: squarePoly(40), Islands: []geom2d.Polygon{islandPoly()}}},
 		{"pocket-finish", &bridge.PocketOp{OpBase: millEnv("Pocket"), StepOver: 0.6, Climb: true, FinishAllowance: 2, Boundary: squarePoly(40)}},
