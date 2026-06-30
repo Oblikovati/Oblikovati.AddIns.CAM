@@ -324,6 +324,8 @@ func (e *Engine) Notify(ev []byte) {
 				e.handleOpEditorEdit(p.ControlId, p.Value)
 			case NewJobDialogID:
 				e.applyNewJobEdit(p.ControlId, p.Value)
+			case JobEditWindowID:
+				e.applyPanelEdit(p.ControlId, p.Value) // Job Edit reuses the CAM panel's control ids
 			}
 		}
 	case wire.EventFileDialogChosen:

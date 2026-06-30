@@ -65,7 +65,7 @@ func (e *Engine) browserDoubleClick(node string) {
 		return
 	}
 	if node == "job" {
-		e.launchRun(e.showPanelAction)
+		e.launchRun(e.showJobEditAction)
 	}
 }
 
@@ -102,7 +102,7 @@ func (e *Engine) opMenuAction(idx int, item string) {
 func (e *Engine) jobMenuAction(item string) {
 	switch item {
 	case "edit":
-		e.launchRun(e.showPanelAction)
+		e.launchRun(e.showJobEditAction)
 	case "regen":
 		e.runAndRefreshTree(e.regenerateAction)
 	case "post":
