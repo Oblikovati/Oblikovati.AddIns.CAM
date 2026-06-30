@@ -45,6 +45,9 @@ type Engine struct {
 	cut           cutSettings
 	library       ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
 	surfacer      Surfacer
+	njTemplate    string       // New Job dialog: selected template
+	njUnits       string       // New Job dialog: selected document-unit schema
+	njModel       map[int]bool // New Job dialog: which solids (by body index) are checked into the job
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
@@ -175,6 +178,10 @@ const (
 	SaveJobCommandID             = "CAM.SaveJob"             // persist the job into the document
 	LoadJobCommandID             = "CAM.LoadJob"             // load the job from the document
 	SaveGCodeCommandID           = "CAM.SaveGCode"           // export the posted program to a file
+	NewJobCommandID              = "CAM.NewJob"              // open the New Job dialog (pick model/template/units)
+	CreateJobCommandID           = "CAM.CreateJob"           // New Job dialog OK: create the job from the selections
+	CancelNewJobCommandID        = "CAM.CancelNewJob"        // New Job dialog Cancel: dismiss it
+	ShowBrowserTreeCommandID     = "CAM.ShowTree"            // open the CAM Job tree in the model browser
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -231,6 +238,10 @@ var camCommands = []struct{ id, name, tip string }{
 	{SaveJobCommandID, "Save CAM Job", "Persist the CAM job into the active document."},
 	{LoadJobCommandID, "Load CAM Job", "Load the CAM job stored in the active document."},
 	{SaveGCodeCommandID, "Save G-code", "Export the last posted program to a .nc file."},
+	{NewJobCommandID, "New Job", "Create a new CAM job: choose the model solids, a template, and document units."},
+	{CreateJobCommandID, "Create Job", "Create the job from the New Job dialog selections."},
+	{CancelNewJobCommandID, "Cancel New Job", "Dismiss the New Job dialog without creating a job."},
+	{ShowBrowserTreeCommandID, "Show CAM Tree", "Open the CAM Job tree (Model / Stock / Tools / Operations) in the model browser."},
 }
 
 // camRibbonTab is the dedicated ribbon tab the CAM add-in places all its commands on, scoped to the
@@ -243,16 +254,25 @@ const camRibbonTab = "CAM"
 // executing one fires command.started, which Notify turns into a job.
 func (e *Engine) RegisterCommands() error {
 	for _, c := range camCommands {
-		spot := camRibbonSpots[c.id]
-		if _, err := e.api.Commands().Create(wire.CreateCommandArgs{
-			ID: c.id, DisplayName: c.name, Tooltip: c.tip,
-			Ribbon: types.PartRibbon, Tab: camRibbonTab, Category: spot.panel,
-			IconSVG: iconSVG(spot.icon), ButtonStyle: spot.style,
-		}); err != nil {
+		if _, err := e.api.Commands().Create(commandArgs(c.id, c.name, c.tip)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// commandArgs builds a command's registration. Ribbon commands carry their CAM-tab placement,
+// panel, glyph and style; a non-ribbon command (a New Job dialog button) is registered
+// executable but with no tab, so the host does not surface it on the ribbon.
+func commandArgs(id, name, tip string) wire.CreateCommandArgs {
+	args := wire.CreateCommandArgs{ID: id, DisplayName: name, Tooltip: tip, Ribbon: types.PartRibbon}
+	if nonRibbonCommands[id] {
+		return args
+	}
+	spot := camRibbonSpots[id]
+	args.Tab, args.Category = camRibbonTab, spot.panel
+	args.IconSVG, args.ButtonStyle = iconSVG(spot.icon), spot.style
+	return args
 }
 
 // Setup performs the one-time host-facing initialisation: register the CAM ribbon commands. No
@@ -302,10 +322,24 @@ func (e *Engine) Notify(ev []byte) {
 				e.applyPanelEdit(p.ControlId, p.Value)
 			case OpEditorID:
 				e.handleOpEditorEdit(p.ControlId, p.Value)
+			case NewJobDialogID:
+				e.applyNewJobEdit(p.ControlId, p.Value)
+			case JobEditWindowID:
+				e.applyPanelEdit(p.ControlId, p.Value) // Job Edit reuses the CAM panel's control ids
 			}
 		}
 	case wire.EventFileDialogChosen:
 		e.handleFileChosen(ev)
+	case wire.EventBrowserNode:
+		var b struct {
+			Pane     string `json:"pane"`
+			Node     string `json:"node"`
+			Gesture  string `json:"gesture"`
+			MenuItem string `json:"menuItem"`
+		}
+		if json.Unmarshal(ev, &b) == nil && b.Pane == CAMBrowserPaneID {
+			e.handleBrowserNode(b.Node, b.Gesture, b.MenuItem)
+		}
 	}
 }
 
@@ -412,6 +446,14 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.showOperationsAction)
 	case ShowPanelCommandID:
 		e.launchRun(e.showPanelAction)
+	case NewJobCommandID:
+		e.launchRun(e.newJobDialogAction)
+	case ShowBrowserTreeCommandID:
+		e.launchRun(e.showBrowserTreeAction)
+	case CreateJobCommandID:
+		e.launchRun(e.createJobAction)
+	case CancelNewJobCommandID:
+		e.launchRun(e.cancelNewJobAction)
 	case SaveJobCommandID:
 		e.launchRun(e.saveJobAction)
 	case LoadJobCommandID:

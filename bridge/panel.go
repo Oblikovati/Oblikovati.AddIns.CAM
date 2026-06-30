@@ -30,7 +30,8 @@ func (e *Engine) ShowPanel() (wire.OKResult, error) {
 		Visible: true,
 		Controls: []wire.PanelControlSpec{
 			client.PanelLabel("hdr", "— CAM job —"),
-			client.PanelDropdown("post", "Post processor", []string{"linuxcnc", "grbl", "fanuc", "marlin", "haas", "heidenhain"}, postName),
+			client.PanelButton("newjob", "New Job…", NewJobCommandID),
+			client.PanelDropdown("post", "Post processor", postOptions(), postName),
 			client.PanelTextBox("work_offset", "Work offset (1=G54)", strconv.Itoa(workOffsetOrOne(workOffset))),
 			client.PanelTextBox("body", "Body index", strconv.Itoa(body)),
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(feed)),
