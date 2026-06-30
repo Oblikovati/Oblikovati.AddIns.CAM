@@ -93,12 +93,14 @@ func (op *PocketOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable adaptive clearing parameters.
 func (op *AdaptiveOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Adaptive",
 		numberParam("stepOver", "Engagement (×⌀)", op.StepOver),
+		boolParam("climb", "Climb", op.Climb))...)
+	params = append(params, sec("Stock",
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
-		numberParam("finishAllowance", "Finish allowance (mm)", op.FinishAllowance),
-		boolParam("climb", "Climb", op.Climb),
-	}, depthParams(op.OpBase)...)
+		numberParam("finishAllowance", "Finish allowance (mm)", op.FinishAllowance))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one adaptive clearing parameter edit.
@@ -122,12 +124,14 @@ func (op *AdaptiveOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable rest-machining parameters.
 func (op *RestOp) Parameters() []OpParam {
-	return append([]OpParam{
-		numberParam("prevTool", "Previous tool ⌀ (mm)", op.PrevToolDiameter),
+	var params []OpParam
+	params = append(params, sec("Rest",
+		numberParam("prevTool", "Previous tool ⌀ (mm)", op.PrevToolDiameter))...)
+	params = append(params, sec("Clearing",
 		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
-		boolParam("climb", "Climb", op.Climb),
-	}, depthParams(op.OpBase)...)
+		boolParam("climb", "Climb", op.Climb))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one rest-machining parameter edit.
@@ -151,12 +155,14 @@ func (op *RestOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable slot parameters.
 func (op *SlotOp) Parameters() []OpParam {
-	return append([]OpParam{
-		numberParam("width", "Width (mm)", op.Width),
+	var params []OpParam
+	params = append(params, sec("Slot",
+		numberParam("width", "Width (mm)", op.Width))...)
+	params = append(params, sec("Clearing",
 		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
-		boolParam("climb", "Climb", op.Climb),
-	}, depthParams(op.OpBase)...)
+		boolParam("climb", "Climb", op.Climb))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one slot parameter edit.
@@ -180,12 +186,14 @@ func (op *SlotOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable trochoidal parameters.
 func (op *TrochoidalOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Trochoidal",
 		numberParam("loopRadius", "Loop radius (mm)", op.LoopRadius),
-		numberParam("advance", "Advance (mm)", op.Advance),
+		numberParam("advance", "Advance (mm)", op.Advance))...)
+	params = append(params, sec("Path",
 		choiceParam("side", "Side", op.Side, gen.SideOutside, gen.SideInside, gen.SideOn),
-		numberParam("stepDown", "Step-down (mm)", op.StepDown),
-	}, depthParams(op.OpBase)...)
+		numberParam("stepDown", "Step-down (mm)", op.StepDown))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one trochoidal parameter edit.
@@ -232,13 +240,15 @@ func (op *ProbeOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable tool-length probe parameters.
 func (op *ToolLengthProbeOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Tool Setter",
 		numberParam("setterX", "Setter X (mm)", op.SetterX),
 		numberParam("setterY", "Setter Y (mm)", op.SetterY),
-		numberParam("setterTop", "Setter top Z (mm)", op.SetterTop),
+		numberParam("setterTop", "Setter top Z (mm)", op.SetterTop))...)
+	params = append(params, sec("Probe",
 		numberParam("toolNumber", "Tool number", float64(op.ToolNumber)),
-		numberParam("probeFeed", "Probe feed (mm/min)", op.ProbeFeed),
-	}, depthParams(op.OpBase)...)
+		numberParam("probeFeed", "Probe feed (mm/min)", op.ProbeFeed))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one tool-length probe parameter edit.
@@ -367,11 +377,13 @@ func (op *EngraveOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable helix parameters.
 func (op *HelixOp) Parameters() []OpParam {
-	return append([]OpParam{
-		numberParam("holeRadius", "Hole radius (mm)", op.HoleRadius),
+	var params []OpParam
+	params = append(params, sec("Bore",
+		numberParam("holeRadius", "Hole radius (mm)", op.HoleRadius))...)
+	params = append(params, sec("Helix",
 		numberParam("pitch", "Pitch (mm/turn)", op.Pitch),
-		choiceParam("direction", "Direction", op.Direction, gen.HelixCW, gen.HelixCCW),
-	}, depthParams(op.OpBase)...)
+		choiceParam("direction", "Direction", op.Direction, gen.HelixCW, gen.HelixCCW))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one helix parameter edit.
@@ -393,13 +405,15 @@ func (op *HelixOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable chamfer parameters.
 func (op *ChamferOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Chamfer",
 		numberParam("width", "Width (mm)", op.Width),
-		numberParam("toolAngle", "Tool angle (°)", op.ToolAngle),
+		numberParam("toolAngle", "Tool angle (°)", op.ToolAngle))...)
+	params = append(params, sec("Path",
 		choiceParam("side", "Side", op.Side, gen.SideOutside, gen.SideInside, gen.SideOn),
 		numberParam("passes", "Flank passes", float64(op.Passes)),
-		boolParam("climb", "Climb", op.Climb),
-	}, depthParams(op.OpBase)...)
+		boolParam("climb", "Climb", op.Climb))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one chamfer parameter edit.
@@ -425,11 +439,13 @@ func (op *ChamferOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable V-carve parameters.
 func (op *VCarveOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("V-Carve",
 		numberParam("toolAngle", "Tool angle (°)", op.ToolAngle),
-		numberParam("tipDiameter", "Tip diameter (mm)", op.TipDiameter),
-		numberParam("stepDown", "Step-down (mm)", op.StepDown),
-	}, depthParams(op.OpBase)...)
+		numberParam("tipDiameter", "Tip diameter (mm)", op.TipDiameter))...)
+	params = append(params, sec("Path",
+		numberParam("stepDown", "Step-down (mm)", op.StepDown))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one V-carve parameter edit.
@@ -480,11 +496,13 @@ func (op *ThreadMillOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable counterbore parameters.
 func (op *CounterboreOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Counterbore",
 		numberParam("diameter", "Recess ⌀ (mm)", op.Diameter),
-		numberParam("depth", "Recess depth (mm)", op.Depth),
-		numberParam("pitch", "Pitch (mm/turn)", op.Pitch),
-	}, depthParams(op.OpBase)...)
+		numberParam("depth", "Recess depth (mm)", op.Depth))...)
+	params = append(params, sec("Helical Bore",
+		numberParam("pitch", "Pitch (mm/turn)", op.Pitch))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one counterbore parameter edit.
@@ -506,11 +524,13 @@ func (op *CounterboreOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable tapping parameters.
 func (op *TappingOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Tapping",
 		numberParam("pitch", "Thread pitch (mm)", op.Pitch),
-		boolParam("lefthand", "Left-hand thread", op.LeftHand),
-		numberParam("dwell", "Bottom dwell (s)", op.DwellTime),
-	}, depthParams(op.OpBase)...)
+		boolParam("lefthand", "Left-hand thread", op.LeftHand))...)
+	params = append(params, sec("Dwell",
+		numberParam("dwell", "Bottom dwell (s)", op.DwellTime))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one tapping parameter edit.
@@ -555,11 +575,13 @@ func (op *CountersinkOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable 3D-surface parameters.
 func (op *SurfaceOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Surface",
 		numberParam("stepOver", "Pass spacing (mm)", op.StepOver),
-		numberParam("sampling", "Sampling (mm)", op.Sampling),
-		boolParam("zigzag", "Zigzag", op.Zigzag),
-	}, depthParams(op.OpBase)...)
+		boolParam("zigzag", "Zigzag", op.Zigzag))...)
+	params = append(params, sec("Sampling",
+		numberParam("sampling", "Sampling (mm)", op.Sampling))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one 3D-surface parameter edit.

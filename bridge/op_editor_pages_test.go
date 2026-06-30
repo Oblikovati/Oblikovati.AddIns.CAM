@@ -53,3 +53,29 @@ func TestDrillingEditorSubSections(t *testing.T) {
 		t.Error("peckDepth should be in the Peck section")
 	}
 }
+
+// TestRemainingOpsSectioned checks the rest of the multi-concept operations carry their FreeCAD
+// sub-sections too, so every rich operation editor is paged.
+func TestRemainingOpsSectioned(t *testing.T) {
+	cases := []struct {
+		op      Operation
+		section string
+	}{
+		{&AdaptiveOp{}, "Stock"},
+		{&RestOp{}, "Clearing"},
+		{&SlotOp{}, "Clearing"},
+		{&TrochoidalOp{}, "Path"},
+		{&ToolLengthProbeOp{}, "Tool Setter"},
+		{&ChamferOp{}, "Path"},
+		{&TappingOp{}, "Dwell"},
+		{&SurfaceOp{}, "Sampling"},
+		{&CounterboreOp{}, "Helical Bore"},
+		{&ThreadMillOp{}, "Thread"},
+	}
+	for _, c := range cases {
+		body := opEditorBody(c.op)
+		if !hasGroupTitled(body, c.section) {
+			t.Errorf("%s editor missing %q section", operationKind(c.op), c.section)
+		}
+	}
+}
