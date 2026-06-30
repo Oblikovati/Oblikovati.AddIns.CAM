@@ -138,14 +138,21 @@ func (e *Engine) newJobDialogAction() (*JobResult, error) {
 func (e *Engine) createJobAction() (*JobResult, error) {
 	e.mu.Lock()
 	bodies := e.selectedModelLocked()
+	e.mu.Unlock()
+
 	job := NewJob()
 	job.ModelBodies = bodies
-	job.Tools = e.jobTools()
+	job.Tools = e.jobTools() // jobTools locks e.mu itself, so it must run OUTSIDE the section above
+
+	e.mu.Lock()
 	e.lastJob = job
 	e.targetBody = bodies[0]
 	e.mu.Unlock()
 
 	if _, err := e.api.DockableWindows().SetVisible(NewJobDialogID, false); err != nil {
+		return nil, err
+	}
+	if _, err := e.ShowBrowserTree(); err != nil { // surface the new Job in the model browser, like FreeCAD
 		return nil, err
 	}
 	return &JobResult{Summary: fmt.Sprintf("CAM: created job over %d model solid(s).", len(bodies))}, nil

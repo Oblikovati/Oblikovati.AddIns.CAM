@@ -181,6 +181,7 @@ const (
 	NewJobCommandID              = "CAM.NewJob"              // open the New Job dialog (pick model/template/units)
 	CreateJobCommandID           = "CAM.CreateJob"           // New Job dialog OK: create the job from the selections
 	CancelNewJobCommandID        = "CAM.CancelNewJob"        // New Job dialog Cancel: dismiss it
+	ShowBrowserTreeCommandID     = "CAM.ShowTree"            // open the CAM Job tree in the model browser
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -240,6 +241,7 @@ var camCommands = []struct{ id, name, tip string }{
 	{NewJobCommandID, "New Job", "Create a new CAM job: choose the model solids, a template, and document units."},
 	{CreateJobCommandID, "Create Job", "Create the job from the New Job dialog selections."},
 	{CancelNewJobCommandID, "Cancel New Job", "Dismiss the New Job dialog without creating a job."},
+	{ShowBrowserTreeCommandID, "Show CAM Tree", "Open the CAM Job tree (Model / Stock / Tools / Operations) in the model browser."},
 }
 
 // camRibbonTab is the dedicated ribbon tab the CAM add-in places all its commands on, scoped to the
@@ -326,6 +328,16 @@ func (e *Engine) Notify(ev []byte) {
 		}
 	case wire.EventFileDialogChosen:
 		e.handleFileChosen(ev)
+	case wire.EventBrowserNode:
+		var b struct {
+			Pane     string `json:"pane"`
+			Node     string `json:"node"`
+			Gesture  string `json:"gesture"`
+			MenuItem string `json:"menuItem"`
+		}
+		if json.Unmarshal(ev, &b) == nil && b.Pane == CAMBrowserPaneID {
+			e.handleBrowserNode(b.Node, b.Gesture, b.MenuItem)
+		}
 	}
 }
 
@@ -434,6 +446,8 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.showPanelAction)
 	case NewJobCommandID:
 		e.launchRun(e.newJobDialogAction)
+	case ShowBrowserTreeCommandID:
+		e.launchRun(e.showBrowserTreeAction)
 	case CreateJobCommandID:
 		e.launchRun(e.createJobAction)
 	case CancelNewJobCommandID:

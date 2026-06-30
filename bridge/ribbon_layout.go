@@ -61,9 +61,10 @@ var camRibbonSpots = map[string]camRibbonSpot{
 	LoadJobCommandID: {"Job", "loadjob", types.SmallIconButton},
 
 	// Windows (open the dockable panels/browsers on demand)
-	ShowPanelCommandID:      {"Windows", "campanel", types.SmallIconButton},
-	ShowOperationsCommandID: {"Windows", "showops", types.SmallIconButton},
-	ShowToolsCommandID:      {"Windows", "toollib", types.SmallIconButton},
+	ShowPanelCommandID:       {"Windows", "campanel", types.SmallIconButton},
+	ShowOperationsCommandID:  {"Windows", "showops", types.SmallIconButton},
+	ShowToolsCommandID:       {"Windows", "toollib", types.SmallIconButton},
+	ShowBrowserTreeCommandID: {"Windows", "camtree", types.SmallIconButton},
 
 	// Modify the selected operation (acts on the operations browser selection). These are
 	// less-used than the cutting tools, so they are SMALL icon buttons — an icon plus the label.
