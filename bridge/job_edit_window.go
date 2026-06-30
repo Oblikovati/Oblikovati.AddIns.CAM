@@ -39,9 +39,10 @@ func (e *Engine) showJobEditAction() (*JobResult, error) {
 
 // jobEditValues is a lock-free snapshot of the settings the Job Edit window renders.
 type jobEditValues struct {
-	post, material, outputFile, postArguments, orderBy                                         string
+	post, material, outputFile, postArguments, orderBy, stockMethod                            string
 	feed, toolDia, stepDown, stepOver, cutDepth, stockXY, stockTop, clearance, retract, spinUp float64
-	body, flutes, workOffset                                                                   int
+	boxL, boxW, boxH, cylR, cylH                                                               float64
+	body, flutes, workOffset, stockExisting                                                    int
 	splitOutput                                                                                bool
 	wcs                                                                                        map[int]bool
 }
@@ -58,6 +59,9 @@ func (e *Engine) jobEditValues() jobEditValues {
 		body: e.targetBody, flutes: e.flutes, workOffset: e.workOffset,
 		outputFile: e.outputFile, postArguments: e.postArguments, orderBy: e.orderBy,
 		splitOutput: e.splitOutput, wcs: selectedWCS(e.wcs, e.workOffset),
+		stockMethod: stockMethodOrExtend(e.stockMethod),
+		boxL:        e.stockBoxL, boxW: e.stockBoxW, boxH: e.stockBoxH,
+		cylR: e.stockCylR, cylH: e.stockCylH, stockExisting: e.stockExisting,
 	}
 }
 
@@ -92,9 +96,7 @@ func camForm(id, title string, fields ...wire.PanelControlSpec) wire.PanelContro
 // setupTab is FreeCAD's Setup tab: Stock, Depths and Heights.
 func setupTab(v jobEditValues) wire.PanelControlSpec {
 	return client.PanelTab("Setup",
-		camForm("je_stock", "Stock",
-			client.PanelTextBox("stock_xy", "Stock margin XY (mm)", num(v.stockXY)),
-			client.PanelTextBox("stock_top", "Stock margin top (mm)", num(v.stockTop))),
+		stockGroup(v),
 		camForm("je_depths", "Depths",
 			client.PanelTextBox("step_down", "Step-down (mm)", num(v.stepDown)),
 			client.PanelTextBox("cut_depth", "Cut depth (mm, 0=thru)", num(v.cutDepth))),
@@ -102,6 +104,48 @@ func setupTab(v jobEditValues) wire.PanelControlSpec {
 			client.PanelTextBox("clearance", "Clearance above (mm)", num(v.clearance)),
 			client.PanelTextBox("retract", "Retract above (mm)", num(v.retract))),
 	)
+}
+
+// stockGroup is the Stock section: a creation-method dropdown above the fields for the chosen
+// method (box/cylinder/existing/extend) — FreeCAD's Stock layout, where the method swaps the
+// visible dimension fields. Laid out as a 2-column [label | field] grid in the Stock group.
+func stockGroup(v jobEditValues) wire.PanelControlSpec {
+	cols := []types.GridTrack{client.TrackAuto(), client.TrackFr(1)}
+	fields := append([]wire.PanelControlSpec{
+		client.PanelDropdown("stock_method", "Method", stockMethodOptions(), v.stockMethod),
+	}, stockMethodFields(v)...)
+	var cells []wire.PanelControlSpec
+	for _, f := range fields {
+		cells = append(cells, client.PanelLabel(f.ID+"_l", f.Text), f)
+	}
+	return client.PanelGroup("je_stock", "Stock", client.PanelGrid("je_stock_g", cols, 8, 4, cells...))
+}
+
+// stockMethodFields is the per-method dimension form: box length/width/height, cylinder
+// radius/height, an existing-solid body index, or the extend-bbox margins.
+func stockMethodFields(v jobEditValues) []wire.PanelControlSpec {
+	switch v.stockMethod {
+	case StockBox:
+		return []wire.PanelControlSpec{
+			client.PanelTextBox("stock_box_l", "Length (mm)", num(v.boxL)),
+			client.PanelTextBox("stock_box_w", "Width (mm)", num(v.boxW)),
+			client.PanelTextBox("stock_box_h", "Height (mm)", num(v.boxH)),
+		}
+	case StockCylinder:
+		return []wire.PanelControlSpec{
+			client.PanelTextBox("stock_cyl_r", "Radius (mm)", num(v.cylR)),
+			client.PanelTextBox("stock_cyl_h", "Height (mm)", num(v.cylH)),
+		}
+	case StockExisting:
+		return []wire.PanelControlSpec{
+			client.PanelTextBox("stock_existing_body", "Existing solid (body index)", strconv.Itoa(v.stockExisting)),
+		}
+	default: // Extend bbox
+		return []wire.PanelControlSpec{
+			client.PanelTextBox("stock_xy", "Margin XY (mm)", num(v.stockXY)),
+			client.PanelTextBox("stock_top", "Margin top (mm)", num(v.stockTop)),
+		}
+	}
 }
 
 // generalTab is the General tab: the job's model body.
