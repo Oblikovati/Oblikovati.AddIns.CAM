@@ -68,6 +68,12 @@ type Engine struct {
 	simRunning    bool            // simulator: playing
 	simSpeed      int             // simulator: moves advanced per tick
 	simGen        int             // simulator: generation, bumped on open/close to retire stale tick loops
+	simMaterial   bool            // simulator: material-removal (voxel) view vs plain path playback
+	simCuts       []voxelMove     // simulator: per-segment cutter sweeps (material mode)
+	simStock      Stock           // simulator: stock box the voxel grid covers (mm)
+	voxel         *VoxelGrid      // simulator: the material-removal grid (nil = not built)
+	voxelRes      float64         // simulator: chosen voxel cell size (mm), for rebuilds on scrub-back
+	voxelCursor   int             // simulator: number of cuts already swept into the grid
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.

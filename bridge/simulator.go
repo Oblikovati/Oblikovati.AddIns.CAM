@@ -21,32 +21,55 @@ const (
 	SimTraceID  = "com.oblikovati.cam.sim.trace"  // toolpath already travelled (green)
 	SimRemainID = "com.oblikovati.cam.sim.remain" // toolpath still to come (grey)
 	SimToolID   = "com.oblikovati.cam.sim.tool"   // the tool marker (red)
+	SimStockID  = "com.oblikovati.cam.sim.stock"  // the remaining material mesh (material mode)
 )
 
 // simTickInterval is the redraw period of the simulation while playing.
 const simTickInterval = 40 * time.Millisecond
 
-// simulateAction opens the simulator on the last posted program: extract its toolpath, draw the
-// first frame paused, and show the controls.
+// simulateAction opens the simulator on the last posted program: prefer the material-removal view
+// (carving a voxel stock) when the job can produce one, else plain path playback. Draws the first
+// frame paused and shows the controls.
 func (e *Engine) simulateAction() (*JobResult, error) {
-	e.mu.Lock()
-	path := toolpathFromGCode(e.lastGCode)
-	e.mu.Unlock()
-	if len(path) < 2 {
+	if !e.prepareSim() {
 		return nil, fmt.Errorf("no toolpath to simulate — generate and post a job first")
 	}
 	e.mu.Lock()
-	e.simPath, e.simIdx, e.simRunning = path, 0, false
+	e.simRunning = false
 	if e.simSpeed == 0 {
 		e.simSpeed = speedValue("Normal")
 	}
 	e.simGen++
+	n, material, res := len(e.simPath), e.simMaterial, e.voxelRes
 	e.mu.Unlock()
 	e.drawSimFrame()
 	if _, err := e.showSimPanel(); err != nil {
 		return nil, err
 	}
-	return &JobResult{Summary: fmt.Sprintf("CAM: simulating %d toolpath moves.", len(path))}, nil
+	return &JobResult{Summary: simSummary(n, material, res)}, nil
+}
+
+// simSummary is the status line for an opened simulator; the material view names the voxel cell size
+// so any coarsening of a large stock is visible.
+func simSummary(moves int, material bool, res float64) string {
+	if material {
+		return fmt.Sprintf("CAM: simulating %d moves (Material, %.2f mm voxels).", moves, res)
+	}
+	return fmt.Sprintf("CAM: simulating %d moves (Path).", moves)
+}
+
+// prepareSim builds the playback sequence, preferring material removal when the last job yields
+// cuts, else path playback from the posted G-code. Reports whether anything is playable.
+func (e *Engine) prepareSim() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.buildMaterialSim() {
+		e.simMaterial = true
+		return true
+	}
+	e.simMaterial, e.voxel = false, nil
+	e.simPath, e.simIdx = toolpathFromGCode(e.lastGCode), 0
+	return len(e.simPath) >= 2
 }
 
 // simPlayPauseAction toggles playback; starting from the end replays from the start.
@@ -94,8 +117,9 @@ func (e *Engine) closeSimAction() (*JobResult, error) {
 	e.mu.Lock()
 	e.simRunning = false
 	e.simGen++ // retire any running tick loop
+	e.voxel = nil
 	e.mu.Unlock()
-	for _, id := range []string{SimTraceID, SimRemainID, SimToolID} {
+	for _, id := range []string{SimTraceID, SimRemainID, SimStockID, SimToolID} {
 		_ = e.api.Graphics().Delete(id)
 	}
 	if _, err := e.api.DockableWindows().SetVisible(SimPanelID, false); err != nil {
@@ -129,8 +153,21 @@ func (e *Engine) simTick(gen int) {
 	}
 }
 
-// drawSimFrame redraws the traced and remaining toolpath and the tool marker at the current move.
+// drawSimFrame draws the current frame in the active view — the carved stock in material mode, the
+// traced/remaining polyline otherwise.
 func (e *Engine) drawSimFrame() {
+	e.mu.Lock()
+	material := e.simMaterial
+	e.mu.Unlock()
+	if material {
+		e.drawVoxelFrame()
+		return
+	}
+	e.drawPathFrame()
+}
+
+// drawPathFrame redraws the traced and remaining toolpath and the tool marker at the current move.
+func (e *Engine) drawPathFrame() {
 	e.mu.Lock()
 	idx, path := e.simIdx, e.simPath
 	e.mu.Unlock()
@@ -149,12 +186,17 @@ func (e *Engine) drawSimFrame() {
 func (e *Engine) showSimPanel() (wire.OKResult, error) {
 	e.mu.Lock()
 	idx, total, running, speed := e.simIdx, len(e.simPath), e.simRunning, e.simSpeed
+	material, status := e.simMaterial, ""
+	if material {
+		status = e.materialStatus()
+	}
 	e.mu.Unlock()
 	thirds := []types.GridTrack{client.TrackFr(1), client.TrackFr(1), client.TrackFr(1)}
 	return e.api.DockableWindows().Set(wire.DockableWindowSpec{
 		ID: SimPanelID, Title: "CAM Simulator", Dock: types.DockRight, Visible: true,
 		Controls: []wire.PanelControlSpec{
-			client.PanelLabel("sim_progress", fmt.Sprintf("Move %d / %d", idx+1, total)),
+			client.PanelLabel("sim_progress", fmt.Sprintf("Move %d / %d%s", idx+1, total, status)),
+			client.PanelDropdown("sim_view", "View", simViewOptions(), simViewLabel(material)),
 			client.PanelGrid("sim_btns", thirds, 4, 4,
 				client.PanelButton("sim_play", playButton(running), SimPlayPauseCommandID),
 				client.PanelButton("sim_step", "Step", SimStepCommandID),
@@ -165,13 +207,51 @@ func (e *Engine) showSimPanel() (wire.OKResult, error) {
 	})
 }
 
-// applySimEdit applies one simulator-panel edit (the speed).
+// applySimEdit applies one simulator-panel edit: the playback speed or the view mode.
 func (e *Engine) applySimEdit(controlID, value string) {
-	if controlID == "sim_speed" {
+	switch controlID {
+	case "sim_speed":
 		e.mu.Lock()
 		e.simSpeed = speedValue(value)
 		e.mu.Unlock()
+	case "sim_view":
+		e.switchSimView(value == "Material")
 	}
+}
+
+// switchSimView rebuilds the playback for the chosen view, clears the other view's overlay and
+// redraws — used by the View dropdown.
+func (e *Engine) switchSimView(material bool) {
+	e.mu.Lock()
+	if material && e.buildMaterialSim() {
+		e.simMaterial = true
+	} else {
+		e.simMaterial, e.voxel = false, nil
+		e.simPath, e.simIdx = toolpathFromGCode(e.lastGCode), 0
+	}
+	e.simGen++
+	e.mu.Unlock()
+	e.clearSimOverlays()
+	e.drawSimFrame()
+	_, _ = e.showSimPanel()
+}
+
+// clearSimOverlays removes every simulator overlay except the tool marker (which the next frame
+// overwrites), so switching views never leaves the previous view's geometry behind.
+func (e *Engine) clearSimOverlays() {
+	for _, id := range []string{SimTraceID, SimRemainID, SimStockID} {
+		_ = e.api.Graphics().Delete(id)
+	}
+}
+
+// simViewOptions and simViewLabel describe the View dropdown (carved stock vs. path playback).
+func simViewOptions() []string { return []string{"Material", "Path"} }
+
+func simViewLabel(material bool) string {
+	if material {
+		return "Material"
+	}
+	return "Path"
 }
 
 // playWord / playButton render the running state.
