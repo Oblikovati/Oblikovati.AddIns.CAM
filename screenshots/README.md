@@ -57,3 +57,14 @@ Legend: **red** = rapid (G0), **blue** = cutting move (G1/G2/G3), **orange** = c
 
 The `surface` and `waterline` shots run on a synthetic pyramid surface so the 3D-finishing
 toolpaths render without a mesh or the OpenCAMLib drop-cutter.
+
+## Material-removal carve
+
+These shots come from `cmd/voxshot` instead of `cmd/camshot`: each runs a real job through the
+simulator's headless voxel pipeline (`bridge.MaterialMesh`) and renders the **carved stock** — the
+remaining material after every cutter sweep — as a shaded isometric solid.
+
+| Image | Validates |
+|---|---|
+| `voxel-pocket-zigzag.png` | Material removal: a zig-zag pocket fully clears its floor, leaving the central island as a clean standing boss. |
+| `voxel-pocket-offset-rib.png` | Carve fidelity: the same pocket cut with concentric offsets leaves an uncut medial rib, which the voxel sim reveals rather than idealises. |
