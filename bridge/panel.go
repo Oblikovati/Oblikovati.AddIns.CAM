@@ -159,6 +159,22 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		}
 	case "split_output":
 		e.splitOutput = value == "true"
+	case "stock_method":
+		e.stockMethod = stockMethodOrExtend(value)
+	case "stock_box_l":
+		e.stockBoxL = panelNum(value, e.stockBoxL)
+	case "stock_box_w":
+		e.stockBoxW = panelNum(value, e.stockBoxW)
+	case "stock_box_h":
+		e.stockBoxH = panelNum(value, e.stockBoxH)
+	case "stock_cyl_r":
+		e.stockCylR = panelNum(value, e.stockCylR)
+	case "stock_cyl_h":
+		e.stockCylH = panelNum(value, e.stockCylH)
+	case "stock_existing_body":
+		if b := int(panelNum(value, float64(e.stockExisting))); b >= 0 {
+			e.stockExisting = b
+		}
 	default:
 		e.applyWCSEditLocked(controlID, value)
 	}

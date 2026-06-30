@@ -55,6 +55,13 @@ type Engine struct {
 	orderBy       string                 // multi-fixture output ordering: Fixture | Tool | Operation
 	splitOutput   bool                   // write a separate file per fixture/tool/operation
 	lastPrograms  []namedProgram         // split output units of the last posted job (nil = one file)
+	stockMethod   string                 // stock creation: Extend bbox | Box | Cylinder | Existing
+	stockBoxL     float64                // explicit box stock length/width/height (mm)
+	stockBoxW     float64
+	stockBoxH     float64
+	stockCylR     float64 // explicit cylinder stock radius/height (mm)
+	stockCylH     float64
+	stockExisting int // body index used as stock when method is Existing
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
@@ -366,6 +373,9 @@ func (e *Engine) Notify(ev []byte) {
 				e.applyNewJobEdit(p.ControlId, p.Value)
 			case JobEditWindowID:
 				e.applyPanelEdit(p.ControlId, p.Value) // Job Edit reuses the CAM panel's control ids
+				if p.ControlId == "stock_method" {
+					e.launchRun(e.showJobEditAction) // swap the visible stock fields for the chosen method
+				}
 			case ModelSelectDialogID:
 				e.applyModelSelectEdit(p.ControlId, p.Value)
 			case ToolControllerEditID:

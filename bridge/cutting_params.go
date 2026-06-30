@@ -54,7 +54,22 @@ func (e *Engine) cutting() cutSettings {
 // stockFor builds the job stock from a body's range box (cm), grown by the configured stock
 // margins.
 func (e *Engine) stockFor(min, max []float64) Stock {
-	return e.cutting().grow(StockFromRangeBox(min, max))
+	e.mu.Lock()
+	method := stockMethodOrExtend(e.stockMethod)
+	boxL, boxW, boxH := e.stockBoxL, e.stockBoxW, e.stockBoxH
+	cylR, cylH := e.stockCylR, e.stockCylH
+	existing := e.stockExisting
+	e.mu.Unlock()
+	switch method {
+	case StockBox:
+		return boxStock(min, max, boxL, boxW, boxH)
+	case StockCylinder:
+		return cylinderStock(min, max, cylR, cylH)
+	case StockExisting:
+		return e.existingStock(existing, min, max)
+	default: // Extend bbox: grow the range box by the margins
+		return e.cutting().grow(StockFromRangeBox(min, max))
+	}
 }
 
 // stepOverDistance converts the step-over fraction to an absolute distance (mm) for the tool.
