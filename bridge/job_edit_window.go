@@ -88,6 +88,7 @@ func generalTab(v jobEditValues) wire.PanelControlSpec {
 	return client.PanelTab("General",
 		camForm("je_job", "Job",
 			client.PanelTextBox("body", "Body index", strconv.Itoa(v.body))),
+		client.PanelButton("je_editmodel", "Edit Model…", ModelSelectCommandID),
 	)
 }
 

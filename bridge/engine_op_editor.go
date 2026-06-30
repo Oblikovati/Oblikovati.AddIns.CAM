@@ -50,45 +50,13 @@ func (e *Engine) editorSpec(job *Job, idx int) wire.DockableWindowSpec {
 	labels := opChoices(job)
 	op := job.Operations[idx]
 	controls := []wire.PanelControlSpec{
-		client.PanelLabel("hdr", "— Edit operation —"),
 		client.PanelDropdown("edit_op", "Operation", labels, labels[idx]),
 		client.PanelLabel("state", "Active: "+boolWord(op.Active())+dressupSummary(op)),
-		client.PanelSeparator(),
 	}
-	controls = append(controls, opParamControls(op)...)
-	spec.Controls = append(controls,
-		client.PanelSeparator(),
-		client.PanelButton("toggle", "Enable / Disable", ToggleOpCommandID),
-		client.PanelButton("up", "Move Up", MoveOpUpCommandID),
-		client.PanelButton("down", "Move Down", MoveOpDownCommandID),
-		client.PanelButton("dup", "Duplicate", DuplicateOpCommandID),
-		client.PanelButton("addcustom", "Add Custom Op", AddCustomOpCommandID),
-		client.PanelButton("del", "Delete", DeleteOpCommandID),
-		client.PanelSeparator(),
-		client.PanelButton("tabs", "Add Holding Tabs", AddTabsCommandID),
-		client.PanelButton("dogbone", "Add Dogbone", AddDogboneCommandID),
-		client.PanelButton("ramp", "Add Ramp Entry", AddRampCommandID),
-		client.PanelButton("leadinout", "Add Lead In/Out", AddLeadInOutCommandID),
-		client.PanelButton("helicalramp", "Add Helical Ramp", AddHelicalRampCommandID),
-		client.PanelButton("cleardr", "Clear Dressups", ClearDressupsCommandID),
-		client.PanelSeparator(),
-		client.PanelButton("regen", "Regenerate + Post", RegenerateCommandID),
-	)
+	controls = append(controls, opEditorBody(op)...)  // grouped Operation + Depths & Heights pages
+	controls = append(controls, opEditorActions()...) // Actions + Dress-ups pads + Regenerate
+	spec.Controls = controls
 	return spec
-}
-
-// opParamControls renders an operation's editable parameters as panel controls (or a hint when
-// the operation exposes none).
-func opParamControls(op Operation) []wire.PanelControlSpec {
-	ed, ok := op.(Editable)
-	if !ok {
-		return []wire.PanelControlSpec{client.PanelLabel("noedit", "This operation has no editable parameters.")}
-	}
-	var controls []wire.PanelControlSpec
-	for _, p := range ed.Parameters() {
-		controls = append(controls, paramControl(p))
-	}
-	return controls
 }
 
 // paramControl maps a parameter to its panel control (dropdown for a choice, text box otherwise).

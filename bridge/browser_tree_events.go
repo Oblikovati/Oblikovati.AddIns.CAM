@@ -78,8 +78,10 @@ func (e *Engine) browserMenu(node, item string) {
 	switch {
 	case node == "job":
 		e.jobMenuAction(item)
+	case node == "model" && item == "edit":
+		e.launchRun(e.showModelSelectAction)
 	case node == "stock" && item == "edit":
-		e.launchRun(e.showPanelAction)
+		e.launchRun(e.showJobEditAction) // Stock is edited on the Job Edit Setup tab
 	case isToolNode(node) && item == "remove":
 		e.runAndRefreshTree(e.removeToolAction)
 	}

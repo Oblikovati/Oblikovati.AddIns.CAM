@@ -45,7 +45,7 @@ func modelNode(job *Job, bodyNames []string) wire.BrowserNodeSpec {
 			ID: fmt.Sprintf("model:%d", idx), Label: bodyName(bodyNames, idx), IconSVG: nodeIconModel,
 		})
 	}
-	return wire.BrowserNodeSpec{ID: "model", Label: "Model", IconSVG: nodeIconModel, Expanded: true, Children: kids}
+	return wire.BrowserNodeSpec{ID: "model", Label: "Model", IconSVG: nodeIconModel, Expanded: true, Menu: modelMenuItems(), Children: kids}
 }
 
 // stockNode is the raw-material node (edited on the Job Edit Setup tab).
@@ -150,4 +150,9 @@ func toolMenuItems() []wire.BrowserMenuItem {
 // stockMenuItems is the Stock node's right-click menu.
 func stockMenuItems() []wire.BrowserMenuItem {
 	return []wire.BrowserMenuItem{{ID: "edit", Label: "Edit Stock…"}}
+}
+
+// modelMenuItems is the Model node's right-click menu.
+func modelMenuItems() []wire.BrowserMenuItem {
+	return []wire.BrowserMenuItem{{ID: "edit", Label: "Edit Model…"}}
 }

@@ -4,7 +4,6 @@ package bridge
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"oblikovati.org/api/client"
@@ -70,7 +69,7 @@ func newJobControls(bodies []wire.BodyInfo, template, units string, selected map
 	return []wire.PanelControlSpec{
 		client.PanelGroup("nj_tpl", "Template",
 			client.PanelDropdown("nj_template", "Template", jobTemplateOptions(), template)),
-		client.PanelGroup("nj_mdl", "Model", modelCheckList(bodies, selected)...),
+		client.PanelGroup("nj_mdl", "Model", modelCheckList("nj", bodies, selected)...),
 		client.PanelGroup("nj_unt", "Document Units",
 			client.PanelDropdown("nj_units", "Units", unitSchemaOptions(), units)),
 		client.PanelGrid("nj_btns", []types.GridTrack{client.TrackFr(1), client.TrackFr(1)}, 8, 0,
@@ -80,18 +79,19 @@ func newJobControls(bodies []wire.BodyInfo, template, units string, selected map
 }
 
 // modelCheckList is one checkbox per solid body (FreeCAD's Solids list), or a placeholder when
-// the document has no solids to machine.
-func modelCheckList(bodies []wire.BodyInfo, selected map[int]bool) []wire.PanelControlSpec {
+// the document has no solids to machine. idPrefix namespaces the checkbox ids ("<prefix>_model_N")
+// so the New Job dialog and the Model Selection dialog can share this builder.
+func modelCheckList(idPrefix string, bodies []wire.BodyInfo, selected map[int]bool) []wire.PanelControlSpec {
 	var controls []wire.PanelControlSpec
 	for _, b := range bodies {
 		if !b.Solid {
 			continue
 		}
 		controls = append(controls, client.PanelCheckBox(
-			fmt.Sprintf("nj_model_%d", b.Index), bodyCheckLabel(b), selected[b.Index]))
+			fmt.Sprintf("%s_model_%d", idPrefix, b.Index), bodyCheckLabel(b), selected[b.Index]))
 	}
 	if len(controls) == 0 {
-		controls = append(controls, client.PanelLabel("nj_nomodel", "(no solids in this document)"))
+		controls = append(controls, client.PanelLabel(idPrefix+"_nomodel", "(no solids in this document)"))
 	}
 	return controls
 }
@@ -161,16 +161,10 @@ func (e *Engine) createJobAction() (*JobResult, error) {
 // selectedModelLocked returns the checked body indices (sorted), defaulting to the current target
 // body when nothing is checked so a job always has a model. The caller must hold e.mu.
 func (e *Engine) selectedModelLocked() []int {
-	var bodies []int
-	for idx, on := range e.njModel {
-		if on {
-			bodies = append(bodies, idx)
-		}
-	}
+	bodies := checkedBodies(e.njModel)
 	if len(bodies) == 0 {
-		return []int{e.targetBody}
+		return []int{e.targetBody} // a job always has a model
 	}
-	sort.Ints(bodies)
 	return bodies
 }
 
