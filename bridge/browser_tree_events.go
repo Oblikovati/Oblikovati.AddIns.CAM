@@ -82,9 +82,30 @@ func (e *Engine) browserMenu(node, item string) {
 		e.launchRun(e.showModelSelectAction)
 	case node == "stock" && item == "edit":
 		e.launchRun(e.showJobEditAction) // Stock is edited on the Job Edit Setup tab
-	case isToolNode(node) && item == "remove":
+	case isToolNode(node):
+		e.toolMenuAction(node, item)
+	}
+}
+
+// toolMenuAction runs a tool node's menu action: edit opens the tool-controller editor on that
+// tool, remove drops the last library tool.
+func (e *Engine) toolMenuAction(node, item string) {
+	switch item {
+	case "edit":
+		e.setEditingTool(toolIndexOf(node))
+		e.launchRun(e.showToolEditAction)
+	case "remove":
 		e.runAndRefreshTree(e.removeToolAction)
 	}
+}
+
+// toolIndexOf parses a "tool:N" node id (0 when it doesn't match).
+func toolIndexOf(node string) int {
+	var idx int
+	if _, err := fmt.Sscanf(node, "tool:%d", &idx); err == nil {
+		return idx
+	}
+	return 0
 }
 
 // opMenuAction targets operation idx and runs its menu action, refreshing the tree after.

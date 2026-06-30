@@ -54,6 +54,7 @@ func toolRow(tc ToolController) string {
 func (e *Engine) addToolAction(shape string) (*JobResult, error) {
 	e.mu.Lock()
 	e.library.add(newTool(shape))
+	e.toolEdits = nil // tool indices shifted; drop stale edits
 	e.mu.Unlock()
 	_ = e.SaveToolLibrary() // best-effort: persist when a document is open
 	tools := e.jobTools()
@@ -67,6 +68,7 @@ func (e *Engine) addToolAction(shape string) (*JobResult, error) {
 func (e *Engine) removeToolAction() (*JobResult, error) {
 	e.mu.Lock()
 	removed := e.library.removeLast()
+	e.toolEdits = nil // tool indices shifted; drop stale edits
 	e.mu.Unlock()
 	if !removed {
 		return &JobResult{Summary: "CAM: tool library is empty (the primary end mill always stays)."}, nil
