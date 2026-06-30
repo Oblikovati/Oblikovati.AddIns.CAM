@@ -45,10 +45,12 @@ type Engine struct {
 	cut           cutSettings
 	library       ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
 	surfacer      Surfacer
-	njTemplate    string       // New Job dialog: selected template
-	njUnits       string       // New Job dialog: selected document-unit schema
-	njModel       map[int]bool // New Job dialog: which solids (by body index) are checked into the job
-	msModel       map[int]bool // Model Selection dialog: which solids are checked into the existing job's model
+	njTemplate    string                 // New Job dialog: selected template
+	njUnits       string                 // New Job dialog: selected document-unit schema
+	njModel       map[int]bool           // New Job dialog: which solids (by body index) are checked into the job
+	msModel       map[int]bool           // Model Selection dialog: which solids are checked into the existing job's model
+	editingTool   int                    // tool-controller index shown in the tool-controller editor
+	toolEdits     map[int]ToolController // edited tool controllers by index, applied over the derived list
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
@@ -75,11 +77,38 @@ func (e *Engine) jobTools() []ToolController {
 	e.mu.Lock()
 	lib := e.library.snapshot()
 	spinUp := e.spinUpSecs
+	edits := e.toolEditsCopyLocked()
 	e.mu.Unlock()
 	for i := range lib {
 		lib[i].SpinUpSecs = spinUp
 	}
-	return append([]ToolController{e.activeEndmill()}, lib...)
+	tools := append([]ToolController{e.activeEndmill()}, lib...)
+	return applyToolEdits(tools, edits)
+}
+
+// toolEditsCopyLocked copies the tool-controller edit overlay; the caller must hold e.mu. Returns
+// nil when there are no edits (the common case), so the derived list is returned unchanged.
+func (e *Engine) toolEditsCopyLocked() map[int]ToolController {
+	if len(e.toolEdits) == 0 {
+		return nil
+	}
+	out := make(map[int]ToolController, len(e.toolEdits))
+	for k, v := range e.toolEdits {
+		out[k] = v
+	}
+	return out
+}
+
+// applyToolEdits overlays edited tool controllers onto the derived list, preserving each base
+// tool's cutter (shape/diameter) so operations still select it by shape (indexForShape).
+func applyToolEdits(tools []ToolController, edits map[int]ToolController) []ToolController {
+	for idx, edited := range edits {
+		if idx >= 0 && idx < len(tools) {
+			edited.Tool = tools[idx].Tool
+			tools[idx] = edited
+		}
+	}
+	return tools
 }
 
 // defaultPlungeFeed is the default drilling plunge feed (mm/min) until the panel overrides it,
@@ -186,6 +215,8 @@ const (
 	ModelSelectCommandID         = "CAM.EditModel"           // open the Model Selection dialog
 	ModelSelectApplyCommandID    = "CAM.ModelSelectApply"    // Model Selection Apply: write the model
 	ModelSelectCancelCommandID   = "CAM.ModelSelectCancel"   // Model Selection Cancel: dismiss it
+	ToolEditCommandID            = "CAM.EditToolController"  // open the tool-controller editor
+	ToolEditCloseCommandID       = "CAM.CloseToolEditor"     // close the tool-controller editor
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -249,6 +280,8 @@ var camCommands = []struct{ id, name, tip string }{
 	{ModelSelectCommandID, "Edit Model", "Choose which document solids the job machines."},
 	{ModelSelectApplyCommandID, "Apply Model Selection", "Write the chosen solids to the job's model."},
 	{ModelSelectCancelCommandID, "Cancel Model Selection", "Dismiss the Model Selection dialog."},
+	{ToolEditCommandID, "Edit Tool Controller", "Edit the selected tool controller's label, spindle and feeds."},
+	{ToolEditCloseCommandID, "Close Tool Editor", "Close the tool-controller editor."},
 }
 
 // camRibbonTab is the dedicated ribbon tab the CAM add-in places all its commands on, scoped to the
@@ -335,6 +368,8 @@ func (e *Engine) Notify(ev []byte) {
 				e.applyPanelEdit(p.ControlId, p.Value) // Job Edit reuses the CAM panel's control ids
 			case ModelSelectDialogID:
 				e.applyModelSelectEdit(p.ControlId, p.Value)
+			case ToolControllerEditID:
+				e.applyToolControllerEdit(p.ControlId, p.Value)
 			}
 		}
 	case wire.EventFileDialogChosen:
@@ -465,6 +500,10 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.applyModelSelectAction)
 	case ModelSelectCancelCommandID:
 		e.launchRun(e.cancelModelSelectAction)
+	case ToolEditCommandID:
+		e.launchRun(e.showToolEditAction)
+	case ToolEditCloseCommandID:
+		e.launchRun(e.closeToolEditAction)
 	case CreateJobCommandID:
 		e.launchRun(e.createJobAction)
 	case CancelNewJobCommandID:

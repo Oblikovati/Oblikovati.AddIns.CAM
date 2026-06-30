@@ -103,4 +103,6 @@ var nonRibbonCommands = map[string]bool{
 	ModelSelectCommandID:       true,
 	ModelSelectApplyCommandID:  true,
 	ModelSelectCancelCommandID: true,
+	ToolEditCommandID:          true,
+	ToolEditCloseCommandID:     true,
 }

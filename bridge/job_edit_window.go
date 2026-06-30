@@ -110,6 +110,7 @@ func toolsTab(v jobEditValues) wire.PanelControlSpec {
 			client.PanelTextBox("flutes", "Flutes", strconv.Itoa(v.flutes)),
 			client.PanelTextBox("plunge_feed", "Feed (mm/min)", num(v.feed)),
 			client.PanelTextBox("spin_up", "Spin-up (s)", num(v.spinUp))),
+		client.PanelButton("je_edittool", "Edit Tool Controller…", ToolEditCommandID),
 	)
 }
 

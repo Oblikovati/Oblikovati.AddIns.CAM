@@ -144,7 +144,7 @@ func opMenuItems() []wire.BrowserMenuItem {
 
 // toolMenuItems is a tool-controller node's right-click menu.
 func toolMenuItems() []wire.BrowserMenuItem {
-	return []wire.BrowserMenuItem{{ID: "remove", Label: "Remove"}}
+	return []wire.BrowserMenuItem{{ID: "edit", Label: "Edit…"}, {ID: "remove", Label: "Remove"}}
 }
 
 // stockMenuItems is the Stock node's right-click menu.
