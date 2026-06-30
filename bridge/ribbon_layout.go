@@ -12,11 +12,11 @@ type camRibbonSpot struct {
 	style types.ButtonStyle
 }
 
-// camRibbonSpots places every CAM command on a panel of the CAM tab. The cutting tools are large
-// icon buttons with the add-in's own Oblikovati-style glyph; the program, job, window and
-// tool-library actions are small icon buttons; the per-operation modify/dress-up actions are compact
-// text buttons (they act on the selected operation in the browser). A command absent here would land
-// on an unnamed panel, so the map is kept exhaustive — covered by a registration test.
+// camRibbonSpots places every CAM command on a panel of the CAM tab. Every command carries the
+// add-in's own Oblikovati-style glyph: the frequently used cutting tools are LARGE icon buttons,
+// while the less-used program, job, window, modify, dress-up and tool-library actions are SMALL icon
+// buttons (an icon beside the label). A command absent here would land on an unnamed panel without a
+// glyph, so the map is kept exhaustive and all-icon — covered by TestEveryCommandIsAnIconButton.
 var camRibbonSpots = map[string]camRibbonSpot{
 	// 2.5D milling
 	GenerateProfileCommandID:    {"2.5D Milling", "profile", types.LargeIconButton},
@@ -64,29 +64,30 @@ var camRibbonSpots = map[string]camRibbonSpot{
 	ShowOperationsCommandID: {"Windows", "showops", types.SmallIconButton},
 	ShowToolsCommandID:      {"Windows", "toollib", types.SmallIconButton},
 
-	// Modify the selected operation (acts on the operations browser selection)
-	RegenerateCommandID:    {"Modify", "", types.TextOnlyButton},
-	EditOperationCommandID: {"Modify", "", types.TextOnlyButton},
-	ToggleOpCommandID:      {"Modify", "", types.TextOnlyButton},
-	MoveOpUpCommandID:      {"Modify", "", types.TextOnlyButton},
-	MoveOpDownCommandID:    {"Modify", "", types.TextOnlyButton},
-	DeleteOpCommandID:      {"Modify", "", types.TextOnlyButton},
-	DuplicateOpCommandID:   {"Modify", "", types.TextOnlyButton},
-	AddCustomOpCommandID:   {"Modify", "", types.TextOnlyButton},
+	// Modify the selected operation (acts on the operations browser selection). These are
+	// less-used than the cutting tools, so they are SMALL icon buttons — an icon plus the label.
+	RegenerateCommandID:    {"Modify", "regenerate", types.SmallIconButton},
+	EditOperationCommandID: {"Modify", "editop", types.SmallIconButton},
+	ToggleOpCommandID:      {"Modify", "toggleop", types.SmallIconButton},
+	MoveOpUpCommandID:      {"Modify", "moveup", types.SmallIconButton},
+	MoveOpDownCommandID:    {"Modify", "movedown", types.SmallIconButton},
+	DeleteOpCommandID:      {"Modify", "deleteop", types.SmallIconButton},
+	DuplicateOpCommandID:   {"Modify", "duplicateop", types.SmallIconButton},
+	AddCustomOpCommandID:   {"Modify", "customop", types.SmallIconButton},
 
 	// Dress-ups (added to the selected operation)
-	AddTabsCommandID:        {"Dress-up", "", types.TextOnlyButton},
-	AddDogboneCommandID:     {"Dress-up", "", types.TextOnlyButton},
-	AddRampCommandID:        {"Dress-up", "", types.TextOnlyButton},
-	AddLeadInOutCommandID:   {"Dress-up", "", types.TextOnlyButton},
-	AddHelicalRampCommandID: {"Dress-up", "", types.TextOnlyButton},
-	ClearDressupsCommandID:  {"Dress-up", "", types.TextOnlyButton},
+	AddTabsCommandID:        {"Dress-up", "tabs", types.SmallIconButton},
+	AddDogboneCommandID:     {"Dress-up", "dogbone", types.SmallIconButton},
+	AddRampCommandID:        {"Dress-up", "ramp", types.SmallIconButton},
+	AddLeadInOutCommandID:   {"Dress-up", "leadinout", types.SmallIconButton},
+	AddHelicalRampCommandID: {"Dress-up", "helicalramp", types.SmallIconButton},
+	ClearDressupsCommandID:  {"Dress-up", "cleardressups", types.SmallIconButton},
 
 	// Tool library
-	AddEndmillCommandID:  {"Tool Library", "", types.TextOnlyButton},
-	AddDrillCommandID:    {"Tool Library", "", types.TextOnlyButton},
-	AddBallnoseCommandID: {"Tool Library", "", types.TextOnlyButton},
-	RemoveToolCommandID:  {"Tool Library", "", types.TextOnlyButton},
-	ExportToolsCommandID: {"Tool Library", "", types.TextOnlyButton},
-	ImportToolsCommandID: {"Tool Library", "", types.TextOnlyButton},
+	AddEndmillCommandID:  {"Tool Library", "endmill", types.SmallIconButton},
+	AddDrillCommandID:    {"Tool Library", "drill", types.SmallIconButton},
+	AddBallnoseCommandID: {"Tool Library", "ballnose", types.SmallIconButton},
+	RemoveToolCommandID:  {"Tool Library", "removetool", types.SmallIconButton},
+	ExportToolsCommandID: {"Tool Library", "exporttools", types.SmallIconButton},
+	ImportToolsCommandID: {"Tool Library", "importtools", types.SmallIconButton},
 }

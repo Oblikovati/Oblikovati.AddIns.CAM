@@ -649,6 +649,26 @@ func TestRibbonLayoutCoversEveryCommand(t *testing.T) {
 	}
 }
 
+// TestEveryCommandIsAnIconButton pins the requirement that EVERY CAM command carries an SVG glyph
+// (no bare text buttons): a frequently used cutting tool is a large icon button, a less-used action
+// (modify/dress-up/tool-library) a small one, but both have a resolvable icon. A text-only spot or a
+// missing glyph regresses the all-icons ribbon.
+func TestEveryCommandIsAnIconButton(t *testing.T) {
+	for _, c := range camCommands {
+		spot := camRibbonSpots[c.id]
+		if spot.icon == "" {
+			t.Errorf("command %q has no icon — every button must carry an SVG glyph", c.id)
+			continue
+		}
+		if iconSVG(spot.icon) == "" {
+			t.Errorf("command %q references glyph %q with no bundled icons/%s.svg", c.id, spot.icon, spot.icon)
+		}
+		if !spot.style.ShowsIcon() {
+			t.Errorf("command %q uses style %v, want an icon button (small or large)", c.id, spot.style)
+		}
+	}
+}
+
 // TestNotifyPanelEdit drives a panel.valueChanged event and checks the engine state mutated
 // (synchronous path; no host call).
 func TestNotifyPanelEdit(t *testing.T) {
