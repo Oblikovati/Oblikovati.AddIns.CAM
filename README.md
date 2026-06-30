@@ -80,13 +80,25 @@ Every toolpath feature has a rendered screenshot validating its output in
 go run ./cmd/camshot screenshots
 ```
 
+The simulator's material-removal carve is validated the same way: `voxshot` runs
+real jobs through the headless voxel pipeline (`bridge.MaterialMesh`) and renders
+the carved stock as a shaded isometric solid — `voxel-pocket-zigzag.png` (a fully
+cleared pocket around a standing island boss) versus `voxel-pocket-offset-rib.png`
+(the same pocket with concentric offsets, whose uncut medial rib the simulator
+faithfully reveals):
+
+```sh
+go run ./cmd/voxshot screenshots
+```
+
 ## Layout
 
 - `bridge/` — all behaviour, **cgo-free** so it unit-tests on every platform without a host:
   - `gcode` (toolpath model) · `geom2d` (2D polygon / offset / clip) · `gen` (pure toolpath
     generators) · `dressup` · `post` (G-code dialects) · `feeds` · `plot` (gallery renderer) ·
     `ocl` (drop-cutter, cgo) · the engine + operations.
-- `cmd/camshot` — the gallery renderer. `cmd/camrun` — a headless job driver.
+- `cmd/camshot` — the toolpath gallery renderer. `cmd/voxshot` — the material-removal
+  carve renderer. `cmd/camrun` — a headless job driver.
 - `export.go` / `hostcaller.go` / `manifest.*` — the C ABI shell (the only cgo at the root).
 
 ## Build & test
