@@ -3,6 +3,7 @@
 package bridge
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -10,11 +11,20 @@ import (
 )
 
 // Multi-fixture program generation (FreeCAD's Work Coordinate Systems): when the Output tab
-// checks several fixtures (G54–G59), the program is posted once per fixture and concatenated.
-// The order-by setting decides what repeats per fixture — Fixture repeats the whole program,
-// Tool repeats per tool group (minimising tool changes), Operation repeats per operation.
+// checks several fixtures (G54–G59), the program is built as one unit per the order-by setting —
+// Fixture (a unit per fixture, the whole program), Tool (a unit per tool group), or Operation (a
+// unit per operation). The units are concatenated into one program, or, with split output on,
+// written to a separate .nc file each.
 
-// postProgram posts the operation results to G-code, repeating per selected fixture.
+// namedProgram is one posted output unit: its file-name suffix and its G-code.
+type namedProgram struct {
+	Suffix string
+	GCode  string
+}
+
+// postProgram posts the operation results, honouring the selected fixtures and order-by. It
+// returns the concatenated program (for display/save) and, when split output is on and there is
+// more than one unit, stores the units for a per-file save.
 func (e *Engine) postProgram(name string, results []OperationResult) (string, error) {
 	e.mu.Lock()
 	fixtures := checkedFixtures(e.wcs)
@@ -23,22 +33,93 @@ func (e *Engine) postProgram(name string, results []OperationResult) (string, er
 	}
 	order := orderByOrFixture(e.orderBy)
 	extra := e.postArguments
+	split := e.splitOutput
 	e.mu.Unlock()
 
-	if len(fixtures) == 1 {
-		return post.Export(name, PostObjects(results), postArgsFor(fixtures[0], extra))
+	programs, err := buildPrograms(name, results, fixtures, order, extra)
+	if err != nil {
+		return "", err
 	}
-	var blocks []string
-	for _, group := range orderResults(results, order) {
+	e.setLastPrograms(splitUnits(split, programs))
+	return concatPrograms(programs), nil
+}
+
+// buildPrograms produces the output units for the order-by mode: a unit per fixture (Fixture), a
+// unit per tool group across all fixtures (Tool), or a unit per operation across all fixtures
+// (Operation). The Fixture mode posts each fixture's whole program in one pass, so the default
+// single-fixture output is unchanged.
+func buildPrograms(name string, results []OperationResult, fixtures []int, order, extra string) ([]namedProgram, error) {
+	switch order {
+	case "Operation":
+		return unitsAcrossFixtures(name, perOperation(results), fixtures, extra)
+	case "Tool":
+		return unitsAcrossFixtures(name, groupResultsByTool(results), fixtures, extra)
+	default: // Fixture
+		return fixtureUnits(name, results, fixtures, extra)
+	}
+}
+
+// fixtureUnits posts one unit per fixture, each the whole program at that fixture's offset.
+func fixtureUnits(name string, results []OperationResult, fixtures []int, extra string) ([]namedProgram, error) {
+	programs := make([]namedProgram, 0, len(fixtures))
+	for _, fixture := range fixtures {
+		g, err := post.Export(name, PostObjects(results), postArgsFor(fixture, extra))
+		if err != nil {
+			return nil, err
+		}
+		programs = append(programs, namedProgram{Suffix: fixtureSuffix(fixture), GCode: g})
+	}
+	return programs, nil
+}
+
+// unitsAcrossFixtures posts one unit per group, each spanning every fixture (so a tool/operation
+// unit gathers its work across all fixtures into one program).
+func unitsAcrossFixtures(name string, groups []resultGroup, fixtures []int, extra string) ([]namedProgram, error) {
+	programs := make([]namedProgram, 0, len(groups))
+	for _, group := range groups {
+		var blocks []string
 		for _, fixture := range fixtures {
-			g, err := post.Export(name, PostObjects(group), postArgsFor(fixture, extra))
+			g, err := post.Export(name, PostObjects(group.results), postArgsFor(fixture, extra))
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 			blocks = append(blocks, g)
 		}
+		programs = append(programs, namedProgram{Suffix: group.suffix, GCode: strings.Join(blocks, "\n")})
 	}
-	return strings.Join(blocks, "\n"), nil
+	return programs, nil
+}
+
+// resultGroup is a named subset of operation results (a tool group or a single operation).
+type resultGroup struct {
+	suffix  string
+	results []OperationResult
+}
+
+// perOperation makes one group per operation.
+func perOperation(results []OperationResult) []resultGroup {
+	groups := make([]resultGroup, len(results))
+	for i, r := range results {
+		groups[i] = resultGroup{suffix: operationSuffix(i, r), results: []OperationResult{r}}
+	}
+	return groups
+}
+
+// groupResultsByTool groups results by tool number, preserving first-seen tool order.
+func groupResultsByTool(results []OperationResult) []resultGroup {
+	var groups []resultGroup
+	index := map[int]int{}
+	for _, r := range results {
+		tn := r.Controller.ToolNumber
+		gi, ok := index[tn]
+		if !ok {
+			gi = len(groups)
+			index[tn] = gi
+			groups = append(groups, resultGroup{suffix: fmt.Sprintf("T%d", tn)})
+		}
+		groups[gi].results = append(groups[gi].results, r)
+	}
+	return groups
 }
 
 // postArgsFor builds the post argument string for one fixture: the GUI no-op, the fixture's
@@ -65,36 +146,52 @@ func checkedFixtures(wcs map[int]bool) []int {
 	return out
 }
 
-// orderResults groups the results into the units repeated per fixture: all-as-one for Fixture
-// ordering, one group per tool for Tool, one per operation for Operation.
-func orderResults(results []OperationResult, order string) [][]OperationResult {
-	switch order {
-	case "Operation":
-		groups := make([][]OperationResult, len(results))
-		for i, r := range results {
-			groups[i] = []OperationResult{r}
-		}
-		return groups
-	case "Tool":
-		return groupResultsByTool(results)
-	default: // Fixture
-		return [][]OperationResult{results}
+// fixtureSuffix names a fixture file: 1→G54 … 6→G59.
+func fixtureSuffix(fixture int) string { return fmt.Sprintf("G5%d", 3+fixture) }
+
+// operationSuffix names an operation file by its label, or its 1-based index.
+func operationSuffix(i int, r OperationResult) string {
+	if s := sanitizeSuffix(r.Label); s != "" {
+		return s
 	}
+	return fmt.Sprintf("op%d", i+1)
 }
 
-// groupResultsByTool groups results by tool number, preserving first-seen tool order.
-func groupResultsByTool(results []OperationResult) [][]OperationResult {
-	var groups [][]OperationResult
-	index := map[int]int{}
-	for _, r := range results {
-		tn := r.Controller.ToolNumber
-		gi, ok := index[tn]
-		if !ok {
-			gi = len(groups)
-			index[tn] = gi
-			groups = append(groups, nil)
+// sanitizeSuffix keeps a label safe for a file name (alphanumerics and dashes; spaces → _).
+func sanitizeSuffix(label string) string {
+	var b strings.Builder
+	for _, r := range strings.TrimSpace(label) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-':
+			b.WriteRune(r)
+		case r == ' ' || r == '_':
+			b.WriteByte('_')
 		}
-		groups[gi] = append(groups[gi], r)
 	}
-	return groups
+	return b.String()
+}
+
+// concatPrograms joins the units into one program (the non-split output).
+func concatPrograms(programs []namedProgram) string {
+	parts := make([]string, len(programs))
+	for i, p := range programs {
+		parts[i] = p.GCode
+	}
+	return strings.Join(parts, "\n")
+}
+
+// splitUnits returns the units to save separately — only when split output is on and there is more
+// than one (a single unit always saves as one file).
+func splitUnits(split bool, programs []namedProgram) []namedProgram {
+	if split && len(programs) > 1 {
+		return programs
+	}
+	return nil
+}
+
+// setLastPrograms records the split output units for the next save (nil = save as one file).
+func (e *Engine) setLastPrograms(programs []namedProgram) {
+	e.mu.Lock()
+	e.lastPrograms = programs
+	e.mu.Unlock()
 }
