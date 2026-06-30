@@ -78,13 +78,31 @@ func TestPathViewShowsModelBody(t *testing.T) {
 		t.Fatalf("simulateAction: %v", err)
 	}
 	e.applySimEdit("sim_view", "Path")
+	waitSimIdle(t, e)
 	if !h.bodyVisible[0] {
 		t.Error("model body not shown in the Path view")
 	}
 	e.applySimEdit("sim_view", "Material")
+	waitSimIdle(t, e)
 	if h.bodyVisible[0] {
 		t.Error("model body not hidden again when returning to the Material view")
 	}
+}
+
+// waitSimIdle waits for the engine's launchRun worker (e.g. an async view switch) to finish.
+func waitSimIdle(t *testing.T, e *Engine) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		e.mu.Lock()
+		running := e.running
+		e.mu.Unlock()
+		if !running {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("engine still running after 2s")
 }
 
 // TestMaterialSimCarvesStock checks stepping the simulation removes material (the occupied cell
@@ -114,6 +132,7 @@ func TestSwitchToPathViewDropsGrid(t *testing.T) {
 		t.Fatalf("simulateAction: %v", err)
 	}
 	e.applySimEdit("sim_view", "Path")
+	waitSimIdle(t, e)
 	if e.simMaterial || e.voxel != nil {
 		t.Error("Path view did not drop the voxel grid")
 	}
@@ -121,6 +140,7 @@ func TestSwitchToPathViewDropsGrid(t *testing.T) {
 		t.Error("path playback sequence not rebuilt")
 	}
 	e.applySimEdit("sim_view", "Material") // toggle back
+	waitSimIdle(t, e)
 	if !e.simMaterial || e.voxel == nil {
 		t.Error("Material view did not rebuild the voxel grid")
 	}

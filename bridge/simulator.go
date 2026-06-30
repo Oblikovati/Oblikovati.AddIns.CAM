@@ -266,7 +266,10 @@ func (e *Engine) showSimPanel() (wire.OKResult, error) {
 	})
 }
 
-// applySimEdit applies one simulator-panel edit: the playback speed or the view mode.
+// applySimEdit applies one simulator-panel edit: the playback speed or the view mode. The view
+// switch makes host calls (hide/show bodies, redraw), so it runs through launchRun — off the Notify
+// goroutine — exactly like a command would; calling the host inline from Notify deadlocks, because
+// the host serialises add-in calls onto the goroutine Notify is already running on.
 func (e *Engine) applySimEdit(controlID, value string) {
 	switch controlID {
 	case "sim_speed":
@@ -274,7 +277,11 @@ func (e *Engine) applySimEdit(controlID, value string) {
 		e.simSpeed = speedValue(value)
 		e.mu.Unlock()
 	case "sim_view":
-		e.switchSimView(value == "Material")
+		material := value == "Material"
+		e.launchRun(func() (*JobResult, error) {
+			e.switchSimView(material)
+			return &JobResult{Summary: "CAM: simulator view → " + value}, nil
+		})
 	}
 }
 
