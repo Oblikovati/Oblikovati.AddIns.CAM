@@ -2,7 +2,11 @@
 
 package bridge
 
-import "fmt"
+import (
+	"fmt"
+
+	"oblikovati.org/cam/bridge/gcode"
+)
 
 // MaterialMesh runs the full material-removal pipeline for a job headlessly and returns the carved
 // stock as a surface mesh: regenerate the (host-free) toolpaths, voxelise the stock, sweep every
@@ -26,4 +30,19 @@ func MaterialMesh(job *Job) (coords []float64, indices []int, res float64, err e
 	}
 	coords, indices = voxelSurfaceMesh(g)
 	return coords, indices, res, nil
+}
+
+// MaterialToolpath returns the simulator's playback polyline (mm) for a job: the cutter-tip path
+// after canned-cycle expansion — exactly the points the material view animates through. Useful for
+// validating motion headlessly, e.g. the peck descent of deep-hole drilling.
+func MaterialToolpath(job *Job) ([]gcode.Vector3, error) {
+	results, err := job.GenerateAll()
+	if err != nil {
+		return nil, fmt.Errorf("generate toolpaths: %w", err)
+	}
+	cuts := flattenCuts(results, job.Stock.Max.Z-job.Stock.Min.Z)
+	if len(cuts) == 0 {
+		return nil, fmt.Errorf("job produced no cutting moves")
+	}
+	return cutPoints(cuts), nil
 }

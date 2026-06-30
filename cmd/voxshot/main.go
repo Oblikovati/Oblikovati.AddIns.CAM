@@ -41,6 +41,35 @@ func main() {
 		}
 		fmt.Printf("wrote %s/%s.png  (%d triangles, %.2f mm voxels)\n", outDir, sh.name, len(indices)/3, res)
 	}
+	writePeckProfile(outDir)
+}
+
+// writePeckProfile renders a depth-over-progress chart of a G83 deep-drilling cycle — the peck
+// "woodpecker" the simulator animates, which a carved-stock image cannot show (the removed volume is
+// identical to a single plunge).
+func writePeckProfile(outDir string) {
+	points, err := bridge.MaterialToolpath(peckHoleJob())
+	if err != nil {
+		fail(err)
+	}
+	img := plot.RenderDepthProfile(points, imageSize)
+	if err := writePNG(filepath.Join(outDir, "voxel-drill-peck-profile.png"), img); err != nil {
+		fail(err)
+	}
+	fmt.Printf("wrote %s/voxel-drill-peck-profile.png  (%d toolpath points)\n", outDir, len(points))
+}
+
+// peckHoleJob drills one deep hole with a 3 mm peck increment (G83), so the toolpath steps down and
+// retracts repeatedly.
+func peckHoleJob() *bridge.Job {
+	drill := &bridge.DrillingOp{
+		OpBase:    bridge.OpBase{OpLabel: "Peck Drill", IsActive: true, ClearanceHeight: 10, RetractHeight: 2, StartDepth: 0, FinalDepth: -18},
+		PeckDepth: 3,
+		Holes:     []bridge.DrillTarget{{X: 20, Y: 20, Top: 0, Bottom: -18}},
+	}
+	j := job(stock(40, 40, 20), drill)
+	j.Tools[0].Tool = bridge.ToolBit{ShapeType: "drill", Diameter: 6}
+	return j
 }
 
 // shot is one labelled carved-stock image: the job whose material removal is rendered.
