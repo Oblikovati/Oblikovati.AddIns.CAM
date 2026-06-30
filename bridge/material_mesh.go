@@ -46,3 +46,21 @@ func MaterialToolpath(job *Job) ([]gcode.Vector3, error) {
 	}
 	return cutPoints(cuts), nil
 }
+
+// MaterialPath returns the job's expanded motion program — every active operation's path with its
+// canned cycles unfolded into explicit G0/G1 moves. Unlike MaterialToolpath it keeps the rapid/feed
+// distinction, so a backplot can colour rapids and cuts (e.g. to show a tap threading back out).
+func MaterialPath(job *Job) (gcode.Path, error) {
+	results, err := job.GenerateAll()
+	if err != nil {
+		return gcode.Path{}, fmt.Errorf("generate toolpaths: %w", err)
+	}
+	var cmds []gcode.Command
+	for _, r := range results {
+		cmds = append(cmds, gcode.ExpandCannedCycles(r.Path).Commands...)
+	}
+	if len(cmds) == 0 {
+		return gcode.Path{}, fmt.Errorf("job produced no motion")
+	}
+	return gcode.NewPath(cmds), nil
+}

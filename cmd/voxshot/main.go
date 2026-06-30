@@ -41,22 +41,23 @@ func main() {
 		}
 		fmt.Printf("wrote %s/%s.png  (%d triangles, %.2f mm voxels)\n", outDir, sh.name, len(indices)/3, res)
 	}
-	writePeckProfile(outDir)
+	writeProfile(outDir, "voxel-drill-peck-profile", peckHoleJob())
+	writeProfile(outDir, "voxel-tap-profile", tapHoleJob())
 }
 
-// writePeckProfile renders a depth-over-progress chart of a G83 deep-drilling cycle — the peck
-// "woodpecker" the simulator animates, which a carved-stock image cannot show (the removed volume is
-// identical to a single plunge).
-func writePeckProfile(outDir string) {
-	points, err := bridge.MaterialToolpath(peckHoleJob())
+// writeProfile renders a depth-over-progress chart of a job's motion — the rapid/feed pattern the
+// simulator animates, which a carved-stock image cannot show (the removed volume is the same whether
+// a hole is pecked, threaded, or plunged in one go).
+func writeProfile(outDir, name string, job *bridge.Job) {
+	path, err := bridge.MaterialPath(job)
 	if err != nil {
 		fail(err)
 	}
-	img := plot.RenderDepthProfile(points, imageSize)
-	if err := writePNG(filepath.Join(outDir, "voxel-drill-peck-profile.png"), img); err != nil {
+	img := plot.RenderDepthProfile(path, imageSize)
+	if err := writePNG(filepath.Join(outDir, name+".png"), img); err != nil {
 		fail(err)
 	}
-	fmt.Printf("wrote %s/voxel-drill-peck-profile.png  (%d toolpath points)\n", outDir, len(points))
+	fmt.Printf("wrote %s/%s.png  (%d moves)\n", outDir, name, len(path.Commands))
 }
 
 // peckHoleJob drills one deep hole with a 3 mm peck increment (G83), so the toolpath steps down and
@@ -69,6 +70,20 @@ func peckHoleJob() *bridge.Job {
 	}
 	j := job(stock(40, 40, 20), drill)
 	j.Tools[0].Tool = bridge.ToolBit{ShapeType: "drill", Diameter: 6}
+	return j
+}
+
+// tapHoleJob taps one hole (G84): the tap threads in and — distinct from a drill — threads back out
+// under feed, dwelling at the bottom for the spindle to reverse.
+func tapHoleJob() *bridge.Job {
+	tap := &bridge.TappingOp{
+		OpBase:    bridge.OpBase{OpLabel: "Tap", IsActive: true, ClearanceHeight: 10, RetractHeight: 2, StartDepth: 0, FinalDepth: -14},
+		Pitch:     1.5,
+		DwellTime: 0.3,
+		Holes:     []bridge.DrillTarget{{X: 20, Y: 20, Top: 0, Bottom: -14}},
+	}
+	j := job(stock(40, 40, 16), tap)
+	j.Tools[0].Tool = bridge.ToolBit{ShapeType: "drill", Diameter: 5}
 	return j
 }
 
