@@ -65,6 +65,7 @@ var camRibbonSpots = map[string]camRibbonSpot{
 	ShowOperationsCommandID:  {"Windows", "showops", types.SmallIconButton},
 	ShowToolsCommandID:       {"Windows", "toollib", types.SmallIconButton},
 	ShowBrowserTreeCommandID: {"Windows", "camtree", types.SmallIconButton},
+	SimulateCommandID:        {"Windows", "simulate", types.SmallIconButton},
 
 	// Modify the selected operation (acts on the operations browser selection). These are
 	// less-used than the cutting tools, so they are SMALL icon buttons — an icon plus the label.
@@ -105,4 +106,8 @@ var nonRibbonCommands = map[string]bool{
 	ModelSelectCancelCommandID: true,
 	ToolEditCommandID:          true,
 	ToolEditCloseCommandID:     true,
+	SimPlayPauseCommandID:      true,
+	SimStepCommandID:           true,
+	SimResetCommandID:          true,
+	SimCloseCommandID:          true,
 }

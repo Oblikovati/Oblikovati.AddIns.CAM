@@ -10,6 +10,7 @@ import (
 	"oblikovati.org/api/client"
 	"oblikovati.org/api/types"
 	"oblikovati.org/api/wire"
+	"oblikovati.org/cam/bridge/gcode"
 )
 
 // HostCaller is the transport the engine talks to the host through — exactly the
@@ -62,6 +63,11 @@ type Engine struct {
 	stockCylR     float64 // explicit cylinder stock radius/height (mm)
 	stockCylH     float64
 	stockExisting int // body index used as stock when method is Existing
+	simPath       []gcode.Vector3 // simulator: the toolpath polyline (mm) being played back
+	simIdx        int             // simulator: current move index
+	simRunning    bool            // simulator: playing
+	simSpeed      int             // simulator: moves advanced per tick
+	simGen        int             // simulator: generation, bumped on open/close to retire stale tick loops
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
@@ -224,6 +230,11 @@ const (
 	ModelSelectCancelCommandID   = "CAM.ModelSelectCancel"   // Model Selection Cancel: dismiss it
 	ToolEditCommandID            = "CAM.EditToolController"  // open the tool-controller editor
 	ToolEditCloseCommandID       = "CAM.CloseToolEditor"     // close the tool-controller editor
+	SimulateCommandID            = "CAM.Simulate"            // open the toolpath simulator
+	SimPlayPauseCommandID        = "CAM.SimPlayPause"        // simulator play/pause
+	SimStepCommandID             = "CAM.SimStep"             // simulator step one move
+	SimResetCommandID            = "CAM.SimReset"            // simulator rewind to start
+	SimCloseCommandID            = "CAM.SimClose"            // simulator close
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -289,6 +300,11 @@ var camCommands = []struct{ id, name, tip string }{
 	{ModelSelectCancelCommandID, "Cancel Model Selection", "Dismiss the Model Selection dialog."},
 	{ToolEditCommandID, "Edit Tool Controller", "Edit the selected tool controller's label, spindle and feeds."},
 	{ToolEditCloseCommandID, "Close Tool Editor", "Close the tool-controller editor."},
+	{SimulateCommandID, "Simulate", "Play the posted program back, animating the tool along the toolpath."},
+	{SimPlayPauseCommandID, "Play/Pause", "Start or pause the toolpath simulation."},
+	{SimStepCommandID, "Step", "Advance the simulation one move."},
+	{SimResetCommandID, "Reset", "Rewind the simulation to the start."},
+	{SimCloseCommandID, "Close Simulator", "Close the toolpath simulator and clear its overlay."},
 }
 
 // camRibbonTab is the dedicated ribbon tab the CAM add-in places all its commands on, scoped to the
@@ -380,6 +396,8 @@ func (e *Engine) Notify(ev []byte) {
 				e.applyModelSelectEdit(p.ControlId, p.Value)
 			case ToolControllerEditID:
 				e.applyToolControllerEdit(p.ControlId, p.Value)
+			case SimPanelID:
+				e.applySimEdit(p.ControlId, p.Value)
 			}
 		}
 	case wire.EventFileDialogChosen:
@@ -524,6 +542,16 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.loadJobAction)
 	case SaveGCodeCommandID:
 		e.launchRun(e.saveGCodeAction)
+	case SimulateCommandID:
+		e.launchRun(e.simulateAction)
+	case SimPlayPauseCommandID:
+		e.launchRun(e.simPlayPauseAction)
+	case SimStepCommandID:
+		e.launchRun(e.simStepAction)
+	case SimResetCommandID:
+		e.launchRun(e.simResetAction)
+	case SimCloseCommandID:
+		e.launchRun(e.closeSimAction)
 	}
 }
 

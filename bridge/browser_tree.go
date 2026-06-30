@@ -127,6 +127,7 @@ func jobMenuItems() []wire.BrowserMenuItem {
 		{ID: "edit", Label: "Edit Job…"},
 		{ID: "regen", Label: "Regenerate"},
 		{ID: "post", Label: "Post Process (Save G-code)…"},
+		{ID: "simulate", Label: "Simulate…"},
 	}
 }
 

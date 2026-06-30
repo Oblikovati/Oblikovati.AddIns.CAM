@@ -130,6 +130,8 @@ func (e *Engine) jobMenuAction(item string) {
 		e.runAndRefreshTree(e.regenerateAction)
 	case "post":
 		e.launchRun(e.saveGCodeAction)
+	case "simulate":
+		e.launchRun(e.simulateAction)
 	}
 }
 
