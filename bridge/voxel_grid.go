@@ -91,6 +91,14 @@ func (g *VoxelGrid) Count() int {
 	return n
 }
 
+// cellAt returns the cell containing world point p (mm) and whether it lies in the grid.
+func (g *VoxelGrid) cellAt(p gcode.Vector3) (i, j, k int, ok bool) {
+	i = int(math.Floor((p.X - g.Min.X) / g.Res))
+	j = int(math.Floor((p.Y - g.Min.Y) / g.Res))
+	k = int(math.Floor((p.Z - g.Min.Z) / g.Res))
+	return i, j, k, g.InBounds(i, j, k)
+}
+
 // Center is the centre point (mm) of cell (i,j,k).
 func (g *VoxelGrid) Center(i, j, k int) gcode.Vector3 {
 	return gcode.Vector3{

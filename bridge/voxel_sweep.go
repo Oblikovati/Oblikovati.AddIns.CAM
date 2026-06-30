@@ -96,12 +96,13 @@ func flattenCuts(results []OperationResult, fallbackHeight float64) []voxelMove 
 	return cuts
 }
 
-// opCuts walks one operation's path into cutter moves, tracking the sticky tool position.
+// opCuts walks one operation's path into cutter moves, tracking the sticky tool position. Canned
+// drilling/tapping cycles are first expanded to explicit plunge motion so their holes are carved.
 func opCuts(path gcode.Path, c Cutter) []voxelMove {
 	var cuts []voxelMove
 	var cur gcode.Vector3
 	started := false
-	for _, cmd := range path.Commands {
+	for _, cmd := range gcode.ExpandCannedCycles(path).Commands {
 		next := applyAxes(cur, cmd)
 		if isMotionCommand(cmd.Name) {
 			if started {

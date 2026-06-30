@@ -13,21 +13,17 @@ import (
 // are taken to their endpoint — enough for a path preview/playback (not material removal).
 
 // toolpathFromGCode returns the tool's motion polyline (mm) from a posted program: one point per
-// G0/G1/G2/G3 move, with each axis sticky across commands that omit it.
+// G0/G1/G2/G3 move, with each axis sticky across commands that omit it. Canned drilling/tapping
+// cycles are expanded to their plunge motion first, so drilled holes appear in the path.
 func toolpathFromGCode(gcodeText string) []gcode.Vector3 {
+	cmds := make([]gcode.Command, 0)
+	for _, line := range strings.Split(gcodeText, "\n") {
+		cmds = append(cmds, gcode.ParseCommand(line))
+	}
 	var points []gcode.Vector3
 	var cur gcode.Vector3
-	for _, line := range strings.Split(gcodeText, "\n") {
-		cmd := gcode.ParseCommand(line)
-		if x, ok := cmd.Params["X"]; ok {
-			cur.X = x
-		}
-		if y, ok := cmd.Params["Y"]; ok {
-			cur.Y = y
-		}
-		if z, ok := cmd.Params["Z"]; ok {
-			cur.Z = z
-		}
+	for _, cmd := range gcode.ExpandCannedCycles(gcode.NewPath(cmds)).Commands {
+		cur = applyAxes(cur, cmd)
 		if isMotionCommand(cmd.Name) {
 			points = append(points, cur)
 		}
