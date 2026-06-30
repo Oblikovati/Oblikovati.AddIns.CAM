@@ -40,10 +40,10 @@ type recordingHost struct {
 	failOn        string              // when set, that method returns an error
 	sectionWires  []wire.WirePolyline // when set, overrides the default single-square section
 	graphicsArgs  []wire.SetClientGraphicsArgs
-	createdCmds   []wire.CreateCommandArgs    // every commands.create request, for ribbon-placement assertions
-	dockWindows   []wire.DockableWindowSpec   // every dockableWindows.set request, for panel-structure assertions
-	bodies        []wire.BodyInfo             // body.list reply; nil falls back to one default solid
-	minDistanceCm float64                     // body.minimumDistance reply (cm); 0 (default) blocks every keep-down link
+	createdCmds   []wire.CreateCommandArgs  // every commands.create request, for ribbon-placement assertions
+	dockWindows   []wire.DockableWindowSpec // every dockableWindows.set request, for panel-structure assertions
+	bodies        []wire.BodyInfo           // body.list reply; nil falls back to one default solid
+	minDistanceCm float64                   // body.minimumDistance reply (cm); 0 (default) blocks every keep-down link
 }
 
 func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
@@ -628,8 +628,13 @@ func TestEngineSetupRegistersUI(t *testing.T) {
 	if h.called(wire.MethodDockableWindowsSet) {
 		t.Error("Setup must not open a window by default")
 	}
-	// Every command lands on the CAM tab of the part ribbon, on a named panel.
+	// Every ribbon command lands on the CAM tab of the part ribbon, on a named panel. The
+	// dialog-only commands (New Job dialog OK/Cancel) are registered but intentionally off the
+	// ribbon (no tab/panel), so they are exempt.
 	for _, c := range h.createdCmds {
+		if nonRibbonCommands[c.ID] {
+			continue
+		}
 		if c.Ribbon != types.PartRibbon || c.Tab != camRibbonTab || c.Category == "" {
 			t.Errorf("command %q placed at ribbon=%q tab=%q panel=%q, want the part ribbon's CAM tab on a named panel", c.ID, c.Ribbon, c.Tab, c.Category)
 		}
