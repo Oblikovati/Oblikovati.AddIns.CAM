@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	"oblikovati.org/api/client"
@@ -51,6 +52,11 @@ type Engine struct {
 	msModel       map[int]bool           // Model Selection dialog: which solids are checked into the existing job's model
 	editingTool   int                    // tool-controller index shown in the tool-controller editor
 	toolEdits     map[int]ToolController // edited tool controllers by index, applied over the derived list
+	outputFile    string                 // default output path for the posted program (Output tab)
+	postArguments string                 // extra post-processor arguments (Output tab)
+	wcs           map[int]bool           // selected work coordinate systems, 1..6 → G54..G59 (Output tab)
+	orderBy       string                 // multi-fixture output ordering: Fixture | Tool | Operation
+	splitOutput   bool                   // write a separate file per fixture/tool/operation
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
@@ -145,10 +151,14 @@ func workOffsetOrOne(w int) int {
 func (e *Engine) postArgs() string {
 	e.mu.Lock()
 	wo := e.workOffset
+	extra := strings.TrimSpace(e.postArguments)
 	e.mu.Unlock()
 	args := "--no-show-editor"
 	if wo >= 2 && wo <= 6 {
 		args += " --work-offset=G5" + strconv.Itoa(3+wo) // 2→G55 … 6→G59
+	}
+	if extra != "" {
+		args += " " + extra
 	}
 	return args
 }

@@ -149,7 +149,46 @@ func (e *Engine) applyPanelEdit(controlID, value string) {
 		e.cut.ClearanceAbove = panelNum(value, e.cut.ClearanceAbove)
 	case "retract":
 		e.cut.RetractAbove = panelNum(value, e.cut.RetractAbove)
+	case "out_file":
+		e.outputFile = strings.TrimSpace(value)
+	case "post_args":
+		e.postArguments = value
+	case "order_by":
+		if value == "Fixture" || value == "Tool" || value == "Operation" {
+			e.orderBy = value
+		}
+	case "split_output":
+		e.splitOutput = value == "true"
+	default:
+		e.applyWCSEditLocked(controlID, value)
 	}
+}
+
+// applyWCSEditLocked toggles a G54–G59 fixture checkbox ("wcs_1".."wcs_6") and re-derives the
+// active work offset as the lowest checked fixture. The caller holds e.mu.
+func (e *Engine) applyWCSEditLocked(controlID, value string) {
+	if !strings.HasPrefix(controlID, "wcs_") {
+		return
+	}
+	n, err := strconv.Atoi(strings.TrimPrefix(controlID, "wcs_"))
+	if err != nil || n < 1 || n > 6 {
+		return
+	}
+	if e.wcs == nil {
+		e.wcs = map[int]bool{}
+	}
+	e.wcs[n] = value == "true"
+	e.workOffset = lowestWCS(e.wcs)
+}
+
+// lowestWCS returns the lowest checked fixture (1..6), or 1 (G54) when none is checked.
+func lowestWCS(wcs map[int]bool) int {
+	for n := 1; n <= 6; n++ {
+		if wcs[n] {
+			return n
+		}
+	}
+	return 1
 }
 
 // num formats a parameter value for a panel text box (no trailing zeros).

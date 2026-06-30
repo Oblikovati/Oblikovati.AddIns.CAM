@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"oblikovati.org/api/wire"
 )
@@ -26,13 +28,16 @@ func (e *Engine) rememberGCode(gcode string) {
 func (e *Engine) saveGCodeAction() (*JobResult, error) {
 	e.mu.Lock()
 	have := e.lastGCode != ""
+	out := strings.TrimSpace(e.outputFile)
 	e.mu.Unlock()
 	if !have {
 		return nil, fmt.Errorf("no G-code to save — generate a job first")
 	}
-	if _, err := e.api.Dialogs().ShowFileDialog(wire.ShowFileDialogArgs{
-		ID: GCodeDialogID, Save: true, Title: "Save G-code", Filter: "G-code (*.nc)|*.nc",
-	}); err != nil {
+	args := wire.ShowFileDialogArgs{ID: GCodeDialogID, Save: true, Title: "Save G-code", Filter: "G-code (*.nc)|*.nc"}
+	if out != "" { // the Output tab's output file seeds the dialog's starting directory
+		args.InitialDir = filepath.Dir(out)
+	}
+	if _, err := e.api.Dialogs().ShowFileDialog(args); err != nil {
 		return nil, err
 	}
 	return &JobResult{Summary: "CAM: choose where to save the G-code…"}, nil
