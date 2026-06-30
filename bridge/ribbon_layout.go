@@ -98,6 +98,9 @@ var camRibbonSpots = map[string]camRibbonSpot{
 // NOT placed on the CAM ribbon — they are the New Job dialog's OK/Cancel actions, reached only
 // from within the dialog. They carry no ribbon spot and are exempt from the all-icons invariant.
 var nonRibbonCommands = map[string]bool{
-	CreateJobCommandID:    true,
-	CancelNewJobCommandID: true,
+	CreateJobCommandID:         true,
+	CancelNewJobCommandID:      true,
+	ModelSelectCommandID:       true,
+	ModelSelectApplyCommandID:  true,
+	ModelSelectCancelCommandID: true,
 }

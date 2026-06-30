@@ -48,6 +48,7 @@ type Engine struct {
 	njTemplate    string       // New Job dialog: selected template
 	njUnits       string       // New Job dialog: selected document-unit schema
 	njModel       map[int]bool // New Job dialog: which solids (by body index) are checked into the job
+	msModel       map[int]bool // Model Selection dialog: which solids are checked into the existing job's model
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
@@ -182,6 +183,9 @@ const (
 	CreateJobCommandID           = "CAM.CreateJob"           // New Job dialog OK: create the job from the selections
 	CancelNewJobCommandID        = "CAM.CancelNewJob"        // New Job dialog Cancel: dismiss it
 	ShowBrowserTreeCommandID     = "CAM.ShowTree"            // open the CAM Job tree in the model browser
+	ModelSelectCommandID         = "CAM.EditModel"           // open the Model Selection dialog
+	ModelSelectApplyCommandID    = "CAM.ModelSelectApply"    // Model Selection Apply: write the model
+	ModelSelectCancelCommandID   = "CAM.ModelSelectCancel"   // Model Selection Cancel: dismiss it
 )
 
 // camCommands describes each registered command for registration + the panel.
@@ -242,6 +246,9 @@ var camCommands = []struct{ id, name, tip string }{
 	{CreateJobCommandID, "Create Job", "Create the job from the New Job dialog selections."},
 	{CancelNewJobCommandID, "Cancel New Job", "Dismiss the New Job dialog without creating a job."},
 	{ShowBrowserTreeCommandID, "Show CAM Tree", "Open the CAM Job tree (Model / Stock / Tools / Operations) in the model browser."},
+	{ModelSelectCommandID, "Edit Model", "Choose which document solids the job machines."},
+	{ModelSelectApplyCommandID, "Apply Model Selection", "Write the chosen solids to the job's model."},
+	{ModelSelectCancelCommandID, "Cancel Model Selection", "Dismiss the Model Selection dialog."},
 }
 
 // camRibbonTab is the dedicated ribbon tab the CAM add-in places all its commands on, scoped to the
@@ -326,6 +333,8 @@ func (e *Engine) Notify(ev []byte) {
 				e.applyNewJobEdit(p.ControlId, p.Value)
 			case JobEditWindowID:
 				e.applyPanelEdit(p.ControlId, p.Value) // Job Edit reuses the CAM panel's control ids
+			case ModelSelectDialogID:
+				e.applyModelSelectEdit(p.ControlId, p.Value)
 			}
 		}
 	case wire.EventFileDialogChosen:
@@ -450,6 +459,12 @@ func (e *Engine) dispatchCommand(commandID string) {
 		e.launchRun(e.newJobDialogAction)
 	case ShowBrowserTreeCommandID:
 		e.launchRun(e.showBrowserTreeAction)
+	case ModelSelectCommandID:
+		e.launchRun(e.showModelSelectAction)
+	case ModelSelectApplyCommandID:
+		e.launchRun(e.applyModelSelectAction)
+	case ModelSelectCancelCommandID:
+		e.launchRun(e.cancelModelSelectAction)
 	case CreateJobCommandID:
 		e.launchRun(e.createJobAction)
 	case CancelNewJobCommandID:
