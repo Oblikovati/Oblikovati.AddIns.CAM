@@ -135,6 +135,51 @@ func scaleToHost(coords []float64) {
 	}
 }
 
+// syncBodyVisibility hides the job's model solids while the material view carves the stock — the two
+// are coincident, so showing both z-fights — and restores them otherwise (the Path view draws the
+// toolpath over the visible part). Idempotent: it only toggles what it previously changed.
+func (e *Engine) syncBodyVisibility(material bool) {
+	if material {
+		e.hideModelBodies()
+		return
+	}
+	e.restoreModelBodies()
+}
+
+// hideModelBodies hides the job's model bodies and records them for restoring.
+func (e *Engine) hideModelBodies() {
+	e.mu.Lock()
+	if len(e.simHiddenBodies) > 0 { // already hidden
+		e.mu.Unlock()
+		return
+	}
+	e.simHiddenBodies = e.modelBodyIndices()
+	bodies := append([]int(nil), e.simHiddenBodies...)
+	e.mu.Unlock()
+	for _, idx := range bodies {
+		_, _ = e.api.Body().SetVisible(idx, false)
+	}
+}
+
+// restoreModelBodies shows any bodies hidden for the material view.
+func (e *Engine) restoreModelBodies() {
+	e.mu.Lock()
+	bodies := e.simHiddenBodies
+	e.simHiddenBodies = nil
+	e.mu.Unlock()
+	for _, idx := range bodies {
+		_, _ = e.api.Body().SetVisible(idx, true)
+	}
+}
+
+// modelBodyIndices is the body indices the job machines, falling back to the panel's target body.
+func (e *Engine) modelBodyIndices() []int {
+	if e.lastJob != nil && len(e.lastJob.ModelBodies) > 0 {
+		return append([]int(nil), e.lastJob.ModelBodies...)
+	}
+	return []int{e.targetBody}
+}
+
 // materialStatus is the simulator progress line in material mode: the move counter plus how much
 // stock remains.
 func (e *Engine) materialStatus() string {
