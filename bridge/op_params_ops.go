@@ -8,14 +8,16 @@ import "oblikovati.org/cam/bridge/gen"
 
 // Parameters lists the editable profile parameters.
 func (op *ProfileOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Profile",
 		choiceParam("side", "Side", op.Side, gen.SideOutside, gen.SideInside, gen.SideOn),
 		numberParam("offsetExtra", "Extra stock (mm)", op.OffsetExtra),
+		boolParam("climb", "Climb", op.Climb))...)
+	params = append(params, sec("Roughing",
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
 		numberParam("roughingPasses", "Roughing passes", float64(op.RoughingPasses)),
-		numberParam("roughStep", "Roughing step (mm)", op.RoughStep),
-		boolParam("climb", "Climb", op.Climb),
-	}, depthParams(op.OpBase)...)
+		numberParam("roughStep", "Roughing step (mm)", op.RoughStep))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one profile parameter edit.
@@ -43,15 +45,17 @@ func (op *ProfileOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable pocket parameters.
 func (op *PocketOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Pocket",
 		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
 		numberParam("stepDown", "Step-down (mm)", op.StepDown),
 		numberParam("finishAllowance", "Finish allowance (mm)", op.FinishAllowance),
+		boolParam("climb", "Climb", op.Climb))...)
+	params = append(params, sec("Pattern",
 		choiceParam("pattern", "Pattern", pocketPatternOf(op.Pattern), gen.PocketOffset, gen.PocketZigzag),
 		boolParam("oneWay", "One-direction (zigzag)", op.OneWay),
-		numberParam("retractThreshold", "Keep-down threshold (mm)", op.RetractThreshold),
-		boolParam("climb", "Climb", op.Climb),
-	}, depthParams(op.OpBase)...)
+		numberParam("retractThreshold", "Keep-down threshold (mm)", op.RetractThreshold))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // pocketPatternOf defaults an unset pocket pattern to the offset (concentric) pattern.
@@ -260,15 +264,19 @@ func (op *ToolLengthProbeOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable drilling parameters.
 func (op *DrillingOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Drilling",
 		numberParam("drillDepth", "Drill depth (mm, 0=thru)", op.Depth),
+		numberParam("repeat", "Repeat", float64(op.Repeat)))...)
+	params = append(params, sec("Peck",
 		numberParam("peckDepth", "Peck depth (mm)", op.PeckDepth),
-		numberParam("dwellTime", "Dwell (s)", op.DwellTime),
-		numberParam("repeat", "Repeat", float64(op.Repeat)),
-		boolParam("chipBreak", "Chip-break", op.ChipBreak),
+		boolParam("chipBreak", "Chip-break", op.ChipBreak))...)
+	params = append(params, sec("Dwell",
+		numberParam("dwellTime", "Dwell (s)", op.DwellTime))...)
+	params = append(params, sec("Retract",
 		boolParam("feedRetract", "Feed retract", op.FeedRetract),
-		boolParam("retractToR", "Retract to R (G99)", op.RetractToR),
-	}, depthParams(op.OpBase)...)
+		boolParam("retractToR", "Retract to R (G99)", op.RetractToR))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // SetParameter applies one drilling parameter edit.
@@ -298,13 +306,15 @@ func (op *DrillingOp) SetParameter(id, value string) bool {
 
 // Parameters lists the editable facing parameters.
 func (op *MillFaceOp) Parameters() []OpParam {
-	return append([]OpParam{
+	var params []OpParam
+	params = append(params, sec("Facing",
 		numberParam("stepOver", "Step-over (×⌀)", op.StepOver),
-		numberParam("stepDown", "Step-down (mm)", op.StepDown),
+		numberParam("stepDown", "Step-down (mm)", op.StepDown))...)
+	params = append(params, sec("Pattern",
 		choiceParam("pattern", "Pattern", facingPatternOf(op),
 			gen.FacePatternZigzag, gen.FacePatternDirectional, gen.FacePatternBidirectional, gen.FacePatternSpiral),
-		numberParam("angle", "Raster angle (°)", op.Angle),
-	}, depthParams(op.OpBase)...)
+		numberParam("angle", "Raster angle (°)", op.Angle))...)
+	return append(params, depthParams(op.OpBase)...)
 }
 
 // facingPatternOf reports the op's effective facing pattern, mapping the legacy Spiral flag and

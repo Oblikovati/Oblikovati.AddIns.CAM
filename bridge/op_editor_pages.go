@@ -3,6 +3,8 @@
 package bridge
 
 import (
+	"strings"
+
 	"oblikovati.org/api/client"
 	"oblikovati.org/api/types"
 	"oblikovati.org/api/wire"
@@ -19,30 +21,66 @@ var depthParamIDs = map[string]bool{
 	"coolant": true, "feedScale": true, "pauseAfter": true,
 }
 
-// opEditorBody groups an operation's parameters: the op-specific ones under a group titled by the
-// operation kind, the depth/height/coolant ones under "Depths & Heights" — each a 2-column form.
+// opEditorBody groups an operation's parameters into FreeCAD-style pages: the op-specific ones by
+// their Section (a parameter with no Section lands in the primary group, titled by op kind, listed
+// first), the depth/height/coolant ones under "Depths & Heights" — each a 2-column form.
 func opEditorBody(op Operation) []wire.PanelControlSpec {
 	ed, ok := op.(Editable)
 	if !ok {
 		return []wire.PanelControlSpec{client.PanelLabel("noedit", "This operation has no editable parameters.")}
 	}
-	var opFields, depthFields []wire.PanelControlSpec
+	groups := newOpSectionGroups(operationKind(op))
+	var depthFields []wire.PanelControlSpec
 	for _, p := range ed.Parameters() {
-		control := paramControl(p)
 		if depthParamIDs[p.ID] {
-			depthFields = append(depthFields, control)
-		} else {
-			opFields = append(opFields, control)
+			depthFields = append(depthFields, paramControl(p))
+			continue
 		}
+		groups.add(p.Section, paramControl(p))
 	}
-	var groups []wire.PanelControlSpec
-	if len(opFields) > 0 {
-		groups = append(groups, camForm("op_params", operationKind(op), opFields...))
-	}
+	out := groups.forms()
 	if len(depthFields) > 0 {
-		groups = append(groups, camForm("op_depths", "Depths & Heights", depthFields...))
+		out = append(out, camForm("op_depths", "Depths & Heights", depthFields...))
 	}
-	return groups
+	return out
+}
+
+// opSectionGroups accumulates op-specific parameter controls into named sections, preserving the
+// order sections are first seen (the primary group, titled by op kind, sorts first).
+type opSectionGroups struct {
+	primary string
+	order   []string
+	byTitle map[string][]wire.PanelControlSpec
+}
+
+func newOpSectionGroups(primary string) *opSectionGroups {
+	return &opSectionGroups{primary: primary, byTitle: map[string][]wire.PanelControlSpec{}}
+}
+
+// add files a control under its section title (empty → the primary group).
+func (g *opSectionGroups) add(section string, control wire.PanelControlSpec) {
+	title := section
+	if title == "" {
+		title = g.primary
+	}
+	if _, seen := g.byTitle[title]; !seen {
+		g.order = append(g.order, title)
+	}
+	g.byTitle[title] = append(g.byTitle[title], control)
+}
+
+// forms builds a 2-column form group per section, in first-seen order.
+func (g *opSectionGroups) forms() []wire.PanelControlSpec {
+	out := make([]wire.PanelControlSpec, 0, len(g.order))
+	for _, title := range g.order {
+		out = append(out, camForm("op_"+sectionID(title), title, g.byTitle[title]...))
+	}
+	return out
+}
+
+// sectionID makes a group id from a section title (lowercased, spaces → underscores).
+func sectionID(title string) string {
+	return strings.ToLower(strings.ReplaceAll(title, " ", "_"))
 }
 
 // opEditorActions is the operation editor's button pads: the Actions group (toggle / reorder /

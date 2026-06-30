@@ -6,12 +6,23 @@ import "strconv"
 
 // OpParam is one editable parameter of an operation, surfaced in the operation editor. Kind
 // selects the control: "number"/"text" render a text box, "choice" a dropdown over Choices.
+// Section names the FreeCAD-style sub-group the parameter belongs to (e.g. "Peck"); an empty
+// Section places it in the operation's primary group (titled by op kind).
 type OpParam struct {
 	ID      string
 	Label   string
 	Value   string
 	Kind    string
 	Choices []string
+	Section string
+}
+
+// sec tags a run of parameters with a sub-section title, for the operation editor's per-op pages.
+func sec(section string, params ...OpParam) []OpParam {
+	for i := range params {
+		params[i].Section = section
+	}
+	return params
 }
 
 // Editable is an operation whose parameters can be listed and edited in the operation editor.
