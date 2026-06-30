@@ -141,12 +141,31 @@ func (b *OpBase) ClearDressups() { b.Dressups = nil }
 // DressupCount reports how many dressups the operation carries.
 func (b *OpBase) DressupCount() int { return len(b.Dressups) }
 
+// DressupList returns the operation's dressup chain (for editing in the operation editor).
+func (b *OpBase) DressupList() []Dressup { return b.Dressups }
+
+// SetDressupParam applies one parameter edit to dressup idx, replacing it with the edited copy.
+// Returns whether the edit landed (a known index and an editable dressup).
+func (b *OpBase) SetDressupParam(idx int, id, value string) bool {
+	if idx < 0 || idx >= len(b.Dressups) {
+		return false
+	}
+	ed, ok := b.Dressups[idx].(DressupEditable)
+	if !ok {
+		return false
+	}
+	b.Dressups[idx] = ed.WithParameter(id, value)
+	return true
+}
+
 // dressupHolder is the subset of an operation used to manage its dressup chain (every operation
 // satisfies it via OpBase).
 type dressupHolder interface {
 	AppendDressup(Dressup)
 	ClearDressups()
 	DressupCount() int
+	DressupList() []Dressup
+	SetDressupParam(idx int, id, value string) bool
 }
 
 // ToolControllerIndex implements Operation.

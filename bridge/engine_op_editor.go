@@ -100,11 +100,40 @@ func (e *Engine) handleOpEditorEdit(controlID, value string) {
 	e.mu.Lock()
 	job, idx := e.lastJob, e.editingOp
 	if job != nil && idx >= 0 && idx < len(job.Operations) {
-		if ed, ok := job.Operations[idx].(Editable); ok {
-			ed.SetParameter(controlID, value) // under the lock: serialised with the editor's reads
-		}
+		applyOpOrDressupEdit(job.Operations[idx], controlID, value) // under the lock: serialised with the editor's reads
 	}
 	e.mu.Unlock()
+}
+
+// applyOpOrDressupEdit routes one editor field edit: a "dr<N>_<param>" control edits dressup N,
+// anything else is an operation parameter.
+func applyOpOrDressupEdit(op Operation, controlID, value string) {
+	if di, param, isDressup := parseDressupControl(controlID); isDressup {
+		if h, ok := op.(dressupHolder); ok {
+			h.SetDressupParam(di, param, value)
+		}
+		return
+	}
+	if ed, ok := op.(Editable); ok {
+		ed.SetParameter(controlID, value)
+	}
+}
+
+// parseDressupControl reads a "dr<index>_<param>" dressup-editor control id (e.g. "dr0_width").
+func parseDressupControl(controlID string) (idx int, param string, ok bool) {
+	if !strings.HasPrefix(controlID, "dr") {
+		return 0, "", false
+	}
+	rest := controlID[2:]
+	cut := strings.IndexByte(rest, '_')
+	if cut <= 0 {
+		return 0, "", false
+	}
+	n, err := strconv.Atoi(rest[:cut])
+	if err != nil {
+		return 0, "", false
+	}
+	return n, rest[cut+1:], true
 }
 
 // parseOpChoice reads the leading "N:" index of an operation-dropdown value back to a 0-based

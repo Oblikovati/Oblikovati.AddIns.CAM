@@ -3,6 +3,7 @@
 package bridge
 
 import (
+	"fmt"
 	"strings"
 
 	"oblikovati.org/api/client"
@@ -42,7 +43,32 @@ func opEditorBody(op Operation) []wire.PanelControlSpec {
 	if len(depthFields) > 0 {
 		out = append(out, camForm("op_depths", "Depths & Heights", depthFields...))
 	}
-	return out
+	return append(out, dressupSections(op)...)
+}
+
+// dressupSections renders an editable section per dressup on the operation (FreeCAD's per-dressup
+// edit dialogs, inline): each dressup's parameters in a group titled by its name, with control ids
+// namespaced "dr<index>_<param>" so edits route to the right dressup.
+func dressupSections(op Operation) []wire.PanelControlSpec {
+	holder, ok := op.(dressupHolder)
+	if !ok {
+		return nil
+	}
+	var sections []wire.PanelControlSpec
+	for i, d := range holder.DressupList() {
+		ed, ok := d.(DressupEditable)
+		if !ok {
+			continue
+		}
+		var fields []wire.PanelControlSpec
+		for _, p := range ed.Parameters() {
+			control := paramControl(p)
+			control.ID = fmt.Sprintf("dr%d_%s", i, p.ID)
+			fields = append(fields, control)
+		}
+		sections = append(sections, camForm(fmt.Sprintf("op_dr%d", i), ed.Name()+" dress-up", fields...))
+	}
+	return sections
 }
 
 // opSectionGroups accumulates op-specific parameter controls into named sections, preserving the
