@@ -30,21 +30,46 @@ func TestMultiFixtureRepeatsProgram(t *testing.T) {
 	}
 }
 
-// TestOrderResultsByMode checks the per-fixture repeat unit: Fixture repeats the whole program,
-// Operation one group per operation, Tool one group per tool number.
-func TestOrderResultsByMode(t *testing.T) {
+// TestGroupResultsByTool checks results group by tool number, first-seen order.
+func TestGroupResultsByTool(t *testing.T) {
 	results := []OperationResult{
 		{Controller: ToolController{ToolNumber: 1}},
 		{Controller: ToolController{ToolNumber: 1}},
 		{Controller: ToolController{ToolNumber: 2}},
 	}
-	if g := orderResults(results, "Fixture"); len(g) != 1 || len(g[0]) != 3 {
-		t.Errorf("Fixture grouping = %d groups", len(g))
+	groups := groupResultsByTool(results)
+	if len(groups) != 2 || len(groups[0].results) != 2 || groups[1].suffix != "T2" {
+		t.Errorf("tool grouping = %+v", groups)
 	}
-	if g := orderResults(results, "Operation"); len(g) != 3 {
-		t.Errorf("Operation grouping = %d groups, want 3", len(g))
+}
+
+// TestSplitOutputProducesFilePerFixture checks split output records one program unit per fixture,
+// named by its work coordinate system.
+func TestSplitOutputProducesFilePerFixture(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.applyPanelEdit("wcs_1", "true") // G54
+	e.applyPanelEdit("wcs_2", "true") // G55
+	e.applyPanelEdit("split_output", "true")
+	if _, err := e.RunDrillingJobOnHost(0); err != nil {
+		t.Fatalf("job: %v", err)
 	}
-	if g := orderResults(results, "Tool"); len(g) != 2 {
-		t.Errorf("Tool grouping = %d groups, want 2", len(g))
+	if len(e.lastPrograms) != 2 {
+		t.Fatalf("split should record 2 programs, got %d", len(e.lastPrograms))
+	}
+	if e.lastPrograms[0].Suffix != "G54" || e.lastPrograms[1].Suffix != "G55" {
+		t.Errorf("suffixes = %q, %q", e.lastPrograms[0].Suffix, e.lastPrograms[1].Suffix)
+	}
+}
+
+// TestNoSplitWhenOff checks split units are not recorded with split output off.
+func TestNoSplitWhenOff(t *testing.T) {
+	e := NewEngine(&recordingHost{})
+	e.applyPanelEdit("wcs_1", "true")
+	e.applyPanelEdit("wcs_2", "true") // multiple fixtures, but split is off
+	if _, err := e.RunDrillingJobOnHost(0); err != nil {
+		t.Fatalf("job: %v", err)
+	}
+	if e.lastPrograms != nil {
+		t.Errorf("no split units expected with split off, got %d", len(e.lastPrograms))
 	}
 }

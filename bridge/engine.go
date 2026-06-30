@@ -54,6 +54,7 @@ type Engine struct {
 	wcs           map[int]bool           // selected work coordinate systems, 1..6 → G54..G59 (Output tab)
 	orderBy       string                 // multi-fixture output ordering: Fixture | Tool | Operation
 	splitOutput   bool                   // write a separate file per fixture/tool/operation
+	lastPrograms  []namedProgram         // split output units of the last posted job (nil = one file)
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.
