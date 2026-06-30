@@ -44,6 +44,7 @@ type recordingHost struct {
 	dockWindows   []wire.DockableWindowSpec // every dockableWindows.set request, for panel-structure assertions
 	bodies        []wire.BodyInfo           // body.list reply; nil falls back to one default solid
 	minDistanceCm float64                   // body.minimumDistance reply (cm); 0 (default) blocks every keep-down link
+	bodyVisible   map[int]bool              // last body.setVisible state per body index
 }
 
 func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
@@ -65,6 +66,15 @@ func (h *recordingHost) Call(method string, payload []byte) ([]byte, error) {
 		var a wire.SetDockableWindowArgs
 		if json.Unmarshal(payload, &a) == nil {
 			h.dockWindows = append(h.dockWindows, a.Window)
+		}
+	}
+	if method == wire.MethodBodySetVisible {
+		var a wire.BodySetVisibleArgs
+		if json.Unmarshal(payload, &a) == nil {
+			if h.bodyVisible == nil {
+				h.bodyVisible = map[int]bool{}
+			}
+			h.bodyVisible[a.BodyIndex] = a.Visible
 		}
 	}
 	h.mu.Unlock()

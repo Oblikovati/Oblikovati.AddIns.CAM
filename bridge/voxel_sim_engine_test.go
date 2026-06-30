@@ -47,6 +47,46 @@ func TestSimulateDefaultsToMaterial(t *testing.T) {
 	}
 }
 
+// TestMaterialSimHidesModelBody checks the original solid is hidden while the material view carves
+// the stock (so the two coincident surfaces don't z-fight) and restored when the simulator closes.
+func TestMaterialSimHidesModelBody(t *testing.T) {
+	h := &recordingHost{}
+	e := NewEngine(h)
+	e.lastJob = materialJob()
+	if _, err := e.simulateAction(); err != nil {
+		t.Fatalf("simulateAction: %v", err)
+	}
+	if vis, ok := h.bodyVisible[0]; !ok || vis {
+		t.Errorf("model body not hidden for the material view (vis=%v set=%v)", vis, ok)
+	}
+	if _, err := e.closeSimAction(); err != nil {
+		t.Fatalf("closeSimAction: %v", err)
+	}
+	if !h.bodyVisible[0] {
+		t.Error("model body not restored when the simulator closed")
+	}
+}
+
+// TestPathViewShowsModelBody checks switching to the Path view restores the solid (the toolpath is
+// drawn over the visible part), and switching back to Material hides it again.
+func TestPathViewShowsModelBody(t *testing.T) {
+	h := &recordingHost{}
+	e := NewEngine(h)
+	e.lastJob = materialJob()
+	e.lastGCode = simProgram
+	if _, err := e.simulateAction(); err != nil {
+		t.Fatalf("simulateAction: %v", err)
+	}
+	e.applySimEdit("sim_view", "Path")
+	if !h.bodyVisible[0] {
+		t.Error("model body not shown in the Path view")
+	}
+	e.applySimEdit("sim_view", "Material")
+	if h.bodyVisible[0] {
+		t.Error("model body not hidden again when returning to the Material view")
+	}
+}
+
 // TestMaterialSimCarvesStock checks stepping the simulation removes material (the occupied cell
 // count drops below the solid total).
 func TestMaterialSimCarvesStock(t *testing.T) {

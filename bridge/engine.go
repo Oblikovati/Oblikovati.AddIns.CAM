@@ -26,55 +26,56 @@ type Engine struct {
 	host HostCaller
 	api  *client.Client
 
-	mu            sync.Mutex
-	running       bool    // a job is in flight (coalesces overlapping command triggers)
-	postName      string  // active post processor ("linuxcnc" | "grbl" | "fanuc")
-	plungFeed     float64 // plunge (vertical) feed; the cutting feed is 3× this
-	spindleSpeed  float64 // active spindle speed (rev/min), set by the feeds & speeds calculator
-	material      string  // selected workpiece material (drives the feeds & speeds calculator)
-	flutes        int     // flute count of the primary end mill (drives the feeds & speeds feed)
-	spinUpSecs    float64 // dwell after spindle start so it reaches speed before cutting (s); 0 = none
-	workOffset    int     // active work coordinate system, 1..6 → G54..G59; 0/1 = G54
-	lastJob       *Job    // most recently generated job (for the operations browser + Save)
-	lastGCode     string  // most recently posted G-code (for export to a file)
-	lastEstimate  float64 // estimated cycle time (minutes) of the last posted job
-	targetBody    int     // index of the body the generate commands machine
-	editingOp     int     // index of the operation shown in the operation editor
-	sectionSource string  // how the last contour plane was chosen ("selected face" | "mid-height")
-	cut           cutSettings
-	library       ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
-	surfacer      Surfacer
-	njTemplate    string                 // New Job dialog: selected template
-	njUnits       string                 // New Job dialog: selected document-unit schema
-	njModel       map[int]bool           // New Job dialog: which solids (by body index) are checked into the job
-	msModel       map[int]bool           // Model Selection dialog: which solids are checked into the existing job's model
-	editingTool   int                    // tool-controller index shown in the tool-controller editor
-	toolEdits     map[int]ToolController // edited tool controllers by index, applied over the derived list
-	outputFile    string                 // default output path for the posted program (Output tab)
-	postArguments string                 // extra post-processor arguments (Output tab)
-	wcs           map[int]bool           // selected work coordinate systems, 1..6 → G54..G59 (Output tab)
-	orderBy       string                 // multi-fixture output ordering: Fixture | Tool | Operation
-	splitOutput   bool                   // write a separate file per fixture/tool/operation
-	lastPrograms  []namedProgram         // split output units of the last posted job (nil = one file)
-	stockMethod   string                 // stock creation: Extend bbox | Box | Cylinder | Existing
-	stockBoxL     float64                // explicit box stock length/width/height (mm)
-	stockBoxW     float64
-	stockBoxH     float64
-	stockCylR     float64 // explicit cylinder stock radius/height (mm)
-	stockCylH     float64
-	stockExisting int // body index used as stock when method is Existing
-	simPath       []gcode.Vector3 // simulator: the toolpath polyline (mm) being played back
-	simFeed       []bool          // simulator: per-point cutting (feed) vs rapid, aligned to simPath
-	simIdx        int             // simulator: current move index
-	simRunning    bool            // simulator: playing
-	simSpeed      int             // simulator: moves advanced per tick
-	simGen        int             // simulator: generation, bumped on open/close to retire stale tick loops
-	simMaterial   bool            // simulator: material-removal (voxel) view vs plain path playback
-	simCuts       []voxelMove     // simulator: per-segment cutter sweeps (material mode)
-	simStock      Stock           // simulator: stock box the voxel grid covers (mm)
-	voxel         *VoxelGrid      // simulator: the material-removal grid (nil = not built)
-	voxelRes      float64         // simulator: chosen voxel cell size (mm), for rebuilds on scrub-back
-	voxelCursor   int             // simulator: number of cuts already swept into the grid
+	mu              sync.Mutex
+	running         bool    // a job is in flight (coalesces overlapping command triggers)
+	postName        string  // active post processor ("linuxcnc" | "grbl" | "fanuc")
+	plungFeed       float64 // plunge (vertical) feed; the cutting feed is 3× this
+	spindleSpeed    float64 // active spindle speed (rev/min), set by the feeds & speeds calculator
+	material        string  // selected workpiece material (drives the feeds & speeds calculator)
+	flutes          int     // flute count of the primary end mill (drives the feeds & speeds feed)
+	spinUpSecs      float64 // dwell after spindle start so it reaches speed before cutting (s); 0 = none
+	workOffset      int     // active work coordinate system, 1..6 → G54..G59; 0/1 = G54
+	lastJob         *Job    // most recently generated job (for the operations browser + Save)
+	lastGCode       string  // most recently posted G-code (for export to a file)
+	lastEstimate    float64 // estimated cycle time (minutes) of the last posted job
+	targetBody      int     // index of the body the generate commands machine
+	editingOp       int     // index of the operation shown in the operation editor
+	sectionSource   string  // how the last contour plane was chosen ("selected face" | "mid-height")
+	cut             cutSettings
+	library         ToolLibrary // tools beyond the primary milling end mill (drill, ball-nose, …)
+	surfacer        Surfacer
+	njTemplate      string                 // New Job dialog: selected template
+	njUnits         string                 // New Job dialog: selected document-unit schema
+	njModel         map[int]bool           // New Job dialog: which solids (by body index) are checked into the job
+	msModel         map[int]bool           // Model Selection dialog: which solids are checked into the existing job's model
+	editingTool     int                    // tool-controller index shown in the tool-controller editor
+	toolEdits       map[int]ToolController // edited tool controllers by index, applied over the derived list
+	outputFile      string                 // default output path for the posted program (Output tab)
+	postArguments   string                 // extra post-processor arguments (Output tab)
+	wcs             map[int]bool           // selected work coordinate systems, 1..6 → G54..G59 (Output tab)
+	orderBy         string                 // multi-fixture output ordering: Fixture | Tool | Operation
+	splitOutput     bool                   // write a separate file per fixture/tool/operation
+	lastPrograms    []namedProgram         // split output units of the last posted job (nil = one file)
+	stockMethod     string                 // stock creation: Extend bbox | Box | Cylinder | Existing
+	stockBoxL       float64                // explicit box stock length/width/height (mm)
+	stockBoxW       float64
+	stockBoxH       float64
+	stockCylR       float64 // explicit cylinder stock radius/height (mm)
+	stockCylH       float64
+	stockExisting   int             // body index used as stock when method is Existing
+	simPath         []gcode.Vector3 // simulator: the toolpath polyline (mm) being played back
+	simFeed         []bool          // simulator: per-point cutting (feed) vs rapid, aligned to simPath
+	simIdx          int             // simulator: current move index
+	simRunning      bool            // simulator: playing
+	simSpeed        int             // simulator: moves advanced per tick
+	simGen          int             // simulator: generation, bumped on open/close to retire stale tick loops
+	simMaterial     bool            // simulator: material-removal (voxel) view vs plain path playback
+	simCuts         []voxelMove     // simulator: per-segment cutter sweeps (material mode)
+	simStock        Stock           // simulator: stock box the voxel grid covers (mm)
+	voxel           *VoxelGrid      // simulator: the material-removal grid (nil = not built)
+	voxelRes        float64         // simulator: chosen voxel cell size (mm), for rebuilds on scrub-back
+	voxelCursor     int             // simulator: number of cuts already swept into the grid
+	simHiddenBodies []int           // simulator: model bodies hidden during the material view, to restore
 }
 
 // NewEngine binds the engine to the host transport with milestone-1 defaults.

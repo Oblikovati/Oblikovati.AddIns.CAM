@@ -75,6 +75,7 @@ func (e *Engine) simulateAction() (*JobResult, error) {
 	e.simGen++
 	n, material, res := len(e.simPath), e.simMaterial, e.voxelRes
 	e.mu.Unlock()
+	e.syncBodyVisibility(material)
 	e.drawSimFrame()
 	if _, err := e.showSimPanel(); err != nil {
 		return nil, err
@@ -153,6 +154,7 @@ func (e *Engine) closeSimAction() (*JobResult, error) {
 	e.simGen++ // retire any running tick loop
 	e.voxel = nil
 	e.mu.Unlock()
+	e.restoreModelBodies() // un-hide the solids hidden for the material view
 	for _, id := range append(pathOverlayIDs(), SimStockID, SimToolID) {
 		_ = e.api.Graphics().Delete(id)
 	}
@@ -288,7 +290,9 @@ func (e *Engine) switchSimView(material bool) {
 		e.simIdx = 0
 	}
 	e.simGen++
+	active := e.simMaterial
 	e.mu.Unlock()
+	e.syncBodyVisibility(active)
 	e.clearSimOverlays()
 	e.drawSimFrame()
 	_, _ = e.showSimPanel()
