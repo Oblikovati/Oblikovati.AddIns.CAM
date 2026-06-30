@@ -172,6 +172,59 @@ func TestExpandG73ChipBreak(t *testing.T) {
 	}
 }
 
+// TestExpandG84ThreadsBackOut checks a tapping cycle retracts at FEED (the tap winds out of the
+// thread), not a rapid — the distinguishing motion of G84 vs a drill.
+func TestExpandG84ThreadsBackOut(t *testing.T) {
+	in := NewPath([]Command{
+		NewCommand("G99", nil),
+		NewCommand("G84", map[string]float64{"X": 0, "Y": 0, "Z": -10, "R": 2, "F": 1.5}),
+	})
+	out := ExpandCannedCycles(in)
+	last := out.Commands[len(out.Commands)-1]
+	if last.Name != "G1" || last.Params["Z"] != 2 {
+		t.Errorf("tap retract = %+v, want G1 Z2 (feed back out)", last)
+	}
+	if rapidZ(out) == nil {
+		t.Error("expected at least the rapid to the R plane on entry")
+	}
+	// thread in and thread out: two feed moves, to the bottom and back to R
+	pl := plunges(out)
+	if len(pl) != 2 || pl[0].Z != -10 || pl[1].Z != 2 {
+		t.Errorf("tap feeds = %+v, want feed to -10 then feed to 2", pl)
+	}
+}
+
+// TestExpandG84DwellHolds checks a tap with a dwell pauses at the bottom (an extra hold there) before
+// reversing out.
+func TestExpandG84DwellHolds(t *testing.T) {
+	in := NewPath([]Command{
+		NewCommand("G99", nil),
+		NewCommand("G84", map[string]float64{"X": 0, "Y": 0, "Z": -10, "R": 2, "P": 0.5}),
+	})
+	bottoms := 0
+	for _, p := range plunges(ExpandCannedCycles(in)) {
+		if p.Z == -10 {
+			bottoms++
+		}
+	}
+	if bottoms != 2 { // thread-in to the bottom, then the dwell hold
+		t.Errorf("feed moves at the bottom = %d, want 2 (thread-in + dwell hold)", bottoms)
+	}
+}
+
+// TestExpandG74LeftHandTapsLikeG84 checks a left-hand tap has the same plunge/feed-out geometry.
+func TestExpandG74LeftHandTapsLikeG84(t *testing.T) {
+	in := NewPath([]Command{
+		NewCommand("G99", nil),
+		NewCommand("G74", map[string]float64{"X": 0, "Y": 0, "Z": -8, "R": 1}),
+	})
+	out := ExpandCannedCycles(in)
+	last := out.Commands[len(out.Commands)-1]
+	if last.Name != "G1" || last.Params["Z"] != 1 {
+		t.Errorf("G74 retract = %+v, want G1 Z1 (feed back out)", last)
+	}
+}
+
 // TestExpandPassesNonCyclesThrough checks a program without cycles is returned unchanged.
 func TestExpandPassesNonCyclesThrough(t *testing.T) {
 	in := NewPath([]Command{

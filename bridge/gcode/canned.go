@@ -39,6 +39,7 @@ type cycleState struct {
 	active           string  // the active canned cycle, "" when none
 	x, y, z          float64 // sticky tool position
 	r, bottom, q     float64 // modal retract plane, hole bottom, and peck increment (Q)
+	dwell            float64 // modal bottom dwell (P), seconds — a tap holds here for spindle reversal
 	initialZ         float64 // Z before the cycle block — the G98 retract target
 	retractToInitial bool    // G98 (true) retracts to initialZ; G99 (false) to the R plane
 }
@@ -80,36 +81,68 @@ func (st *cycleState) beginCycle(c Command, out []Command) []Command {
 	if q, ok := c.Params["Q"]; ok {
 		st.q = q
 	}
+	if p, ok := c.Params["P"]; ok {
+		st.dwell = p
+	}
 	return st.emitCycle(c, out)
 }
 
-// emitCycle appends one hole's motion at the command's X/Y (modal otherwise): position over the
-// hole, then either a single plunge or — for a peck cycle — the woodpecker descent.
+// emitCycle appends one hole's motion at the command's X/Y (modal otherwise): position over the hole,
+// then the descent appropriate to the cycle — a single plunge, the peck woodpecker, or a tap that
+// threads back out at feed.
 func (st *cycleState) emitCycle(c Command, out []Command) []Command {
+	st.setXY(c)
+	retract := st.retractTarget()
+	out = append(out, NewCommand("G0", map[string]float64{"X": st.x, "Y": st.y}))
+	switch {
+	case st.isPeck():
+		out = append(st.emitPecks(out), rapid("Z", retract))
+	case st.isTap():
+		out = st.emitTap(out, retract)
+	default:
+		out = append(out, rapid("Z", st.r), feed("Z", st.bottom), rapid("Z", retract))
+	}
+	st.z = retract
+	return out
+}
+
+// emitTap threads the tap in at feed, optionally dwells at the bottom for the spindle to reverse,
+// then threads back out at feed (not a rapid — the tap is engaged in the thread the whole way).
+func (st *cycleState) emitTap(out []Command, retract float64) []Command {
+	out = append(out, rapid("Z", st.r), feed("Z", st.bottom))
+	if st.dwell > 0 {
+		out = append(out, feed("Z", st.bottom)) // hold at the bottom while the spindle reverses
+	}
+	return append(out, feed("Z", retract))
+}
+
+// setXY latches the cycle point's X/Y, keeping the modal value where the command omits one.
+func (st *cycleState) setXY(c Command) {
 	if x, ok := c.Params["X"]; ok {
 		st.x = x
 	}
 	if y, ok := c.Params["Y"]; ok {
 		st.y = y
 	}
-	retract := st.r
+}
+
+// retractTarget is where the cycle retracts to: the initial plane under G98, else the R plane.
+func (st *cycleState) retractTarget() float64 {
 	if st.retractToInitial {
-		retract = st.initialZ
+		return st.initialZ
 	}
-	out = append(out, NewCommand("G0", map[string]float64{"X": st.x, "Y": st.y}))
-	if st.isPeck() {
-		out = st.emitPecks(out)
-	} else {
-		out = append(out, rapid("Z", st.r), feed("Z", st.bottom))
-	}
-	st.z = retract
-	return append(out, NewCommand("G0", map[string]float64{"Z": retract}))
+	return st.r
 }
 
 // isPeck reports whether the active cycle drills in increments (G83 deep-hole, G73 chip-break) with
 // a positive peck size.
 func (st *cycleState) isPeck() bool {
 	return st.q > 0 && (st.active == "G83" || st.active == "G73")
+}
+
+// isTap reports whether the active cycle is a tapping cycle (right-hand G84 or left-hand G74).
+func (st *cycleState) isTap() bool {
+	return st.active == "G84" || st.active == "G74"
 }
 
 // emitPecks appends the incremental descent to the hole bottom. G83 fully retracts to the R plane
