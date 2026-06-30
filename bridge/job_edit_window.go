@@ -39,9 +39,11 @@ func (e *Engine) showJobEditAction() (*JobResult, error) {
 
 // jobEditValues is a lock-free snapshot of the settings the Job Edit window renders.
 type jobEditValues struct {
-	post, material                                                                             string
+	post, material, outputFile, postArguments, orderBy                                         string
 	feed, toolDia, stepDown, stepOver, cutDepth, stockXY, stockTop, clearance, retract, spinUp float64
 	body, flutes, workOffset                                                                   int
+	splitOutput                                                                                bool
+	wcs                                                                                        map[int]bool
 }
 
 // jobEditValues snapshots the engine settings under the lock.
@@ -54,7 +56,26 @@ func (e *Engine) jobEditValues() jobEditValues {
 		cutDepth: e.cut.CutDepth, stockXY: e.cut.StockXYMargin, stockTop: e.cut.StockTopMargin,
 		clearance: e.cut.ClearanceAbove, retract: e.cut.RetractAbove, spinUp: e.spinUpSecs,
 		body: e.targetBody, flutes: e.flutes, workOffset: e.workOffset,
+		outputFile: e.outputFile, postArguments: e.postArguments, orderBy: e.orderBy,
+		splitOutput: e.splitOutput, wcs: selectedWCS(e.wcs, e.workOffset),
 	}
+}
+
+// selectedWCS is the displayed work-coordinate-system selection: the engine's set, or — when
+// none is stored yet — the active work offset (default G54) so the tab opens with one checked.
+func selectedWCS(wcs map[int]bool, workOffset int) map[int]bool {
+	out := map[int]bool{}
+	any := false
+	for k, v := range wcs {
+		if v {
+			out[k] = true
+			any = true
+		}
+	}
+	if !any {
+		out[workOffsetOrOne(workOffset)] = true
+	}
+	return out
 }
 
 // camForm is a titled group whose body is a 2-column [label | field] grid: each field's caption
@@ -92,13 +113,40 @@ func generalTab(v jobEditValues) wire.PanelControlSpec {
 	)
 }
 
-// outputTab is the Output tab: post processor and work-coordinate-system offset.
+// outputTab is the Output tab: the output file, post processor and arguments, plus the
+// Work Coordinate Systems group (the G54–G59 fixtures, output ordering and split-output) —
+// FreeCAD's Output tab.
 func outputTab(v jobEditValues) wire.PanelControlSpec {
 	return client.PanelTab("Output",
 		camForm("je_out", "Output",
+			client.PanelTextBox("out_file", "Output file", v.outputFile),
 			client.PanelDropdown("post", "Post processor", postOptions(), v.post),
-			client.PanelTextBox("work_offset", "Work offset (1=G54)", strconv.Itoa(workOffsetOrOne(v.workOffset)))),
+			client.PanelTextBox("post_args", "Arguments", v.postArguments)),
+		client.PanelGroup("je_wcs", "Work Coordinate Systems",
+			wcsChecklist(v),
+			client.PanelDropdown("order_by", "Order by", orderByOptions(), orderByOrFixture(v.orderBy)),
+			client.PanelCheckBox("split_output", "Split output", v.splitOutput)),
 	)
+}
+
+// wcsChecklist is the G54–G59 fixture checklist as a 3-column grid of checkboxes.
+func wcsChecklist(v jobEditValues) wire.PanelControlSpec {
+	thirds := []types.GridTrack{client.TrackFr(1), client.TrackFr(1), client.TrackFr(1)}
+	var boxes []wire.PanelControlSpec
+	for n := 1; n <= 6; n++ {
+		boxes = append(boxes, client.PanelCheckBox(fmt.Sprintf("wcs_%d", n), fmt.Sprintf("G5%d", 3+n), v.wcs[n]))
+	}
+	return client.PanelGrid("je_wcs_g", thirds, 4, 4, boxes...)
+}
+
+// orderByOptions are the multi-fixture output orderings; orderByOrFixture defaults an unset value.
+func orderByOptions() []string { return []string{"Fixture", "Tool", "Operation"} }
+
+func orderByOrFixture(v string) string {
+	if v == "Tool" || v == "Operation" {
+		return v
+	}
+	return "Fixture"
 }
 
 // toolsTab is the Tools tab: the cutting tool and its feeds & speeds.
