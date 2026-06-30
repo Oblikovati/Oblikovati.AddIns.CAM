@@ -69,3 +69,4 @@ remaining material after every cutter sweep — as a shaded isometric solid.
 | `voxel-pocket-zigzag.png` | Material removal: a zig-zag pocket fully clears its floor, leaving the central island as a clean standing boss. |
 | `voxel-pocket-offset-rib.png` | Carve fidelity: the same pocket cut with concentric offsets leaves an uncut medial rib, which the voxel sim reveals rather than idealises. |
 | `voxel-drilling.png` | Canned cycles: a grid of `G81` drilled holes carves correctly — the cycle is expanded to explicit plunge motion (`gcode.ExpandCannedCycles`) so the simulator sees the holes. |
+| `voxel-drill-peck-profile.png` | Peck drilling: a depth-over-progress chart of a `G83` deep-hole cycle — the woodpecker that steps down by the peck increment and fully retracts to the R plane between pecks. A carved-stock image can't show this (the removed volume equals a single plunge), so it is charted instead. |

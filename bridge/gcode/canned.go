@@ -30,11 +30,15 @@ func ExpandCannedCycles(path Path) Path {
 	return Path{Commands: out}
 }
 
+// peckClearance is how far (mm) a peck cycle backs off the previous cut depth — the small chip-break
+// retract of G73, and the rapid-reapproach gap of G83 — kept below the peck increment.
+const peckClearance = 0.5
+
 // cycleState is the modal interpreter state carried across the program.
 type cycleState struct {
 	active           string  // the active canned cycle, "" when none
 	x, y, z          float64 // sticky tool position
-	r, bottom        float64 // modal retract plane and hole bottom
+	r, bottom, q     float64 // modal retract plane, hole bottom, and peck increment (Q)
 	initialZ         float64 // Z before the cycle block — the G98 retract target
 	retractToInitial bool    // G98 (true) retracts to initialZ; G99 (false) to the R plane
 }
@@ -73,11 +77,14 @@ func (st *cycleState) beginCycle(c Command, out []Command) []Command {
 	if z, ok := c.Params["Z"]; ok {
 		st.bottom = z
 	}
+	if q, ok := c.Params["Q"]; ok {
+		st.q = q
+	}
 	return st.emitCycle(c, out)
 }
 
 // emitCycle appends one hole's motion at the command's X/Y (modal otherwise): position over the
-// hole, rapid to the R plane, feed-plunge to depth, rapid out to the retract plane.
+// hole, then either a single plunge or — for a peck cycle — the woodpecker descent.
 func (st *cycleState) emitCycle(c Command, out []Command) []Command {
 	if x, ok := c.Params["X"]; ok {
 		st.x = x
@@ -89,15 +96,72 @@ func (st *cycleState) emitCycle(c Command, out []Command) []Command {
 	if st.retractToInitial {
 		retract = st.initialZ
 	}
-	out = append(out,
-		NewCommand("G0", map[string]float64{"X": st.x, "Y": st.y}),
-		NewCommand("G0", map[string]float64{"Z": st.r}),
-		NewCommand("G1", map[string]float64{"Z": st.bottom}),
-		NewCommand("G0", map[string]float64{"Z": retract}),
-	)
+	out = append(out, NewCommand("G0", map[string]float64{"X": st.x, "Y": st.y}))
+	if st.isPeck() {
+		out = st.emitPecks(out)
+	} else {
+		out = append(out, rapid("Z", st.r), feed("Z", st.bottom))
+	}
 	st.z = retract
+	return append(out, NewCommand("G0", map[string]float64{"Z": retract}))
+}
+
+// isPeck reports whether the active cycle drills in increments (G83 deep-hole, G73 chip-break) with
+// a positive peck size.
+func (st *cycleState) isPeck() bool {
+	return st.q > 0 && (st.active == "G83" || st.active == "G73")
+}
+
+// emitPecks appends the incremental descent to the hole bottom. G83 fully retracts to the R plane
+// between pecks to clear chips and rapids back down to just above the last cut; G73 only backs off a
+// little, staying in the hole.
+func (st *cycleState) emitPecks(out []Command) []Command {
+	out = append(out, rapid("Z", st.r))
+	depths := peckDepths(st.r, st.bottom, st.q)
+	for i, d := range depths {
+		if i > 0 && st.active == "G83" {
+			out = append(out, rapid("Z", depths[i-1]+peckBackoff(st.q)))
+		}
+		out = append(out, feed("Z", d))
+		if i < len(depths)-1 {
+			out = append(out, st.interPeck(d))
+		}
+	}
 	return out
 }
+
+// interPeck is the move between two pecks: a full rapid retract to the R plane for G83, or a small
+// chip-break back-off that stays in the hole for G73.
+func (st *cycleState) interPeck(depth float64) Command {
+	if st.active == "G83" {
+		return rapid("Z", st.r)
+	}
+	return rapid("Z", depth+peckBackoff(st.q))
+}
+
+// peckDepths lists the feed-to depths from the R plane down to the bottom in q increments, the last
+// landing exactly on the bottom.
+func peckDepths(r, bottom, q float64) []float64 {
+	var depths []float64
+	cur := r
+	for cur-q > bottom {
+		cur -= q
+		depths = append(depths, cur)
+	}
+	return append(depths, bottom)
+}
+
+// peckBackoff is the back-off distance for a peck, capped below the increment so it never overshoots.
+func peckBackoff(q float64) float64 {
+	if q/2 < peckClearance {
+		return q / 2
+	}
+	return peckClearance
+}
+
+// rapid and feed build a single-axis rapid (G0) or feed (G1) move.
+func rapid(axis string, v float64) Command { return NewCommand("G0", map[string]float64{axis: v}) }
+func feed(axis string, v float64) Command  { return NewCommand("G1", map[string]float64{axis: v}) }
 
 // track updates the sticky tool position from a pass-through command.
 func (st *cycleState) track(c Command) {

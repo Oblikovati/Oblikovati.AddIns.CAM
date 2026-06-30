@@ -100,6 +100,78 @@ func TestG80CancelsCycle(t *testing.T) {
 	}
 }
 
+// rapidZ returns the Z of every rapid (G0) move that sets Z, in order.
+func rapidZ(p Path) []float64 {
+	var out []float64
+	for _, c := range p.Commands {
+		if z, ok := c.Params["Z"]; ok && c.Name == "G0" {
+			out = append(out, z)
+		}
+	}
+	return out
+}
+
+func count(vals []float64, want float64) int {
+	n := 0
+	for _, v := range vals {
+		if v == want {
+			n++
+		}
+	}
+	return n
+}
+
+// TestExpandG83Pecks checks deep-hole drilling descends in Q increments and fully retracts to the R
+// plane between pecks (the chip-clearing woodpecker), reaching the hole bottom.
+func TestExpandG83Pecks(t *testing.T) {
+	in := NewPath([]Command{
+		NewCommand("G99", nil),
+		NewCommand("G83", map[string]float64{"X": 0, "Y": 0, "Z": -10, "R": 2, "Q": 3}),
+	})
+	out := ExpandCannedCycles(in)
+	gotZ := []float64{}
+	for _, p := range plunges(out) {
+		gotZ = append(gotZ, p.Z)
+	}
+	want := []float64{-1, -4, -7, -10} // R=2 stepping down by 3, last lands on the bottom
+	if len(gotZ) != len(want) {
+		t.Fatalf("peck feeds = %v, want %v", gotZ, want)
+	}
+	for i := range want {
+		if gotZ[i] != want[i] {
+			t.Errorf("peck %d feed Z = %v, want %v", i, gotZ[i], want[i])
+		}
+	}
+	if c := count(rapidZ(out), 2); c < 4 { // approach + 3 chip-clear retracts to R
+		t.Errorf("full retracts to R = %d, want >= 4 (G83 retracts each peck)", c)
+	}
+}
+
+// TestExpandG73ChipBreak checks high-speed peck drilling descends in Q increments but only backs off
+// a small amount between pecks (no full retract to R).
+func TestExpandG73ChipBreak(t *testing.T) {
+	in := NewPath([]Command{
+		NewCommand("G99", nil),
+		NewCommand("G73", map[string]float64{"X": 0, "Y": 0, "Z": -10, "R": 2, "Q": 3}),
+	})
+	out := ExpandCannedCycles(in)
+	if n := len(plunges(out)); n != 4 {
+		t.Fatalf("peck feeds = %d, want 4", n)
+	}
+	if c := count(rapidZ(out), 2); c > 2 { // only the approach and the final retract reach R
+		t.Errorf("retracts to R = %d, want <= 2 (G73 stays in the hole)", c)
+	}
+	backoff := false
+	for _, z := range rapidZ(out) {
+		if z > -10 && z < 2 && z != 2 { // a partial back-off strictly inside the hole
+			backoff = true
+		}
+	}
+	if !backoff {
+		t.Error("no chip-break back-off found between pecks")
+	}
+}
+
 // TestExpandPassesNonCyclesThrough checks a program without cycles is returned unchanged.
 func TestExpandPassesNonCyclesThrough(t *testing.T) {
 	in := NewPath([]Command{

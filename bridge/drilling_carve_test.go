@@ -39,6 +39,58 @@ func TestDrillingCutsReachHoleBottoms(t *testing.T) {
 	}
 }
 
+// peckDrillJob is one deep hole drilled with the given peck increment (0 = a plain G81 plunge).
+func peckDrillJob(peck float64) *Job {
+	j := NewJob()
+	j.Stock = Stock{Min: gcode.Vector3{Z: -12}, Max: gcode.Vector3{X: 20, Y: 20, Z: 0}}
+	j.Tools = []ToolController{{Tool: ToolBit{ShapeType: "drill", Diameter: 6}, VertFeed: 100}}
+	j.Operations = []Operation{&DrillingOp{
+		OpBase:    OpBase{OpLabel: "Drill", IsActive: true, ClearanceHeight: 10, RetractHeight: 2, StartDepth: 0, FinalDepth: -12},
+		PeckDepth: peck,
+		Holes:     []DrillTarget{{X: 10, Y: 10, Top: 0, Bottom: -12}},
+	}}
+	return j
+}
+
+// zReversals counts how many times the path's vertical direction flips — a single plunge has one, a
+// peck cycle's woodpecker has several.
+func zReversals(pts []gcode.Vector3) int {
+	n, prev := 0, 0.0
+	for i := 1; i < len(pts); i++ {
+		dz := pts[i].Z - pts[i-1].Z
+		if dz != 0 {
+			if prev != 0 && (dz > 0) != (prev > 0) {
+				n++
+			}
+			prev = dz
+		}
+	}
+	return n
+}
+
+// TestPeckDrillingAnimatesWoodpecker checks a G83 peck cycle produces a stepped descent (more
+// direction reversals than a plain plunge) while still reaching the hole bottom.
+func TestPeckDrillingAnimatesWoodpecker(t *testing.T) {
+	peck, err := MaterialToolpath(peckDrillJob(3))
+	if err != nil {
+		t.Fatalf("peck toolpath: %v", err)
+	}
+	plain, err := MaterialToolpath(peckDrillJob(0))
+	if err != nil {
+		t.Fatalf("plain toolpath: %v", err)
+	}
+	if zReversals(peck) <= zReversals(plain) {
+		t.Errorf("peck reversals %d not greater than plain %d", zReversals(peck), zReversals(plain))
+	}
+	deepest := 0.0
+	for _, p := range peck {
+		deepest = min(deepest, p.Z)
+	}
+	if deepest > -11.9 {
+		t.Errorf("peck path reached only Z=%v, want the -12 bottom", deepest)
+	}
+}
+
 // TestDrilledHoleIsCarved checks the voxel grid actually has material removed at a hole centre after
 // the full carve — the end-to-end fix for the canned-cycle limitation.
 func TestDrilledHoleIsCarved(t *testing.T) {
