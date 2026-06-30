@@ -57,7 +57,26 @@ func shots() []shot {
 	return []shot{
 		{"voxel-pocket-zigzag", pocketIslandJob(gen.PocketZigzag)},
 		{"voxel-pocket-offset-rib", pocketIslandJob(gen.PocketOffset)},
+		{"voxel-drilling", drillingJob()},
 	}
+}
+
+// drillingJob drills a 3×2 grid of through-holes — a canned-cycle (G81) operation, expanded to plunge
+// motion so the simulator carves the holes.
+func drillingJob() *bridge.Job {
+	var holes []bridge.DrillTarget
+	for _, x := range []float64{15, 35, 55} {
+		for _, y := range []float64{15, 35} {
+			holes = append(holes, bridge.DrillTarget{X: x, Y: y, Top: 0, Bottom: -12})
+		}
+	}
+	drill := &bridge.DrillingOp{
+		OpBase: bridge.OpBase{OpLabel: "Drill", IsActive: true, ClearanceHeight: 10, RetractHeight: 2, StartDepth: 0, FinalDepth: -12},
+		Holes:  holes,
+	}
+	j := job(stock(70, 50, 12), drill)
+	j.Tools[0].Tool = bridge.ToolBit{ShapeType: "drill", Diameter: 7}
+	return j
 }
 
 // pocketIslandJob clears a rectangular pocket (in the given pattern) around a central square island,

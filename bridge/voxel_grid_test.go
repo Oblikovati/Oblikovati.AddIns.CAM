@@ -44,6 +44,19 @@ func TestVoxelCenter(t *testing.T) {
 	}
 }
 
+// TestCellAt checks a world point maps to the cell containing it, and out-of-box points report not
+// ok.
+func TestCellAt(t *testing.T) {
+	g := NewVoxelGrid(gcode.Vector3{Z: -12}, gcode.Vector3{X: 40, Y: 40}, 2)
+	i, j, k, ok := g.cellAt(gcode.Vector3{X: 10, Y: 10, Z: -6})
+	if !ok || i != 5 || j != 5 || k != 3 { // (10-0)/2=5, (-6-(-12))/2=3
+		t.Errorf("cellAt = (%d,%d,%d,%v), want (5,5,3,true)", i, j, k, ok)
+	}
+	if _, _, _, ok := g.cellAt(gcode.Vector3{X: 100}); ok {
+		t.Error("point outside the box reported in-bounds")
+	}
+}
+
 // TestVoxelInBounds checks bounds rejection on every axis.
 func TestVoxelInBounds(t *testing.T) {
 	g := NewVoxelGrid(gcode.Vector3{}, gcode.Vector3{X: 4, Y: 4, Z: 4}, 1)
