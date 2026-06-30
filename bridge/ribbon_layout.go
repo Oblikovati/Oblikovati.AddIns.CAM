@@ -56,6 +56,7 @@ var camRibbonSpots = map[string]camRibbonSpot{
 	ClearPreviewCommandID:   {"Program", "clearpreview", types.SmallIconButton},
 
 	// Job persistence
+	NewJobCommandID:  {"Job", "newjob", types.LargeIconButton},
 	SaveJobCommandID: {"Job", "savejob", types.SmallIconButton},
 	LoadJobCommandID: {"Job", "loadjob", types.SmallIconButton},
 
@@ -90,4 +91,12 @@ var camRibbonSpots = map[string]camRibbonSpot{
 	RemoveToolCommandID:  {"Tool Library", "removetool", types.SmallIconButton},
 	ExportToolsCommandID: {"Tool Library", "exporttools", types.SmallIconButton},
 	ImportToolsCommandID: {"Tool Library", "importtools", types.SmallIconButton},
+}
+
+// nonRibbonCommands are registered (so their dialog buttons can execute them) but deliberately
+// NOT placed on the CAM ribbon — they are the New Job dialog's OK/Cancel actions, reached only
+// from within the dialog. They carry no ribbon spot and are exempt from the all-icons invariant.
+var nonRibbonCommands = map[string]bool{
+	CreateJobCommandID:    true,
+	CancelNewJobCommandID: true,
 }
