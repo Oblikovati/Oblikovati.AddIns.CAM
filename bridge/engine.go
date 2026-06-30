@@ -64,6 +64,7 @@ type Engine struct {
 	stockCylH     float64
 	stockExisting int // body index used as stock when method is Existing
 	simPath       []gcode.Vector3 // simulator: the toolpath polyline (mm) being played back
+	simFeed       []bool          // simulator: per-point cutting (feed) vs rapid, aligned to simPath
 	simIdx        int             // simulator: current move index
 	simRunning    bool            // simulator: playing
 	simSpeed      int             // simulator: moves advanced per tick
