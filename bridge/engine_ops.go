@@ -10,7 +10,6 @@ import (
 	"oblikovati.org/cam/bridge/gcode"
 	"oblikovati.org/cam/bridge/gen"
 	"oblikovati.org/cam/bridge/geom2d"
-	"oblikovati.org/cam/bridge/post"
 )
 
 // Defaults for the milestone-3 demo run methods.
@@ -351,7 +350,7 @@ func (e *Engine) postPreviewResult(job *Job, verb string) (*JobResult, error) {
 
 	overlayID, _ := e.pushToolpathPreview(results)
 	_ = e.clearToolpathPreview() // the committed overlay replaces any transient preview
-	gcodeText, err := post.Export(postName, PostObjects(results), e.postArgs())
+	gcodeText, err := e.postProgram(postName, results)
 	if err != nil {
 		return nil, err
 	}

@@ -5,14 +5,11 @@ package bridge
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 
 	"oblikovati.org/api/client"
 	"oblikovati.org/api/types"
 	"oblikovati.org/api/wire"
-	"oblikovati.org/cam/bridge/post"
 )
 
 // HostCaller is the transport the engine talks to the host through — exactly the
@@ -145,22 +142,14 @@ func workOffsetOrOne(w int) int {
 	return w
 }
 
-// postArgs builds the post-processor argument string: the GUI no-op plus the active work
-// coordinate system when it is not the default G54 (the posts that honour --work-offset substitute
-// it into their preamble). G54 is left implicit so the default output is unchanged.
+// postArgs is the post argument string for the active (single) work offset plus any extra
+// arguments — the single-fixture view of postArgsFor. The multi-fixture path posts per fixture
+// through postProgram; this stays for callers/tests that want the active fixture's args.
 func (e *Engine) postArgs() string {
 	e.mu.Lock()
-	wo := e.workOffset
-	extra := strings.TrimSpace(e.postArguments)
+	wo, extra := e.workOffset, e.postArguments
 	e.mu.Unlock()
-	args := "--no-show-editor"
-	if wo >= 2 && wo <= 6 {
-		args += " --work-offset=G5" + strconv.Itoa(3+wo) // 2→G55 … 6→G59
-	}
-	if extra != "" {
-		args += " " + extra
-	}
-	return args
+	return postArgsFor(wo, extra)
 }
 
 // The CAM commands the add-in registers; firing one (a ribbon click or the MCP bridge's
@@ -618,7 +607,7 @@ func (e *Engine) GenerateGCode(job *Job) (string, error) {
 	e.lastJob = job
 	e.lastEstimate = EstimateMinutes(results)
 	e.mu.Unlock()
-	gcodeText, err := post.Export(job.PostProcessor, PostObjects(results), e.postArgs())
+	gcodeText, err := e.postProgram(job.PostProcessor, results)
 	if err == nil {
 		e.rememberGCode(gcodeText)
 	}
