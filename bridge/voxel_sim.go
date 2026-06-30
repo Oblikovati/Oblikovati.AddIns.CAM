@@ -85,7 +85,7 @@ func (e *Engine) buildMaterialSim() bool {
 	e.simCuts, e.simStock = cuts, stock
 	e.voxelRes = chooseVoxelRes(stock.Min, stock.Max, minCutterRadius(cuts))
 	e.rebuildVoxelGrid()
-	e.simPath, e.simIdx = cutPoints(cuts), 0
+	e.simPath, e.simFeed, e.simIdx = cutPoints(cuts), nil, 0 // material view draws the mesh, not coloured lines
 	return true
 }
 

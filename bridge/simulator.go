@@ -9,6 +9,7 @@ import (
 	"oblikovati.org/api/client"
 	"oblikovati.org/api/types"
 	"oblikovati.org/api/wire"
+	"oblikovati.org/cam/bridge/gcode"
 )
 
 // CAM toolpath simulator (FreeCAD's Path Simulator): play the posted program back, animating a
@@ -16,13 +17,45 @@ import (
 // step, reset and a speed; a ticker goroutine advances the position and redraws. This is path
 // playback, not material removal (a heavier voxel simulation is a later refinement).
 
+// The playback path is drawn as four overlays — cutting moves vs rapids, each split into the
+// travelled and remaining portion — so move type (green cut / blue rapid) and progress (bright
+// travelled / dim remaining) read at once. See pathOverlays.
 const (
-	SimPanelID  = "com.oblikovati.cam.sim.panel"
-	SimTraceID  = "com.oblikovati.cam.sim.trace"  // toolpath already travelled (green)
-	SimRemainID = "com.oblikovati.cam.sim.remain" // toolpath still to come (grey)
-	SimToolID   = "com.oblikovati.cam.sim.tool"   // the tool marker (red)
-	SimStockID  = "com.oblikovati.cam.sim.stock"  // the remaining material mesh (material mode)
+	SimPanelID     = "com.oblikovati.cam.sim.panel"
+	SimFeedDoneID  = "com.oblikovati.cam.sim.feed.done"  // travelled cutting moves (bright green)
+	SimRapidDoneID = "com.oblikovati.cam.sim.rapid.done" // travelled rapids (bright blue)
+	SimFeedTodoID  = "com.oblikovati.cam.sim.feed.todo"  // remaining cutting moves (dim green)
+	SimRapidTodoID = "com.oblikovati.cam.sim.rapid.todo" // remaining rapids (dim blue)
+	SimToolID      = "com.oblikovati.cam.sim.tool"       // the tool marker (red)
+	SimStockID     = "com.oblikovati.cam.sim.stock"      // the remaining material mesh (material mode)
 )
+
+// pathOverlay is one playback line overlay: which segments it holds (cutting vs rapid, travelled vs
+// remaining) and the colour to draw them.
+type pathOverlay struct {
+	id    string
+	feed  bool
+	done  bool
+	color []float32
+}
+
+// pathOverlays groups the playback segments by move type and progress. Cutting moves are green,
+// rapids blue; travelled segments are opaque, remaining ones dim.
+var pathOverlays = []pathOverlay{
+	{SimFeedDoneID, true, true, []float32{0.1, 0.9, 0.2, 1}},
+	{SimRapidDoneID, false, true, []float32{0.3, 0.55, 0.95, 1}},
+	{SimFeedTodoID, true, false, []float32{0.1, 0.9, 0.2, 0.3}},
+	{SimRapidTodoID, false, false, []float32{0.3, 0.55, 0.95, 0.3}},
+}
+
+// pathOverlayIDs is the graphics ids of every playback line overlay (for clearing).
+func pathOverlayIDs() []string {
+	ids := make([]string, len(pathOverlays))
+	for i, o := range pathOverlays {
+		ids[i] = o.id
+	}
+	return ids
+}
 
 // simTickInterval is the redraw period of the simulation while playing.
 const simTickInterval = 40 * time.Millisecond
@@ -68,7 +101,8 @@ func (e *Engine) prepareSim() bool {
 		return true
 	}
 	e.simMaterial, e.voxel = false, nil
-	e.simPath, e.simIdx = toolpathFromGCode(e.lastGCode), 0
+	e.simPath, e.simFeed = motionWithKinds(e.lastGCode)
+	e.simIdx = 0
 	return len(e.simPath) >= 2
 }
 
@@ -119,7 +153,7 @@ func (e *Engine) closeSimAction() (*JobResult, error) {
 	e.simGen++ // retire any running tick loop
 	e.voxel = nil
 	e.mu.Unlock()
-	for _, id := range []string{SimTraceID, SimRemainID, SimStockID, SimToolID} {
+	for _, id := range append(pathOverlayIDs(), SimStockID, SimToolID) {
 		_ = e.api.Graphics().Delete(id)
 	}
 	if _, err := e.api.DockableWindows().SetVisible(SimPanelID, false); err != nil {
@@ -166,19 +200,42 @@ func (e *Engine) drawSimFrame() {
 	e.drawPathFrame()
 }
 
-// drawPathFrame redraws the traced and remaining toolpath and the tool marker at the current move.
+// drawPathFrame redraws the toolpath coloured by move type (cut vs rapid) and progress, plus the
+// tool marker at the current move.
 func (e *Engine) drawPathFrame() {
 	e.mu.Lock()
-	idx, path := e.simIdx, e.simPath
+	idx, path, feed := e.simIdx, e.simPath, e.simFeed
 	e.mu.Unlock()
 	if len(path) < 2 {
 		return
 	}
-	tc, ti := polylineLines(path[:idx+1])
-	rc, ri := polylineLines(path[idx:])
-	_, _ = e.api.Graphics().AddLines(SimTraceID, tc, ti, []float32{0.1, 0.9, 0.2, 1})
-	_, _ = e.api.Graphics().AddLines(SimRemainID, rc, ri, []float32{0.55, 0.55, 0.6, 0.6})
-	tool := []float64{path[idx].X / cmToMM, path[idx].Y / cmToMM, path[idx].Z / cmToMM}
+	for _, o := range pathOverlays {
+		e.drawPathOverlay(o, path, feed, idx)
+	}
+	e.drawToolMarker(path[idx])
+}
+
+// drawPathOverlay draws (or clears, when empty) the segments belonging to one overlay group.
+func (e *Engine) drawPathOverlay(o pathOverlay, path []gcode.Vector3, feed []bool, idx int) {
+	coords, indices := segmentLines(path, func(i int) bool {
+		return segmentIsFeed(feed, i) == o.feed && (i < idx) == o.done
+	})
+	if len(indices) == 0 {
+		_ = e.api.Graphics().Delete(o.id)
+		return
+	}
+	_, _ = e.api.Graphics().AddLines(o.id, coords, indices, o.color)
+}
+
+// segmentIsFeed reports whether the segment from point i to i+1 is a cutting move (the move into
+// point i+1).
+func segmentIsFeed(feed []bool, i int) bool {
+	return i+1 < len(feed) && feed[i+1]
+}
+
+// drawToolMarker draws the red tool marker at a point (mm → host cm).
+func (e *Engine) drawToolMarker(p gcode.Vector3) {
+	tool := []float64{p.X / cmToMM, p.Y / cmToMM, p.Z / cmToMM}
 	_, _ = e.api.Graphics().AddPoints(SimToolID, tool, types.GraphicsPointSquare, []float32{1, 0.2, 0.1, 1})
 }
 
@@ -227,7 +284,8 @@ func (e *Engine) switchSimView(material bool) {
 		e.simMaterial = true
 	} else {
 		e.simMaterial, e.voxel = false, nil
-		e.simPath, e.simIdx = toolpathFromGCode(e.lastGCode), 0
+		e.simPath, e.simFeed = motionWithKinds(e.lastGCode)
+		e.simIdx = 0
 	}
 	e.simGen++
 	e.mu.Unlock()
@@ -239,7 +297,7 @@ func (e *Engine) switchSimView(material bool) {
 // clearSimOverlays removes every simulator overlay except the tool marker (which the next frame
 // overwrites), so switching views never leaves the previous view's geometry behind.
 func (e *Engine) clearSimOverlays() {
-	for _, id := range []string{SimTraceID, SimRemainID, SimStockID} {
+	for _, id := range append(pathOverlayIDs(), SimStockID) {
 		_ = e.api.Graphics().Delete(id)
 	}
 }

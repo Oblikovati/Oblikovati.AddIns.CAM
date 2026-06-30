@@ -31,7 +31,9 @@ func TestSimulateActionDrawsPathAndPanel(t *testing.T) {
 	if _, err := e.simulateAction(); err != nil {
 		t.Fatalf("simulateAction: %v", err)
 	}
-	for _, id := range []string{SimTraceID, SimRemainID, SimToolID} {
+	// simProgram has cutting moves and a trailing rapid, so at the start both remaining-move overlays
+	// and the tool marker are drawn.
+	for _, id := range []string{SimFeedTodoID, SimRapidTodoID, SimToolID} {
 		if !hasGraphic(h, id) {
 			t.Errorf("overlay %q not drawn", id)
 		}
@@ -43,6 +45,51 @@ func TestSimulateActionDrawsPathAndPanel(t *testing.T) {
 	if win.Title != "CAM Simulator" || win.Dock != types.DockRight {
 		t.Errorf("panel id/title/dock = %q/%q/%v", win.ID, win.Title, win.Dock)
 	}
+}
+
+// TestPlaybackColorsByMoveType checks the travelled toolpath is split into a green cutting overlay
+// and a blue rapid overlay once playback reaches the end.
+func TestPlaybackColorsByMoveType(t *testing.T) {
+	h := &recordingHost{}
+	e := NewEngine(h)
+	e.lastGCode = simProgram
+	if _, err := e.simulateAction(); err != nil {
+		t.Fatalf("simulateAction: %v", err)
+	}
+	for i := 0; i < len(e.simPath); i++ {
+		_, _ = e.simStepAction() // play to the end so every segment is travelled
+	}
+	if got := graphicColor(h, SimFeedDoneID); !colorEq(got, []float32{0.1, 0.9, 0.2, 1}) {
+		t.Errorf("travelled cut colour = %v, want green", got)
+	}
+	if got := graphicColor(h, SimRapidDoneID); !colorEq(got, []float32{0.3, 0.55, 0.95, 1}) {
+		t.Errorf("travelled rapid colour = %v, want blue", got)
+	}
+}
+
+// graphicColor returns the overall colour of the most recent client-graphics set for an id.
+func graphicColor(h *recordingHost, id string) []float32 {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for i := len(h.graphicsArgs) - 1; i >= 0; i-- {
+		a := h.graphicsArgs[i]
+		if a.ClientId == id && len(a.Nodes) > 0 && len(a.Nodes[0].Primitives) > 0 {
+			return a.Nodes[0].Primitives[0].Color
+		}
+	}
+	return nil
+}
+
+func colorEq(got, want []float32) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // TestSimStepAdvancesAndReset checks stepping advances one move and reset rewinds to the start.

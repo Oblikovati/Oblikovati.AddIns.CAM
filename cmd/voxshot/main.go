@@ -43,6 +43,21 @@ func main() {
 	}
 	writeProfile(outDir, "voxel-drill-peck-profile", peckHoleJob())
 	writeProfile(outDir, "voxel-tap-profile", tapHoleJob())
+	writeBackplot(outDir, "sim-path-overlay", pocketIslandJob(gen.PocketZigzag))
+}
+
+// writeBackplot renders a job's motion as the simulator's playback overlay looks in the viewport —
+// an isometric backplot with cutting moves green and rapids blue.
+func writeBackplot(outDir, name string, job *bridge.Job) {
+	path, err := bridge.MaterialPath(job)
+	if err != nil {
+		fail(err)
+	}
+	img := plot.RenderToolpath3D(path, imageSize)
+	if err := writePNG(filepath.Join(outDir, name+".png"), img); err != nil {
+		fail(err)
+	}
+	fmt.Printf("wrote %s/%s.png  (%d moves)\n", outDir, name, len(path.Commands))
 }
 
 // writeProfile renders a depth-over-progress chart of a job's motion — the rapid/feed pattern the
