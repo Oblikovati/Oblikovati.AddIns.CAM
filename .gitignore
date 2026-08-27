@@ -47,3 +47,6 @@ go.work.sum
 # stray cmd build artifacts
 /camshot
 /camrun
+
+# Local git worktrees used for isolated branch work.
+/.worktrees/
