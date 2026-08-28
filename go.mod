@@ -14,7 +14,7 @@ module oblikovati.org/cam
 
 go 1.27.0
 
-require oblikovati.org/api v0.153.1
+require oblikovati.org/api v0.154.0
 
 require (
 	github.com/bitfield/gotestdox v0.2.2 // indirect
