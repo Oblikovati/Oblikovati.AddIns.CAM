@@ -109,6 +109,9 @@ jobs:
           for plat in $targets; do
             GOARCH="${plat##*-}" go build -buildmode=c-shared -o "dist/oblikovati-cam-$plat.$ext" .
           done
+          if [ "$targets" = "linux-amd64" ]; then
+            GOOS=js GOARCH=wasm CGO_ENABLED=0 go build -o "dist/oblikovati-cam-js-wasm.wasm" .
+          fi
           cp manifest.json dist/manifest.json
       - uses: actions/upload-artifact@v6
         with:
@@ -173,7 +176,7 @@ jobs:
           shopt -s nullglob
           # The c-shared build emits a .h beside each library, so match the library extensions
           # explicitly rather than globbing everything the build job uploaded.
-          libs=(dist/oblikovati-cam-*.so dist/oblikovati-cam-*.dylib dist/oblikovati-cam-*.dll)
+          libs=(dist/oblikovati-cam-*.so dist/oblikovati-cam-*.dylib dist/oblikovati-cam-*.dll dist/oblikovati-cam-*.wasm)
           if [ ${#libs[@]} -eq 0 ]; then
             echo "no built libraries in dist/ — the build job uploaded nothing to publish" >&2
             exit 1
